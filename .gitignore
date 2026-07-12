@@ -1,0 +1,21 @@
+# Environment
+.env
+
+# Python
+venv/
+__pycache__/
+*.pyc
+
+# SQLite
+*.db
+*.db-shm
+*.db-wal
+
+# Chroma DB
+chroma_db/
+
+# Uploads
+uploads/
+
+# macOS
+.DS_Store

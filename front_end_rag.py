@@ -382,6 +382,36 @@ st.markdown("""
         line-height: 1.6;
         font-family: 'Plus Jakarta Sans', sans-serif;
     }
+
+    /* Typing Indicator Styles */
+    .typing-indicator {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        padding: 8px 12px;
+    }
+    .typing-indicator span {
+        width: 8px;
+        height: 8px;
+        background-color: #a78bfa;
+        border-radius: 50%;
+        display: inline-block;
+        animation: bounce 1.4s infinite ease-in-out both;
+    }
+    .typing-indicator span:nth-child(1) {
+        animation-delay: -0.32s;
+    }
+    .typing-indicator span:nth-child(2) {
+        animation-delay: -0.16s;
+    }
+    @keyframes bounce {
+        0%, 80%, 100% { 
+            transform: scale(0.3);
+        } 40% { 
+            transform: scale(1.0);
+            background-color: #818cf8;
+        }
+    }
 </style>
 """, unsafe_allow_html=True)
 
@@ -490,7 +520,6 @@ st.markdown(
     f"""
     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; border-bottom: 1px solid rgba(255, 255, 255, 0.06); padding-bottom: 16px;">
         <div style="font-size: 24px; font-weight: 800; color: #ffffff; letter-spacing: -0.02em; font-family: 'Plus Jakarta Sans', sans-serif;">Intelligent Chat <span style="color: #c084fc;">Agent</span></div>
-        <div style="background-color: rgba(255, 255, 255, 0.03); border: 1px solid rgba(255, 255, 255, 0.06); border-radius: 30px; padding: 6px 14px; font-size: 12px; color: #94a3b8; font-weight: 500; font-family: 'Plus Jakarta Sans', sans-serif;">Session: {st.session_state.thread_id[:8]}...</div>
     </div>
     """,
     unsafe_allow_html=True
@@ -534,6 +563,22 @@ def render_bubble(content: str, role: str):
     st.markdown(render_bubble_html(content, role), unsafe_allow_html=True)
 
 
+def render_typing_indicator_html() -> str:
+    return """
+    <div class="chat-row assistant">
+        <div class="chat-avatar">🤖</div>
+        <div class="chat-bubble assistant" style="display: flex; align-items: center; gap: 8px; padding: 12px 18px;">
+            <div class="typing-indicator" style="padding: 0; margin: 0; display: flex; align-items: center; gap: 4px;">
+                <span></span>
+                <span></span>
+                <span></span>
+            </div>
+            <div style="color: #94a3b8; font-size: 14px; font-weight: 500; font-family: 'Plus Jakarta Sans', sans-serif;">typing...</div>
+        </div>
+    </div>
+    """
+
+
 # ---------------- Chat History / Empty State ----------------
 if len(st.session_state.messages) == 0:
     st.markdown(
@@ -573,8 +618,14 @@ if user_input:
     }
 
     placeholder = st.empty()
+    
+    # Show typing indicator while graph computes response
+    placeholder.markdown(
+        render_typing_indicator_html(),
+        unsafe_allow_html=True
+    )
+    
     full_response = ""
-
     for chunk in workflow.stream(
         {
             "messages": [user_msg]
@@ -585,10 +636,21 @@ if user_input:
         ai_message = chunk["messages"][-1]
         if isinstance(ai_message, AIMessage):
             full_response = ai_message.content
-            placeholder.markdown(
-                render_bubble_html(full_response + "▌", "assistant"),
-                unsafe_allow_html=True
-            )
+
+    # Stream the final response word-by-word with a typewriter/streaming effect
+    import time
+    words = full_response.split(" ")
+    displayed_text = ""
+    for i, word in enumerate(words):
+        if i == 0:
+            displayed_text = word
+        else:
+            displayed_text += " " + word
+        placeholder.markdown(
+            render_bubble_html(displayed_text + "▌", "assistant"),
+            unsafe_allow_html=True
+        )
+        time.sleep(0.03)  # 30ms typing speed per word
 
     placeholder.markdown(
         render_bubble_html(full_response, "assistant"),
