@@ -108,46 +108,27 @@ Search Query:"""
     except Exception:
         return user_query
 
-def check_hallucination(context: str, response_text: str) -> str:
+def check_groundedness_and_relevance(query: str, context: str, response_text: str) -> str:
     lower_res = response_text.lower()
     if any(phrase in lower_res for phrase in ["no relevant information", "not found", "cannot find", "do not have", "unavailable"]):
-        return "no"
+        return "yes"
 
-    prompt = f"""System: You are an expert auditor evaluating if an assistant's response is grounded in and supported by the provided context.
-Your goal is to detect hallucinations (claims in the response that are not mentioned in the context).
+    prompt = f"""System: You are an expert auditor evaluating if an assistant's response is relevant to the user's query and strictly grounded in the provided context.
+- Grounded: Every fact, claim, name, or number in the response is directly supported by the context.
+- Relevant: The response directly addresses and answers the user's query.
 
-If the response contains any facts, claims, or information NOT supported by the context, reply with 'yes' (meaning there is a hallucination).
-If the response is completely supported by the context, reply with 'no' (meaning no hallucination).
+If the response contains any facts not supported by the context (hallucinations) OR fails to address the query, reply with 'no'.
+If the response is fully supported by the context AND answers the query, reply with 'yes'.
 
 Do not write any other explanation. Just reply with 'yes' or 'no'.
 
 Context:
 {context}
 
-Response:
-{response_text}
-
-Contains Hallucination (yes/no):"""
-    try:
-        res = llm.invoke(prompt)
-        score = res.content.strip().lower()
-        if "yes" in score:
-            return "yes"
-        return "no"
-    except Exception:
-        return "no"
-
-def check_answer_relevance(query: str, response_text: str) -> str:
-    prompt = f"""System: You are an expert grader evaluating if an assistant's response resolves or answers the user's query.
-Reply 'yes' if the response addresses and answers the question, or correctly states that the information is unavailable.
-Reply 'no' if the response is completely irrelevant, off-topic, or fails to address the query.
-
-Do not write any other explanation. Just reply with 'yes' or 'no'.
-
 Query: {query}
 Response: {response_text}
 
-Answers Query (yes/no):"""
+Grounded and Relevant (yes/no):"""
     try:
         res = llm.invoke(prompt)
         score = res.content.strip().lower()
@@ -189,6 +170,8 @@ def get_uploaded_files():
 def route_query_to_files(query: str, uploaded_files: list[str]) -> list[str]:
     if not uploaded_files:
         return []
+    if len(uploaded_files) == 1:
+        return uploaded_files
     
     files_list_str = "\n".join([f"- {f}" for f in uploaded_files])
     prompt = f"""System: You are an expert routing assistant. Given a user search query and a list of uploaded PDF files, identify which files are likely to contain the answer to the query.
@@ -298,7 +281,7 @@ def rag_tool(query: str):
         uploaded_files = get_uploaded_files()
         if uploaded_files:
             relevant_files = route_query_to_files(query, uploaded_files)
-            if relevant_files and len(relevant_files) < len(uploaded_files):
+            if relevant_files:
                 filter_sources = [f"uploads/{f}" for f in relevant_files]
                 if len(filter_sources) == 1:
                     filter_dict = {"source": filter_sources[0]}
@@ -341,10 +324,14 @@ def rag_tool(query: str):
     
     # 3. Document Grading (CRAG)
     relevant_docs = []
-    for doc in combined_docs:
-        score = grade_document(query, doc.page_content)
-        if score == "yes":
-            relevant_docs.append(doc)
+    if filter_dict:
+        # If filtered to specific target files, keep all retrieved chunks
+        relevant_docs = combined_docs
+    else:
+        for doc in combined_docs:
+            score = grade_document(query, doc.page_content)
+            if score == "yes" or len(combined_docs) <= 1:
+                relevant_docs.append(doc)
 
     context_list = [doc.page_content for doc in relevant_docs]
     
@@ -457,10 +444,8 @@ def chat_node(state: ChatState):
                 break
         
         if user_query:
-            is_hallucinated = check_hallucination(context, response.content)
-            is_relevant = check_answer_relevance(user_query, response.content)
-            
-            if is_hallucinated == "yes" or is_relevant == "no":
+            is_valid = check_groundedness_and_relevance(user_query, context, response.content)
+            if is_valid == "no":
                 # Self-correction loop: regenerate response strictly grounded in context
                 response = regenerate_grounded_response(user_query, context)
 
