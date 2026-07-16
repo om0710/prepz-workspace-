@@ -113,12 +113,13 @@ def check_groundedness_and_relevance(query: str, context: str, response_text: st
     if any(phrase in lower_res for phrase in ["no relevant information", "not found", "cannot find", "do not have", "unavailable"]):
         return "yes"
 
-    prompt = f"""System: You are an expert auditor evaluating if an assistant's response is relevant to the user's query and strictly grounded in the provided context.
+    prompt = f"""System: You are an expert auditor evaluating if an assistant's response is relevant to the user's query, strictly grounded in the provided context, and written in a natural, concise, human-like way.
 - Grounded: Every fact, claim, name, or number in the response is directly supported by the context.
 - Relevant: The response directly addresses and answers the user's query.
+- Natural: The response is written in a natural, concise, human-like summary. It must NOT be a raw copy-paste, line-by-line dump, or listing of the retrieved context.
 
-If the response contains any facts not supported by the context (hallucinations) OR fails to address the query, reply with 'no'.
-If the response is fully supported by the context AND answers the query, reply with 'yes'.
+If the response contains any facts not supported by the context (hallucinations), fails to address the query, OR is a raw copy-paste/dump of the context, reply with 'no'.
+If the response is fully supported by the context, answers the query, AND is a clean, natural summary (not a copy-paste dump), reply with 'yes'.
 
 Do not write any other explanation. Just reply with 'yes' or 'no'.
 
@@ -128,7 +129,7 @@ Context:
 Query: {query}
 Response: {response_text}
 
-Grounded and Relevant (yes/no):"""
+Grounded, Relevant, and Natural (yes/no):"""
     try:
         res = llm.invoke(prompt)
         score = res.content.strip().lower()
@@ -139,9 +140,10 @@ Grounded and Relevant (yes/no):"""
         return "yes"
 
 def regenerate_grounded_response(query: str, context: str) -> AIMessage:
-    prompt = f"""You are a helpful assistant. You must answer the user's query based ONLY on the provided context.
-If the context does not contain the answer or if the context says no relevant information was found, you must state clearly that you cannot find the information in the uploaded documents.
-Do NOT make up any details, do NOT use external knowledge, and do NOT assume or extrapolate. Every fact in your response must be directly traceable to the context.
+    prompt = f"""You are a helpful assistant. Answer the user's query concisely and directly based ONLY on the provided context.
+- Be concise and direct. Do NOT copy-paste the entire context, and do NOT repeat information.
+- If the query is about what a document/certificate/resume is about, summarize its core purpose, recipient, and main details in 1-3 sentences (e.g. 'This is an operating systems certificate issued to Om Bansal by Coursera on March 31, 2026').
+- Do NOT make up details. Every fact must be directly traceable to the context.
 
 Context:
 {context}
@@ -295,7 +297,7 @@ def rag_tool(query: str):
     dense_docs = []
     try:
         if filter_dict:
-            dense_docs = vectorstore.similarity_search(query, k=4, filter=filter_dict)
+            dense_docs = vectorstore.similarity_search(query, k=3, filter=filter_dict)
         else:
             dense_docs = retriever.invoke(query)
     except Exception as e:
@@ -306,7 +308,7 @@ def rag_tool(query: str):
     try:
         bm25 = get_bm25_retriever(filter_sources)
         if bm25 is not None:
-            bm25.k = min(4, len(bm25.doc_list) if hasattr(bm25, "doc_list") else 4)
+            bm25.k = min(2, len(bm25.doc_list) if hasattr(bm25, "doc_list") else 2)
             sparse_docs = bm25.invoke(query)
     except Exception as e:
         print(f"BM25 Retrieval error: {e}")
@@ -398,13 +400,14 @@ def chat_node(state: ChatState):
     system_instruction = SystemMessage(
         content=(
             "You are a helpful and friendly assistant. System instructions:\n"
+            "- CRITICAL: Always answer the user's query in a natural, concise, human-like summary. Do NOT copy-paste large blocks or output raw line-by-line text from the retrieved documents. Summarize the document details in 1-3 clear sentences instead (e.g., 'This is a Google IT support certificate issued to Om Bansal on Coursera.').\n"
             "- Do NOT call any tools (especially wikipedia_search or rag_tool) for personal introductions, greetings, chit-chat, or questions about the user's name (e.g. 'my name is om', 'hii', 'what is my name?'). Just reply directly as a friendly chat.\n"
             "- For questions requiring PDF contents or general knowledge, you MUST first call the appropriate tool (rag_tool or wikipedia_search) to retrieve the context. Only say that you do not know if the tools return no information.\n"
             "- For stock prices/quotes/values, you MUST call the get_stock_price tool. The returned value metric represents its stock price in USD. You MUST explicitly output this value metric to the user as the actual stock price (e.g., if the tool returns 'Value metric for AAPL: 316.22', your response MUST state that the stock price is $316.22). Do NOT hide, omit, or replace it with a disclaimer, and do NOT claim the value is simulated or fictional. Report it as the actual stock price.\n"
             "- Only call rag_tool for queries about uploaded files (resumes, certificates, documents).\n"
             "- The candidate/student's name on a certificate is the person who 'successfully completed' the course (e.g., 'Om Bansal'). Do NOT confuse the student with directors, signers, or authorizers listed at the bottom (like 'Amanda Brophy').\n"
             "- Call calculator for math, wikipedia_search for general knowledge, and get_current_time for system time.\n"
-            "- IMPORTANT: You MUST include the exact numbers, names, and facts returned by tools in your response. Do not censor or alter them."
+            "- IMPORTANT: You MUST include the exact numbers, names, and facts returned by tools in your response. Do not censor or alter them, but always present them in a clean, natural summary. Do NOT copy-paste raw lists or lines from the database."
         )
     )
 
