@@ -4,7 +4,7 @@ import uuid
 import os
 
 from backend_rag import workflow, retrieve_all_threads
-from rag import add_pdf_to_vectordb, delete_pdf_from_vectordb, clear_all_from_vectordb
+from rag import add_pdf_to_vectordb, delete_pdf_from_vectordb, clear_all_from_vectordb, get_all_indexed_files
 
 # ---------------- Query Params Sync ----------------
 params = st.query_params
@@ -526,41 +526,39 @@ with st.sidebar:
             st.rerun()
 
     # 2. List & Manage Uploaded Files
-    if os.path.exists("uploads"):
-        pdf_files = [f for f in os.listdir("uploads") if f.endswith(".pdf")]
-        # Keep processed_files in sync with disk contents (for persistence across restarts)
+    pdf_files = get_all_indexed_files()
+    
+    # Keep processed_files in sync with Chroma contents
+    for pdf_file in pdf_files:
+        st.session_state.processed_files.add(pdf_file)
+        
+    if pdf_files:
+        st.markdown("#### 📁 Indexed Files:")
         for pdf_file in pdf_files:
-            st.session_state.processed_files.add(pdf_file)
-            
-        if pdf_files:
-            st.markdown("#### 📁 Indexed Files:")
-            for pdf_file in pdf_files:
-                col1, col2 = st.columns([0.8, 0.2])
-                with col1:
-                    short_name = pdf_file[:22] + "..." if len(pdf_file) > 22 else pdf_file
-                    st.caption(f"📄 {short_name}")
-                with col2:
-                    if st.button("🗑️", key=f"del_{pdf_file}", help=f"Delete {pdf_file} from database"):
-                        pdf_path = f"uploads/{pdf_file}"
-                        delete_pdf_from_vectordb(pdf_path)
-                        if os.path.exists(pdf_path):
-                            os.remove(pdf_path)
-                        if pdf_file in st.session_state.processed_files:
-                            st.session_state.processed_files.remove(pdf_file)
-                        st.success(f"Deleted {pdf_file}!")
-                        st.rerun()
-            
-            st.markdown("---")
-            if st.button("🚨 Clear All Files", use_container_width=True, help="Wipe out the entire database and start fresh"):
-                clear_all_from_vectordb()
-                import shutil
-                if os.path.exists("uploads"):
-                    shutil.rmtree("uploads")
-                st.session_state.processed_files.clear()
-                st.success("Cleared entire knowledge base!")
-                st.rerun()
-        else:
-            st.info("No documents uploaded yet.")
+            col1, col2 = st.columns([0.8, 0.2])
+            with col1:
+                short_name = pdf_file[:22] + "..." if len(pdf_file) > 22 else pdf_file
+                st.caption(f"📄 {short_name}")
+            with col2:
+                if st.button("🗑️", key=f"del_{pdf_file}", help=f"Delete {pdf_file} from database"):
+                    pdf_path = f"uploads/{pdf_file}"
+                    delete_pdf_from_vectordb(pdf_path)
+                    if os.path.exists(pdf_path):
+                        os.remove(pdf_path)
+                    if pdf_file in st.session_state.processed_files:
+                        st.session_state.processed_files.remove(pdf_file)
+                    st.success(f"Deleted {pdf_file}!")
+                    st.rerun()
+        
+        st.markdown("---")
+        if st.button("🚨 Clear All Files", use_container_width=True, help="Wipe out the entire database and start fresh"):
+            clear_all_from_vectordb()
+            import shutil
+            if os.path.exists("uploads"):
+                shutil.rmtree("uploads")
+            st.session_state.processed_files.clear()
+            st.success("Cleared entire knowledge base!")
+            st.rerun()
     else:
         st.info("No documents uploaded yet.")
 

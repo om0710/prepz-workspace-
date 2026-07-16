@@ -95,10 +95,36 @@ def delete_pdf_from_vectordb(pdf_path):
 
 def clear_all_from_vectordb():
     try:
-        vectorstore._collection.delete()
-        print("Cleared all entries from vector store successfully!")
+        results = vectorstore._collection.get()
+        if results and "ids" in results:
+            all_ids = results["ids"]
+            if all_ids:
+                chunk_size = 500
+                for i in range(0, len(all_ids), chunk_size):
+                    batch_ids = all_ids[i:i+chunk_size]
+                    vectorstore._collection.delete(ids=batch_ids)
+                print(f"Cleared {len(all_ids)} entries from vector store successfully!")
+            else:
+                print("Vector store was already empty.")
+        else:
+            print("Vector store was already empty.")
     except Exception as e:
         print(f"Error clearing vector store: {e}")
+        raise e
+def get_all_indexed_files():
+    try:
+        results = vectorstore._collection.get(include=["metadatas"])
+        if results and results.get("metadatas"):
+            sources = set()
+            for meta in results["metadatas"]:
+                if meta and "source" in meta:
+                    sources.add(os.path.basename(meta["source"]))
+            return sorted(list(sources))
+    except Exception:
+        pass
+    return []
+
+
 
 # ---------------- RAG Tool ---------------- #
 
