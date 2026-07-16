@@ -1,4 +1,5 @@
 from dotenv import load_dotenv
+import os
 
 from langchain_groq import ChatGroq
 from langchain_community.document_loaders import PyPDFLoader
@@ -120,8 +121,8 @@ def get_all_indexed_files():
                 if meta and "source" in meta:
                     sources.add(os.path.basename(meta["source"]))
             return sorted(list(sources))
-    except Exception:
-        pass
+    except Exception as e:
+        print(f"Error in get_all_indexed_files: {e}")
     return []
 
 
