@@ -396,10 +396,13 @@ def prune_messages(messages: list, max_count: int = 8) -> list:
     return sliced
 
 def chat_node(state: ChatState):
+    uploaded_files = get_uploaded_files()
+    files_str = ", ".join([f"'{f}'" for f in uploaded_files]) if uploaded_files else "None"
 
     system_instruction = SystemMessage(
         content=(
             "You are a helpful and friendly assistant. System instructions:\n"
+            f"- The currently uploaded documents in the knowledge base database are: [{files_str}]. If the user asks about 'this pdf', 'the document', or any uploaded file, you MUST use the tools (like rag_tool) to read from these current files. Do NOT rely on old file details from the history.\n"
             "- CRITICAL: Always answer the user's query in a natural, concise, human-like summary. Do NOT copy-paste large blocks or output raw line-by-line text from the retrieved documents. Summarize the document details in 1-3 clear sentences instead (e.g., 'This is a Google IT support certificate issued to Om Bansal on Coursera.').\n"
             "- Do NOT call any tools (especially wikipedia_search or rag_tool) for personal introductions, greetings, chit-chat, or questions about the user's name (e.g. 'my name is om', 'hii', 'what is my name?'). Just reply directly as a friendly chat.\n"
             "- For questions requiring PDF contents or general knowledge, you MUST first call the appropriate tool (rag_tool or wikipedia_search) to retrieve the context. Only say that you do not know if the tools return no information.\n"
