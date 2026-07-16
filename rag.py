@@ -63,6 +63,15 @@ def clean_spaced_text(text: str) -> str:
 
 def add_pdf_to_vectordb(pdf_path):
 
+    # Prevent duplicate indexing if file already indexed
+    try:
+        existing = vectorstore._collection.get(where={"source": pdf_path}, limit=1)
+        if existing and existing.get("ids"):
+            print(f"{pdf_path} is already indexed in the vector store. Skipping.")
+            return
+    except Exception:
+        pass
+
     loader = PyPDFLoader(pdf_path)
 
     docs = loader.load()
@@ -76,6 +85,20 @@ def add_pdf_to_vectordb(pdf_path):
     vectorstore.add_documents(chunks)
 
     print(f"{pdf_path} added successfully!")
+
+def delete_pdf_from_vectordb(pdf_path):
+    try:
+        vectorstore._collection.delete(where={"source": pdf_path})
+        print(f"{pdf_path} deleted from vector store successfully!")
+    except Exception as e:
+        print(f"Error deleting {pdf_path} from vector store: {e}")
+
+def clear_all_from_vectordb():
+    try:
+        vectorstore._collection.delete()
+        print("Cleared all entries from vector store successfully!")
+    except Exception as e:
+        print(f"Error clearing vector store: {e}")
 
 # ---------------- RAG Tool ---------------- #
 

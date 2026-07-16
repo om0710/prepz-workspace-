@@ -4,7 +4,7 @@ import uuid
 import os
 
 from backend_rag import workflow, retrieve_all_threads
-from rag import add_pdf_to_vectordb
+from rag import add_pdf_to_vectordb, delete_pdf_from_vectordb, clear_all_from_vectordb
 
 # ---------------- Query Params Sync ----------------
 params = st.query_params
@@ -498,12 +498,15 @@ with st.sidebar:
 
     st.divider()
 
-    # ---------------- Upload PDF (Knowledge Base) in Sidebar ----------------
+    # ---------------- Knowledge Base Manager in Sidebar ----------------
     st.markdown("### 📄 KNOWLEDGE BASE")
+    
+    # 1. File Uploader
     uploaded_file = st.file_uploader(
         "Upload PDF context",
         type=["pdf"],
-        label_visibility="collapsed"
+        label_visibility="collapsed",
+        key="rag_pdf_uploader"
     )
 
     if uploaded_file is not None:
@@ -513,7 +516,40 @@ with st.sidebar:
             f.write(uploaded_file.getbuffer())
         with st.spinner("Analyzing PDF..."):
             add_pdf_to_vectordb(pdf_path)
-        st.success("✅ Document context uploaded and indexed!")
+        st.success("✅ Context uploaded and indexed!")
+        st.rerun()
+
+    # 2. List & Manage Uploaded Files
+    if os.path.exists("uploads"):
+        pdf_files = [f for f in os.listdir("uploads") if f.endswith(".pdf")]
+        if pdf_files:
+            st.markdown("#### 📁 Indexed Files:")
+            for pdf_file in pdf_files:
+                col1, col2 = st.columns([0.8, 0.2])
+                with col1:
+                    short_name = pdf_file[:22] + "..." if len(pdf_file) > 22 else pdf_file
+                    st.caption(f"📄 {short_name}")
+                with col2:
+                    if st.button("🗑️", key=f"del_{pdf_file}", help=f"Delete {pdf_file} from database"):
+                        pdf_path = f"uploads/{pdf_file}"
+                        delete_pdf_from_vectordb(pdf_path)
+                        if os.path.exists(pdf_path):
+                            os.remove(pdf_path)
+                        st.success(f"Deleted {pdf_file}!")
+                        st.rerun()
+            
+            st.markdown("---")
+            if st.button("🚨 Clear All Files", use_container_width=True, help="Wipe out the entire database and start fresh"):
+                clear_all_from_vectordb()
+                import shutil
+                if os.path.exists("uploads"):
+                    shutil.rmtree("uploads")
+                st.success("Cleared entire knowledge base!")
+                st.rerun()
+        else:
+            st.info("No documents uploaded yet.")
+    else:
+        st.info("No documents uploaded yet.")
 
 # ---------------- Main Chat Area ----------------
 st.markdown(
@@ -626,40 +662,53 @@ if user_input:
     )
     
     full_response = ""
-    for chunk in workflow.stream(
-        {
-            "messages": [user_msg]
-        },
-        config=config,
-        stream_mode="values"
-    ):
-        ai_message = chunk["messages"][-1]
-        if isinstance(ai_message, AIMessage):
-            full_response = ai_message.content
+    try:
+        for chunk in workflow.stream(
+            {
+                "messages": [user_msg]
+            },
+            config=config,
+            stream_mode="values"
+        ):
+            ai_message = chunk["messages"][-1]
+            if isinstance(ai_message, AIMessage):
+                full_response = ai_message.content
 
-    # Stream the final response word-by-word with a typewriter/streaming effect
-    import time
-    words = full_response.split(" ")
-    displayed_text = ""
-    for i, word in enumerate(words):
-        if i == 0:
-            displayed_text = word
-        else:
-            displayed_text += " " + word
+        if not full_response:
+            full_response = "⚠️ I received an empty response. Please check if your LLM connection is functioning properly."
+
+        # Stream the final response word-by-word with a typewriter/streaming effect
+        import time
+        words = full_response.split(" ")
+        displayed_text = ""
+        for i, word in enumerate(words):
+            if i == 0:
+                displayed_text = word
+            else:
+                displayed_text += " " + word
+            placeholder.markdown(
+                render_bubble_html(displayed_text + "▌", "assistant"),
+                unsafe_allow_html=True
+            )
+            time.sleep(0.03)  # 30ms typing speed per word
+
         placeholder.markdown(
-            render_bubble_html(displayed_text + "▌", "assistant"),
+            render_bubble_html(full_response, "assistant"),
             unsafe_allow_html=True
         )
-        time.sleep(0.03)  # 30ms typing speed per word
 
-    placeholder.markdown(
-        render_bubble_html(full_response, "assistant"),
-        unsafe_allow_html=True
-    )
-
-    st.session_state.messages.append(
-        AIMessage(content=full_response)
-    )
+        st.session_state.messages.append(
+            AIMessage(content=full_response)
+        )
+    except Exception as e:
+        error_msg = f"⚠️ **Service Connection Error**: {str(e)}\n\n*Please verify that your `GROQ_API_KEY` in the `.env` file is valid and check your network connection.*"
+        placeholder.markdown(
+            render_bubble_html(error_msg, "assistant"),
+            unsafe_allow_html=True
+        )
+        st.session_state.messages.append(
+            AIMessage(content=error_msg)
+        )
 
     # Refresh sidebar thread list from SQLite
     st.session_state.chat_threads = retrieve_all_threads()
