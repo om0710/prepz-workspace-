@@ -163,6 +163,12 @@ User Query: {query}
 _cached_bm25 = None
 _cached_doc_count = 0
 
+def reset_bm25_cache():
+    global _cached_bm25, _cached_doc_count
+    _cached_bm25 = None
+    _cached_doc_count = 0
+
+
 def get_uploaded_files():
     import os
     if os.path.exists("uploads"):

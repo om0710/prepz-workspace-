@@ -543,6 +543,11 @@ with st.sidebar:
                 if st.button("🗑️", key=f"del_{pdf_file}", help=f"Delete {pdf_file} from database"):
                     pdf_path = f"uploads/{pdf_file}"
                     delete_pdf_from_vectordb(pdf_path)
+                    try:
+                        from backend_rag import reset_bm25_cache
+                        reset_bm25_cache()
+                    except Exception:
+                        pass
                     if os.path.exists(pdf_path):
                         os.remove(pdf_path)
                     if pdf_file in st.session_state.processed_files:
@@ -553,6 +558,11 @@ with st.sidebar:
         st.markdown("---")
         if st.button("🚨 Clear All Files", use_container_width=True, help="Wipe out the entire database and start fresh"):
             clear_all_from_vectordb()
+            try:
+                from backend_rag import reset_bm25_cache
+                reset_bm25_cache()
+            except Exception:
+                pass
             import shutil
             if os.path.exists("uploads"):
                 shutil.rmtree("uploads")
