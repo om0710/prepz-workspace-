@@ -443,6 +443,9 @@ if "messages" not in st.session_state:
     else:
         st.session_state.messages = []
 
+if "processed_files" not in st.session_state:
+    st.session_state.processed_files = set()
+
 # ---------------- Sidebar Layout ----------------
 with st.sidebar:
     st.markdown(
@@ -510,18 +513,25 @@ with st.sidebar:
     )
 
     if uploaded_file is not None:
-        os.makedirs("uploads", exist_ok=True)
-        pdf_path = os.path.join("uploads", uploaded_file.name)
-        with open(pdf_path, "wb") as f:
-            f.write(uploaded_file.getbuffer())
-        with st.spinner("Analyzing PDF..."):
-            add_pdf_to_vectordb(pdf_path)
-        st.success("✅ Context uploaded and indexed!")
-        st.rerun()
+        file_name = uploaded_file.name
+        if file_name not in st.session_state.processed_files:
+            os.makedirs("uploads", exist_ok=True)
+            pdf_path = os.path.join("uploads", file_name)
+            with open(pdf_path, "wb") as f:
+                f.write(uploaded_file.getbuffer())
+            with st.spinner("Analyzing PDF..."):
+                add_pdf_to_vectordb(pdf_path)
+            st.session_state.processed_files.add(file_name)
+            st.success("✅ Context uploaded and indexed!")
+            st.rerun()
 
     # 2. List & Manage Uploaded Files
     if os.path.exists("uploads"):
         pdf_files = [f for f in os.listdir("uploads") if f.endswith(".pdf")]
+        # Keep processed_files in sync with disk contents (for persistence across restarts)
+        for pdf_file in pdf_files:
+            st.session_state.processed_files.add(pdf_file)
+            
         if pdf_files:
             st.markdown("#### 📁 Indexed Files:")
             for pdf_file in pdf_files:
@@ -535,6 +545,8 @@ with st.sidebar:
                         delete_pdf_from_vectordb(pdf_path)
                         if os.path.exists(pdf_path):
                             os.remove(pdf_path)
+                        if pdf_file in st.session_state.processed_files:
+                            st.session_state.processed_files.remove(pdf_file)
                         st.success(f"Deleted {pdf_file}!")
                         st.rerun()
             
@@ -544,6 +556,7 @@ with st.sidebar:
                 import shutil
                 if os.path.exists("uploads"):
                     shutil.rmtree("uploads")
+                st.session_state.processed_files.clear()
                 st.success("Cleared entire knowledge base!")
                 st.rerun()
         else:
