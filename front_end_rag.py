@@ -674,34 +674,30 @@ if user_input:
     
     full_response = ""
     try:
-        for chunk in workflow.stream(
+        # Stream model response chunks (tokens) in real time as they are generated
+        for chunk, metadata in workflow.stream(
             {
                 "messages": [user_msg]
             },
             config=config,
-            stream_mode="values"
+            stream_mode="messages"
         ):
-            ai_message = chunk["messages"][-1]
-            if isinstance(ai_message, AIMessage):
-                full_response = ai_message.content
+            if metadata.get("langgraph_node") == "chat_node":
+                if chunk.content:
+                    full_response += chunk.content
+                    placeholder.markdown(
+                        render_bubble_html(full_response + "▌", "assistant"),
+                        unsafe_allow_html=True
+                    )
+
+        # Make sure we fetch the final graph state to capture any corrected response
+        state = workflow.get_state(config)
+        final_messages = state.values.get("messages", [])
+        if final_messages and isinstance(final_messages[-1], AIMessage):
+            full_response = final_messages[-1].content
 
         if not full_response:
             full_response = "⚠️ I received an empty response. Please check if your LLM connection is functioning properly."
-
-        # Stream the final response word-by-word with a typewriter/streaming effect
-        import time
-        words = full_response.split(" ")
-        displayed_text = ""
-        for i, word in enumerate(words):
-            if i == 0:
-                displayed_text = word
-            else:
-                displayed_text += " " + word
-            placeholder.markdown(
-                render_bubble_html(displayed_text + "▌", "assistant"),
-                unsafe_allow_html=True
-            )
-            time.sleep(0.03)  # 30ms typing speed per word
 
         placeholder.markdown(
             render_bubble_html(full_response, "assistant"),
