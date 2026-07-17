@@ -3,69 +3,262 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AI Assistant Dashboard</title>
-    <link rel="stylesheet" href="/static/style.css">
+    <title>DocPilot Workspace</title>
+    <!-- Fonts: Outfit (headings) and Inter (body) -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/static/style.css?v=2.0">
 </head>
 <body>
-    <div class="app-container">
-        <!-- Sidebar -->
-        <aside class="sidebar">
-            <div class="sidebar-header">
-                <div class="logo">
-                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a10 10 0 0 1 10 10c0 5.523-4.477 10-10 10S2 17.523 2 12A10 10 0 0 1 12 2z"/><path d="M12 8v4"/><path d="M12 16h.01"/></svg>
-                    <span>Assistant Portal</span>
+
+    <!-- ============================================ -->
+    <!-- 1. Google Login / Authentication View        -->
+    <!-- ============================================ -->
+    <div id="landing-page-view" class="view-container login-wrapper">
+        <div class="login-card">
+            <!-- Qubi flower logo pattern (8 dots circular) -->
+            <div class="login-logo-wrapper">
+                <svg width="48" height="48" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <circle cx="12" cy="4" r="2" fill="currentColor"/>
+                    <circle cx="18" cy="6" r="2" fill="currentColor"/>
+                    <circle cx="20" cy="12" r="2" fill="currentColor"/>
+                    <circle cx="18" cy="18" r="2" fill="currentColor"/>
+                    <circle cx="12" cy="20" r="2" fill="currentColor"/>
+                    <circle cx="6" cy="18" r="2" fill="currentColor"/>
+                    <circle cx="4" cy="12" r="2" fill="currentColor"/>
+                    <circle cx="6" cy="6" r="2" fill="currentColor"/>
+                </svg>
+            </div>
+            
+            <h1 class="login-title">Welcome to DocPilot</h1>
+            <p class="login-subtitle">Unlock smarter document assistance and AI guidance.</p>
+            
+            <button id="btn-google-login" class="btn-google-signin">
+                <!-- Google colored G icon -->
+                <svg class="btn-google-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
+                    <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
+                    <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l3.66-2.85z" fill="#FBBC05"/>
+                    <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.85c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
+                </svg>
+                <span>Continue with Google</span>
+            </button>
+            
+            <p class="login-footer">
+                By signing in, you agree to our <a href="#">Terms of Service</a> and <a href="#">Privacy Policy</a>.
+            </p>
+        </div>
+    </div>
+
+    <!-- ============================================ -->
+    <!-- 2. Dark DocPilot App Workspace View          -->
+    <!-- ============================================ -->
+    <div id="chatbot-app-view" class="view-container app-wrapper" style="display: none;">
+        
+        <!-- 1. Left Sidebar (Qubi Dark Sidebar) -->
+        <aside class="app-sidebar">
+            <div class="sidebar-top">
+                <div class="sidebar-logo">
+                    <img src="/static/logo.png" class="sidebar-logo-img" alt="DocPilot Logo">
+                    <span>DocPilot</span>
                 </div>
-                <button id="new-chat-btn" class="btn btn-primary">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
-                    New Chat
+                <button class="sidebar-collapse-btn" title="Toggle Sidebar">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="9" y1="3" x2="9" y2="21"/></svg>
                 </button>
             </div>
             
-            <div class="threads-section">
-                <h3>💬 Active Sessions</h3>
-                <ul id="threads-list" class="threads-list">
-                    <!-- Threads will be populated dynamically -->
-                </ul>
-            </div>
-            
-            <div class="sidebar-footer">
-                <h3>📄 Knowledge Base</h3>
-                <div class="upload-zone" id="upload-zone">
-                    <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-                    <p>Drag & Drop PDF or Click to Upload</p>
-                    <input type="file" id="file-input" accept=".pdf" style="display: none;">
+            <nav class="sidebar-nav">
+                <!-- Keep home / search / folders to bind click events -->
+                <button id="nav-new-chat" class="sidebar-link active">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="3" y="3" width="7" height="9"/><rect x="14" y="3" width="7" height="5"/><rect x="14" y="12" width="7" height="9"/><rect x="3" y="16" width="7" height="5"/></svg>
+                    <span>Home</span>
+                </button>
+                <button id="nav-new-chat-btn" class="sidebar-link">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14" stroke-linecap="round"/></svg>
+                    <span>New Chat</span>
+                </button>
+
+                <!-- Search Input Field directly in sidebar nav -->
+                <div class="sidebar-search-box">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                    <input type="text" id="library-search-input" placeholder="Search chats...">
                 </div>
-                <div class="upload-status" id="upload-status"></div>
+                
+                <!-- Folders / Documents Section (Display actual indexed PDF files) -->
+                <div class="sidebar-section">
+                    <div class="sidebar-section-header">
+                        <span>Pinned Folders</span>
+                        <!-- Bind to file-input trigger click event to upload PDFs directly -->
+                        <button id="upload-zone" class="btn-section-add" title="Upload Document">+</button>
+                    </div>
+                    <ul id="indexed-files-list" class="files-list">
+                        <!-- Loaded dynamically from fetchIndexedFiles() -->
+                        <li class="file-item-empty">No folders pinned</li>
+                    </ul>
+                </div>
+
+                <!-- Chats / Session History Section (Display actual loaded user chat threads) -->
+                <div class="sidebar-section">
+                    <div class="sidebar-section-header">
+                        <span>Chats</span>
+                        <button id="btn-header-new-chat" class="btn-section-add" title="New Chat">+</button>
+                    </div>
+                    <ul id="threads-list" class="threads-list">
+                        <!-- Loaded dynamically from fetchThreads() -->
+                        <li class="file-item-empty">No active chats</li>
+                    </ul>
+                </div>
+            </nav>
+            
+            <div class="sidebar-bottom">
+                <div class="sidebar-user" title="Click to Sign Out">
+                    <img src="https://api.dicebear.com/7.x/bottts/svg?seed=Om" alt="User Avatar" class="sidebar-user-avatar">
+                    <div class="sidebar-user-info">
+                        <span class="sidebar-user-name">Om Bansal</span>
+                        <span class="sidebar-user-email">ombansal@gmail.com</span>
+                    </div>
+                    <svg class="sidebar-user-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg>
+                </div>
             </div>
         </aside>
 
-        <!-- Main Content Area -->
-        <main class="chat-container">
-            <header class="chat-header">
-                <h1 class="main-title">Intelligent Chat Agent</h1>
-                <div class="active-thread-badge">
-                    <span id="active-thread-id">Session: None</span>
+        <!-- 2. Main Panel Workspace -->
+        <div class="main-panel">
+            
+            <!-- Top Dashboard Header -->
+            <header class="main-header">
+                <div class="header-left">
+                    <button id="btn-expand-sidebar" class="sidebar-expand-btn hidden" title="Show Sidebar">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="9" y1="3" x2="9" y2="21"/></svg>
+                    </button>
+                    <button id="btn-header-back" class="btn-header-action" title="Go to Home" style="display: none;">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+                        <span>Back</span>
+                    </button>
+                </div>
+                <div class="header-right">
+                    <div class="settings-container">
+                        <button id="btn-header-settings" class="btn-header-action" title="Settings">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+                            <span>Settings</span>
+                        </button>
+                        <div id="settings-dropdown" class="settings-dropdown hidden">
+                            <button id="btn-settings-pin" class="dropdown-item">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="22 2 15 22 11 13 2 9 22 2"/></svg>
+                                <span id="label-settings-pin">Pin Chat</span>
+                            </button>
+                            <button id="btn-settings-archive" class="dropdown-item">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="21 8 21 21 3 21 3 8"/><rect x="1" y="3" width="22" height="5"/><line x1="10" y1="12" x2="14" y2="12"/></svg>
+                                <span id="label-settings-archive">Archive Chat</span>
+                            </button>
+                            <button id="btn-settings-delete" class="dropdown-item text-danger">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>
+                                <span>Delete Chat</span>
+                            </button>
+                        </div>
+                    </div>
                 </div>
             </header>
 
-            <div class="chat-messages" id="chat-messages">
-                <div class="welcome-message">
-                    <h2>Hello! How can I assist you today?</h2>
-                    <p>I have access to your PDF knowledge base, mathematical tools, Wikipedia, and live stock queries.</p>
-                </div>
-            </div>
+            <!-- Workspace Main Content -->
+            <main class="main-container">
+                <div class="content-wrapper landing-mode">
+                    
+                    <!-- Chat Messages View -->
+                    <div id="chat-messages-container" class="chat-messages-container hidden">
+                        <div id="chat-messages" class="chat-messages">
+                            <!-- Chat messages populate dynamically -->
+                        </div>
+                    </div>
 
-            <footer class="chat-footer">
-                <form id="chat-form" class="chat-input-wrapper">
-                    <input type="text" id="user-input" placeholder="Ask anything..." autocomplete="off" required>
-                    <button type="submit" class="send-btn">
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
-                    </button>
-                </form>
-            </footer>
-        </main>
+                    <!-- Landing State (Centered Qubi Title & Cards) -->
+                    <div id="landing-container" class="landing-container">
+                        <div class="welcome-logo-wrapper">
+                            <img src="/static/logo.png" class="welcome-logo-img" alt="DocPilot Logo">
+                        </div>
+                        
+                        <h1 class="landing-title">How can we <span class="gradient-text">assist</span> you today?</h1>
+                        <p class="landing-subtitle">
+                            Upload and index your PDF documents to get instant, accurate, and context-grounded answers. Start chatting or search through your document history below.
+                        </p>
+                    </div>
+
+                    <!-- Input Box Panel -->
+                    <div class="input-panel-wrapper">
+                        <form id="chat-form" class="chat-input-box">
+                            <input type="file" id="file-input" accept=".pdf" style="display: none;">
+                            <div id="upload-status" style="display: none;"></div>
+
+                            <!-- Attach button (circular charcoal grey background) -->
+                            <button type="button" id="btn-input-plus" class="control-pill-nexa" title="Upload Document">
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                                    <path d="M12 5v14M5 12h14" stroke-linecap="round"/>
+                                </svg>
+                                <span>Attach Files</span>
+                            </button>
+
+                            <textarea id="user-input" placeholder="Type your prompt here" rows="1" required autocomplete="off"></textarea>
+                            
+                            <div class="input-controls">
+                                <div class="controls-left">
+                                    <button type="button" id="btn-toggle-search" class="control-pill-nexa" title="Toggle Search Tools">
+                                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                                        <span>Web Search</span>
+                                    </button>
+                                    <button type="button" id="btn-input-voice" class="control-pill-nexa" title="Speech Input">
+                                        <svg class="voice-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                                            <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/>
+                                            <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
+                                            <line x1="12" y1="19" x2="12" y2="23"/>
+                                            <line x1="8" y1="23" x2="16" y2="23"/>
+                                        </svg>
+                                        <span>Voice</span>
+                                    </button>
+                                </div>
+                                <div class="controls-right">
+                                    <!-- Send Submit Button (light green circle button with black arrow) -->
+                                    <button type="submit" id="btn-submit" class="submit-btn-nexa">
+                                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+                                    </button>
+                                </div>
+                            </div>
+                        </form>
+
+                        <!-- Suggestion Cards Grid (Qubi style cards, 4 columns layout) -->
+                        <div class="suggestion-grid-nexa">
+                            <button class="suggestion-pill suggestion-pill-nexa" data-prompt="Discover the best marketing strategies to showcase your properties.">
+                                <span>Marketing Insights</span>
+                            </button>
+                            <button class="suggestion-pill suggestion-pill-nexa" data-prompt="Learn expert negotiation tips to close deals effectively.">
+                                <span>Negotiation Tactics</span>
+                            </button>
+                            <button class="suggestion-pill suggestion-pill-nexa" data-prompt="Get tailored advice on increasing property visibility and driving sales.">
+                                <span>Sales Strategies</span>
+                            </button>
+                            <button class="suggestion-pill suggestion-pill-nexa" data-prompt="Need help with something else? Ask away, and we'll guide you.">
+                                <span>General Support</span>
+                            </button>
+                        </div>
+
+                    </div>
+
+                    <!-- Footer Details -->
+                    <footer class="landing-footer-nexa">
+                        <span class="copyright-text">© 2026 DocPilot. All rights reserved.</span>
+                        <div class="footer-links">
+                            <a href="#">Privacy Policy</a>
+                            <a href="#">Terms of Service</a>
+                        </div>
+                    </footer>
+
+                </div>
+            </main>
+        </div>
+
     </div>
 
-    <script src="/static/app.js"></script>
+    <!-- Main JavaScript Link -->
+    <script src="/static/app.js?v=1.3"></script>
 </body>
 </html>

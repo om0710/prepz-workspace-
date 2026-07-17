@@ -19,3 +19,6 @@ uploads/
 
 # macOS
 .DS_Store
+
+# Scratch Scripts
+scratch/

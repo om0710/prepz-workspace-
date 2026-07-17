@@ -9,7 +9,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
 # Import LangGraph workflow and config
-from backend_rag import workflow, retrieve_all_threads
+from backend_rag import workflow, active_streams
 from rag import add_pdf_to_vectordb
 from langchain_core.messages import HumanMessage, AIMessage
 
@@ -44,11 +44,73 @@ os.makedirs("static", exist_ok=True)
 def read_root():
     return FileResponse("static/index.html")
 
+class PinRequest(BaseModel):
+    is_pinned: bool
+
+class ArchiveRequest(BaseModel):
+    is_archived: bool
+
 @app.get("/threads")
 def get_threads():
     try:
-        threads = retrieve_all_threads()
-        return {"threads": threads}
+        from backend_rag import retrieve_all_threads_metadata
+        threads = retrieve_all_threads_metadata()
+        threads_data = []
+        for t in threads:
+            tid = t["thread_id"]
+            is_pinned = t["is_pinned"]
+            title = "New Chat"
+            try:
+                config = {"configurable": {"thread_id": tid}}
+                state = workflow.get_state(config)
+                if state.values and "messages" in state.values:
+                    for msg in state.values["messages"]:
+                        if msg.type == "human" or (hasattr(msg, "role") and msg.role == "user"):
+                            content = msg.content
+                            if len(content) > 35:
+                                title = content[:32] + "..."
+                            else:
+                                title = content
+                            break
+            except Exception:
+                pass
+            threads_data.append({"thread_id": tid, "title": title, "is_pinned": is_pinned})
+        return {"threads": threads_data}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/thread/{thread_id}/metadata")
+def get_metadata(thread_id: str):
+    try:
+        from backend_rag import get_thread_metadata
+        return get_thread_metadata(thread_id)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.delete("/thread/{thread_id}")
+def delete_thread_route(thread_id: str):
+    try:
+        from backend_rag import delete_thread_from_db
+        delete_thread_from_db(thread_id)
+        return {"status": "success", "message": f"Thread {thread_id} deleted."}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/thread/{thread_id}/pin")
+def pin_thread_route(thread_id: str, req: PinRequest):
+    try:
+        from backend_rag import set_thread_metadata
+        set_thread_metadata(thread_id, is_pinned=req.is_pinned)
+        return {"status": "success", "message": f"Thread {thread_id} pin state set to {req.is_pinned}."}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/thread/{thread_id}/archive")
+def archive_thread_route(thread_id: str, req: ArchiveRequest):
+    try:
+        from backend_rag import set_thread_metadata
+        set_thread_metadata(thread_id, is_archived=req.is_archived)
+        return {"status": "success", "message": f"Thread {thread_id} archive state set to {req.is_archived}."}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -67,32 +129,53 @@ def get_thread_history(thread_id: str):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+from langchain_core.callbacks import BaseCallbackHandler
+from fastapi.concurrency import run_in_threadpool
+import asyncio
+
+class QueueCallbackHandler(BaseCallbackHandler):
+    def __init__(self, queue: asyncio.Queue, loop: asyncio.AbstractEventLoop):
+        self.queue = queue
+        self.loop = loop
+
+    def on_llm_new_token(self, token: str, **kwargs) -> None:
+        if token:
+            self.loop.call_soon_threadsafe(self.queue.put_nowait, token)
+
 @app.post("/chat")
 async def chat_stream(request: ChatRequest):
-    config = {"configurable": {"thread_id": request.thread_id}}
+    thread_id = request.thread_id or "default_thread"
+    config = {"configurable": {"thread_id": thread_id}}
     state = {"messages": [HumanMessage(content=request.query)]}
     
-    async def response_generator():
-        last_msg_id = None
-        last_len = 0
+    queue = asyncio.Queue()
+    loop = asyncio.get_running_loop()
+    handler = QueueCallbackHandler(queue, loop)
+    
+    # Store handler in registry mapped to thread ID
+    active_streams[thread_id] = handler
+    
+    async def run_workflow():
         try:
-            # Run the langgraph workflow streaming
-            for chunk in workflow.stream(state, config=config, stream_mode="values"):
-                ai_message = chunk["messages"][-1]
-                if isinstance(ai_message, AIMessage):
-                    # Reset character tracking if we transitioned to a new AIMessage in the list
-                    msg_obj_id = id(ai_message)
-                    if msg_obj_id != last_msg_id:
-                        last_msg_id = msg_obj_id
-                        last_len = 0
-                        
-                    content = ai_message.content
-                    if len(content) > last_len:
-                        new_chunk = content[last_len:]
-                        last_len = len(content)
-                        yield f"data: {json.dumps({'text': new_chunk})}\n\n"
+            await run_in_threadpool(workflow.invoke, state, config=config)
         except Exception as e:
-            yield f"data: {json.dumps({'error': str(e)})}\n\n"
+            await queue.put(f"__ERROR__:{str(e)}")
+        finally:
+            active_streams.pop(thread_id, None)
+            await queue.put(None)
+            
+    asyncio.create_task(run_workflow())
+    
+    async def response_generator():
+        while True:
+            token = await queue.get()
+            if token is None:
+                break
+            if isinstance(token, str) and token.startswith("__ERROR__:"):
+                err_msg = token[len("__ERROR__:"):]
+                yield f"data: {json.dumps({'error': err_msg})}\n\n"
+                break
+            yield f"data: {json.dumps({'text': token})}\n\n"
             
     return StreamingResponse(response_generator(), media_type="text/event-stream")
 
@@ -111,6 +194,32 @@ async def upload_file(file: UploadFile = File(...)):
         # Add to vector DB with clean text parsing
         add_pdf_to_vectordb(file_path)
         return {"status": "success", "filename": file.filename}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/files")
+def list_files():
+    try:
+        from backend_rag import get_uploaded_files
+        return {"files": get_uploaded_files()}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.delete("/files/{filename}")
+def delete_file(filename: str):
+    try:
+        import os
+        from rag import delete_pdf_from_vectordb
+        from backend_rag import reset_bm25_cache
+        
+        file_path = os.path.join("uploads", filename)
+        if os.path.exists(file_path):
+            os.remove(file_path)
+            
+        delete_pdf_from_vectordb(file_path)
+        reset_bm25_cache()
+        
+        return {"status": "success", "message": f"{filename} deleted."}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 

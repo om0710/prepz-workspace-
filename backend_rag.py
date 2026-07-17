@@ -24,15 +24,20 @@ from tools import calculator, wikipedia_search, get_current_time, get_stock_pric
 
 load_dotenv()
 
+# Active streams registry for mapping thread_id -> CallbackHandler
+active_streams = {}
+
 # ---------------- LLM ---------------- #
 
 llm_primary = ChatGroq(
     model="llama-3.3-70b-versatile",
-    temperature=0
+    temperature=0,
+    streaming=True
 )
 llm_fallback = ChatGroq(
     model="qwen/qwen3-32b",
-    temperature=0
+    temperature=0,
+    streaming=True
 )
 llm = llm_primary.with_fallbacks([llm_fallback])
 
@@ -139,7 +144,7 @@ Grounded, Relevant, and Natural (yes/no):"""
     except Exception:
         return "yes"
 
-def regenerate_grounded_response(query: str, context: str) -> AIMessage:
+def regenerate_grounded_response(query: str, context: str, thread_id: str = "default_thread") -> AIMessage:
     prompt = f"""You are a helpful assistant. Answer the user's query concisely and directly based ONLY on the provided context.
 - Be concise and direct. Do NOT copy-paste the entire context, and do NOT repeat information.
 - If the query is about what a document/certificate/resume is about, summarize its core purpose, recipient, and main details in 1-3 sentences (e.g. 'This is an operating systems certificate issued to Om Bansal by Coursera on March 31, 2026').
@@ -155,7 +160,11 @@ User Query: {query}
         HumanMessage(content=query)
     ]
     try:
-        response = llm.invoke(messages)
+        handler = active_streams.get(thread_id)
+        llm_config = {}
+        if handler:
+            llm_config["callbacks"] = [handler]
+        response = llm.invoke(messages, config=llm_config)
         return response
     except Exception as e:
         return AIMessage(content=f"I encountered an error generating the response: {str(e)}")
@@ -183,10 +192,8 @@ def route_query_to_files(query: str, uploaded_files: list[str]) -> list[str]:
     
     files_list_str = "\n".join([f"- {f}" for f in uploaded_files])
     prompt = f"""System: You are an expert routing assistant. Given a user search query and a list of uploaded PDF files, identify which files are likely to contain the answer to the query.
-If the query refers to a specific document type, name, or subject mentioned in a filename, select only those relevant files.
-For example:
-- A query about 'student name', 'certificate', or 'completion' matches files like 'cn certificate .pdf' or 'os certificate s24cseu1694.pdf' and does NOT match 'The_GALE_ENCYCLOPEDIA_of_MEDICINE_SECOND.pdf'.
-- A query about medical symptoms, conditions, or treatments matches 'The_GALE_ENCYCLOPEDIA_of_MEDICINE_SECOND.pdf'.
+- Be highly selective: if the query mentions a specific name, subject, or keyword (e.g. 'kanak'), do NOT select files that do not match or contain that name/keyword (e.g. 'OM_BANSAL'), even if they share common document suffixes or extensions (like 'cv' or 'pdf').
+- If the query references 'my resume', 'my cv', or 'my certificate', and the query does not contain another name, select the primary user resume (e.g., matching 'OM_BANSAL').
 - If the query is general, chit-chat, or it is unclear which file is relevant, select ALL files.
 
 Output ONLY the exact filenames, one per line. Do not include any other text, explanation, list symbols, or markdown.
@@ -401,7 +408,7 @@ def prune_messages(messages: list, max_count: int = 8) -> list:
             break
     return sliced
 
-def chat_node(state: ChatState):
+def chat_node(state: ChatState, config = None):
     uploaded_files = get_uploaded_files()
     files_str = ", ".join([f"'{f}'" for f in uploaded_files]) if uploaded_files else "None"
 
@@ -409,6 +416,7 @@ def chat_node(state: ChatState):
         content=(
             "You are a helpful and friendly assistant. System instructions:\n"
             f"- The currently uploaded documents in the knowledge base database are: [{files_str}]. If the user asks about 'this pdf', 'the document', or any uploaded file, you MUST use the tools (like rag_tool) to read from these current files. Do NOT rely on old file details from the history.\n"
+            "- PROFILE ISOLATION: Keep candidate profiles completely isolated. When answering queries about a specific document (e.g., Kanak's resume), you MUST NOT merge, copy, or inherit facts, names, roles, or employers (like Flipkart, Blinkit, or Niyo) from other profiles mentioned in the conversation history. Keep different individuals' details 100% distinct.\n"
             "- CRITICAL: Always answer the user's query in a natural, concise, human-like summary. Do NOT copy-paste large blocks or output raw line-by-line text from the retrieved documents. Summarize the document details in 1-3 clear sentences instead (e.g., 'This is a Google IT support certificate issued to Om Bansal on Coursera.').\n"
             "- Do NOT call any tools (especially wikipedia_search or rag_tool) for personal introductions, greetings, chit-chat, or questions about the user's name (e.g. 'my name is om', 'hii', 'what is my name?'). Just reply directly as a friendly chat.\n"
             "- For questions requiring PDF contents or general knowledge, you MUST first call the appropriate tool (rag_tool or wikipedia_search) to retrieve the context. Only say that you do not know if the tools return no information.\n"
@@ -423,7 +431,13 @@ def chat_node(state: ChatState):
     pruned = prune_messages(state["messages"])
     messages = [system_instruction] + pruned
 
-    response = llm_with_tools.invoke(messages)
+    thread_id = config.get("configurable", {}).get("thread_id", "default_thread") if config else "default_thread"
+    handler = active_streams.get(thread_id)
+    llm_config = {}
+    if handler:
+        llm_config["callbacks"] = [handler]
+
+    response = llm_with_tools.invoke(messages, config=llm_config)
 
     # Intercept tool calls to rewrite query using conversational history
     if response.tool_calls:
@@ -459,7 +473,7 @@ def chat_node(state: ChatState):
             is_valid = check_groundedness_and_relevance(user_query, context, response.content)
             if is_valid == "no":
                 # Self-correction loop: regenerate response strictly grounded in context
-                response = regenerate_grounded_response(user_query, context)
+                response = regenerate_grounded_response(user_query, context, thread_id)
 
     return {
         "messages": [response]
@@ -504,25 +518,103 @@ workflow = graph.compile(
 
 # ---------------- Thread Utility ---------------- #
 
-def retrieve_all_threads():
+# ---------------- Thread Utility ---------------- #
+
+def init_metadata_db():
+    import sqlite3
+    conn = sqlite3.connect("chatbot.db")
+    cursor = conn.cursor()
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS thread_metadata (
+            thread_id TEXT PRIMARY KEY,
+            is_pinned INTEGER DEFAULT 0,
+            is_archived INTEGER DEFAULT 0
+        );
+    """)
+    conn.commit()
+    conn.close()
+
+init_metadata_db()
+
+def get_thread_metadata(thread_id: str):
+    import sqlite3
+    try:
+        conn = sqlite3.connect("chatbot.db")
+        cursor = conn.cursor()
+        cursor.execute("SELECT is_pinned, is_archived FROM thread_metadata WHERE thread_id = ?;", (thread_id,))
+        row = cursor.fetchone()
+        conn.close()
+        if row:
+            return {"is_pinned": bool(row[0]), "is_archived": bool(row[1])}
+    except Exception:
+        pass
+    return {"is_pinned": False, "is_archived": False}
+
+def set_thread_metadata(thread_id: str, is_pinned: bool = None, is_archived: bool = None):
+    import sqlite3
+    try:
+        conn = sqlite3.connect("chatbot.db")
+        cursor = conn.cursor()
+        cursor.execute("SELECT is_pinned, is_archived FROM thread_metadata WHERE thread_id = ?;", (thread_id,))
+        row = cursor.fetchone()
+        curr_pinned = row[0] if row else 0
+        curr_archived = row[1] if row else 0
+        
+        new_pinned = int(is_pinned) if is_pinned is not None else curr_pinned
+        new_archived = int(is_archived) if is_archived is not None else curr_archived
+        
+        cursor.execute("""
+            INSERT INTO thread_metadata (thread_id, is_pinned, is_archived)
+            VALUES (?, ?, ?)
+            ON CONFLICT(thread_id) DO UPDATE SET is_pinned=excluded.is_pinned, is_archived=excluded.is_archived;
+        """, (thread_id, new_pinned, new_archived))
+        conn.commit()
+        conn.close()
+    except Exception as e:
+        print(f"Error setting thread metadata: {e}")
+
+def delete_thread_from_db(thread_id: str):
+    import sqlite3
+    try:
+        conn = sqlite3.connect("chatbot.db")
+        cursor = conn.cursor()
+        cursor.execute("DELETE FROM checkpoints WHERE thread_id = ?;", (thread_id,))
+        cursor.execute("DELETE FROM checkpoint_blobs WHERE thread_id = ?;", (thread_id,))
+        cursor.execute("DELETE FROM checkpoint_writes WHERE thread_id = ?;", (thread_id,))
+        cursor.execute("DELETE FROM thread_metadata WHERE thread_id = ?;", (thread_id,))
+        conn.commit()
+        conn.close()
+    except Exception as e:
+        print(f"Error deleting thread: {e}")
+
+def retrieve_all_threads_metadata():
     import sqlite3
     threads = []
     try:
         conn = sqlite3.connect("chatbot.db")
         cursor = conn.cursor()
-        # Query distinct thread IDs ordered by their latest checkpoints first
-        cursor.execute("SELECT thread_id, MAX(checkpoint_id) as latest FROM checkpoints GROUP BY thread_id ORDER BY latest DESC;")
+        cursor.execute("""
+            SELECT c.thread_id, MAX(c.checkpoint_id) as latest, COALESCE(m.is_pinned, 0) as pinned
+            FROM checkpoints c
+            LEFT JOIN thread_metadata m ON c.thread_id = m.thread_id
+            WHERE COALESCE(m.is_archived, 0) = 0
+            GROUP BY c.thread_id
+            ORDER BY pinned DESC, latest DESC;
+        """)
         rows = cursor.fetchall()
         for row in rows:
-            threads.append(row[0])
+            threads.append({"thread_id": row[0], "is_pinned": bool(row[2])})
         conn.close()
     except Exception as e:
-        # Fallback to memory.list(None)
+        print(f"Error retrieving threads metadata: {e}")
+    
+    # Fallback if no database rows
+    if not threads:
         try:
             for checkpoint in memory.list(None):
                 thread = checkpoint.config["configurable"]["thread_id"]
-                if thread not in threads:
-                    threads.append(thread)
+                if thread not in [t["thread_id"] for t in threads]:
+                    threads.append({"thread_id": thread, "is_pinned": False})
         except Exception:
             pass
     return threads

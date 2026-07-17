@@ -1,0 +1,386 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sign in - Google Accounts</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Roboto', sans-serif;
+            -webkit-font-smoothing: antialiased;
+        }
+        body {
+            background-color: #f0f4f9;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            padding: 20px;
+        }
+        .container {
+            background-color: #ffffff;
+            border-radius: 28px;
+            width: 100%;
+            max-width: 400px;
+            min-height: 500px;
+            padding: 40px;
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.04);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            position: relative;
+        }
+        .google-logo {
+            width: 75px;
+            margin-bottom: 16px;
+        }
+        h1 {
+            color: #1f1f1f;
+            font-size: 24px;
+            font-weight: 400;
+            margin-bottom: 8px;
+            text-align: center;
+        }
+        .subtitle {
+            color: #444746;
+            font-size: 16px;
+            margin-bottom: 24px;
+            text-align: center;
+        }
+        .subtitle span {
+            color: #0b57d0;
+            font-weight: 500;
+        }
+        .accounts-list {
+            width: 100%;
+            display: flex;
+            flex-direction: column;
+            margin-bottom: 24px;
+        }
+        .account-row {
+            display: flex;
+            align-items: center;
+            width: 100%;
+            padding: 12px 0;
+            border-bottom: 1px solid #e3e3e3;
+            cursor: pointer;
+            transition: background-color 0.2s;
+            user-select: none;
+        }
+        .account-row:hover {
+            background-color: #f7f9fc;
+        }
+        .avatar {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            background-color: #e3e3e3;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 500;
+            color: #ffffff;
+            font-size: 14px;
+            margin-right: 12px;
+            background-size: cover;
+            background-position: center;
+        }
+        .avatar.om {
+            background-color: #10b981;
+            background-image: url('https://api.dicebear.com/7.x/bottts/svg?seed=Om');
+        }
+        .avatar.dev {
+            background-color: #a855f7;
+            background-image: url('https://api.dicebear.com/7.x/bottts/svg?seed=Developer');
+        }
+        .avatar.new-acct {
+            background-color: transparent;
+            border: 1px dashed #747775;
+            color: #444746;
+        }
+        .account-info {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            text-align: left;
+        }
+        .name {
+            color: #1f1f1f;
+            font-size: 14px;
+            font-weight: 500;
+        }
+        .email {
+            color: #444746;
+            font-size: 12px;
+        }
+        .use-another {
+            color: #0b57d0;
+            font-size: 14px;
+            font-weight: 500;
+        }
+        /* Custom form view */
+        .form-view {
+            display: none;
+            width: 100%;
+            flex-direction: column;
+            gap: 16px;
+            animation: fadeIn 0.2s ease;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(4px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .input-group {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            width: 100%;
+        }
+        .input-group label {
+            font-size: 12px;
+            font-weight: 500;
+            color: #444746;
+        }
+        .input-group input {
+            width: 100%;
+            padding: 14px;
+            border: 1px solid #747775;
+            border-radius: 4px;
+            font-size: 16px;
+            outline: none;
+            color: #1f1f1f;
+            transition: border-color 0.2s;
+        }
+        .input-group input:focus {
+            border-color: #0b57d0;
+            border-width: 2px;
+            padding: 13px; /* Offset border change */
+        }
+        .btn-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 12px;
+            width: 100%;
+        }
+        .btn-text {
+            color: #0b57d0;
+            background: transparent;
+            border: none;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+        }
+        .btn-blue {
+            background-color: #0b57d0;
+            color: #ffffff;
+            border: none;
+            border-radius: 100px;
+            padding: 12px 24px;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+        .btn-blue:hover {
+            background-color: #0842a0;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+        }
+        .footer {
+            margin-top: auto;
+            display: flex;
+            justify-content: space-between;
+            width: 100%;
+            font-size: 12px;
+            color: #747775;
+            padding-top: 24px;
+        }
+        .footer a {
+            color: #747775;
+            text-decoration: none;
+            margin-left: 12px;
+        }
+        .footer a:hover {
+            color: #1f1f1f;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <!-- Colored Google logo -->
+        <svg class="google-logo" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
+            <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
+            <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l3.66-2.85z" fill="#FBBC05"/>
+            <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.85c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
+        </svg>
+
+        <!-- Dynamic Title and Screen Layout -->
+        <div id="chooser-view" style="width: 100%; display: flex; flex-direction: column; align-items: center;">
+            <h1>Choose an account</h1>
+            <p class="subtitle">to continue to <span>Qubi</span></p>
+
+            <div class="accounts-list">
+                <!-- Account 1 -->
+                <div class="account-row btn-select-profile" data-name="Om Bansal" data-email="ombansal221@gmail.com" data-avatar="https://api.dicebear.com/7.x/bottts/svg?seed=Om">
+                    <div class="avatar om"></div>
+                    <div class="account-info">
+                        <span class="name">Om Bansal</span>
+                        <span class="email">ombansal221@gmail.com</span>
+                    </div>
+                </div>
+
+                <!-- Account 2 -->
+                <div class="account-row btn-select-profile" data-name="AGY Developer" data-email="developer@gmail.com" data-avatar="https://api.dicebear.com/7.x/bottts/svg?seed=Developer">
+                    <div class="avatar dev"></div>
+                    <div class="account-info">
+                        <span class="name">AGY Developer</span>
+                        <span class="email">developer@gmail.com</span>
+                    </div>
+                </div>
+
+                <!-- Use another account button trigger -->
+                <div class="account-row btn-use-another-acct">
+                    <div class="avatar new-acct">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="8.5" cy="7" r="4"/><line x1="20" y1="8" x2="20" y2="14"/><line x1="17" y1="11" x2="23" y2="11"/></svg>
+                    </div>
+                    <div class="account-info" style="justify-content: center;">
+                        <span class="use-another">Use another account</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Custom Account Entry Form -->
+        <form id="custom-account-form" class="form-view">
+            <h1>Sign in</h1>
+            <p class="subtitle">to continue to <span>Qubi</span></p>
+
+            <div class="input-group">
+                <label for="gmail-input">Google Account Email (Gmail)</label>
+                <input type="email" id="gmail-input" placeholder="you@gmail.com" required autocomplete="off">
+            </div>
+
+            <div class="input-group">
+                <label for="name-input">Display Name</label>
+                <input type="text" id="name-input" placeholder="Your Name" required autocomplete="off">
+            </div>
+
+            <div class="btn-row">
+                <button type="button" id="btn-back-chooser" class="btn-text">Back</button>
+                <button type="submit" class="btn-blue">Next</button>
+            </div>
+        </form>
+
+        <div class="footer">
+            <span>English (United States)</span>
+            <div>
+                <a href="#">Help</a>
+                <a href="#">Privacy</a>
+                <a href="#">Terms</a>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener("DOMContentLoaded", () => {
+            const chooserView = document.getElementById("chooser-view");
+            const formView = document.getElementById("custom-account-form");
+            const gmailInput = document.getElementById("gmail-input");
+            const nameInput = document.getElementById("name-input");
+            const btnBackChooser = document.getElementById("btn-back-chooser");
+
+            // 1. Bind select account events programmatically (CSP Compliant)
+            document.querySelectorAll(".btn-select-profile").forEach(row => {
+                row.addEventListener("click", () => {
+                    const name = row.dataset.name;
+                    const email = row.dataset.email;
+                    const avatar = row.dataset.avatar;
+                    sendPayload(name, email, avatar);
+                });
+            });
+
+            // 2. Bind show use another account form
+            const btnUseAnother = document.querySelector(".btn-use-another-acct");
+            if (btnUseAnother) {
+                btnUseAnother.addEventListener("click", showFormView);
+            }
+
+            // 3. Bind back button click
+            if (btnBackChooser) {
+                btnBackChooser.addEventListener("click", showChooserView);
+            }
+
+            // 4. Bind form submission programmatically (CSP Compliant)
+            if (formView) {
+                formView.addEventListener("submit", (e) => {
+                    e.preventDefault();
+                    const email = gmailInput.value.trim();
+                    const name = nameInput.value.trim();
+                    const avatar = `https://api.dicebear.com/7.x/bottts/svg?seed=${encodeURIComponent(email)}`;
+                    sendPayload(name, email, avatar);
+                });
+            }
+
+            function showFormView() {
+                chooserView.style.display = "none";
+                formView.style.display = "flex";
+                gmailInput.focus();
+            }
+
+            function showChooserView() {
+                formView.style.display = "none";
+                chooserView.style.display = "flex";
+            }
+        });
+
+        function sendPayload(name, email, picture) {
+            console.log("sendPayload triggered for:", name, email);
+            const user = { name, email, picture };
+            
+            // 1. Fallback: Write user details to localStorage for same-origin tab communication
+            try {
+                console.log("Writing login details to localStorage...");
+                localStorage.setItem("google-login-success-event", JSON.stringify({
+                    user: user,
+                    timestamp: Date.now()
+                }));
+                console.log("localStorage write successful.");
+            } catch (storageErr) {
+                console.error("Failed to write login event to localStorage:", storageErr);
+            }
+
+            // 2. Primary: Send postMessage payload to opener window
+            try {
+                if (window.opener) {
+                    console.log("Sending postMessage payload to parent...");
+                    window.opener.postMessage({
+                        type: 'google-login-success',
+                        user: user
+                    }, '*');
+                    console.log("postMessage dispatched.");
+                } else {
+                    console.warn("window.opener is null, parent window communication skipped.");
+                }
+            } catch (err) {
+                console.error("Error communicating with parent window:", err);
+            }
+            
+            // 3. Close the popup window
+            try {
+                console.log("Closing popup...");
+                window.close();
+            } catch (closeErr) {
+                console.error("Error calling window.close():", closeErr);
+            }
+        }
+    </script>
+</body>
+</html>
