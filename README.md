@@ -1,3 +1,14 @@
+---
+title: DocPilot Demo
+emoji: 🤖
+colorFrom: indigo
+colorTo: blue
+sdk: gradio
+sdk_version: 4.36.1
+app_file: app.py
+pinned: false
+---
+
 # 🤖 LangGraph AI Agent with RAG & Tool Calling
 
 An AI-powered chatbot built using **LangGraph**, **LangChain**, **Groq Llama 3.3**, **Streamlit**, **SQLite**, and **ChromaDB**.
