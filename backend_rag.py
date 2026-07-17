@@ -618,3 +618,7 @@ def retrieve_all_threads_metadata():
         except Exception:
             pass
     return threads
+
+def retrieve_all_threads() -> list[str]:
+    """Backward compatibility wrapper for Streamlit frontends."""
+    return [t["thread_id"] for t in retrieve_all_threads_metadata()]
