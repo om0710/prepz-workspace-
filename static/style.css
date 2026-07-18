@@ -2917,6 +2917,7 @@ body, html {
     object-fit: contain;
     border-radius: 6px;
     background-color: transparent;
+    mix-blend-mode: multiply;
 }
 
 .welcome-logo-img {
