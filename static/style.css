@@ -2923,8 +2923,70 @@ body, html {
     width: 80px;
     height: 80px;
     object-fit: contain;
-    border-radius: 16px;
-    background-color: transparent;
-    filter: drop-shadow(0 8px 24px rgba(0, 0, 0, 0.15));
+    mix-blend-mode: multiply;
+}
+
+/* Mobile Responsiveness Overrides */
+@media (max-width: 768px) {
+    /* Mobile Sidebar Overlay */
+    .app-sidebar {
+        position: absolute !important;
+        left: 0;
+        top: 0;
+        height: 100vh !important;
+        z-index: 1000 !important;
+        box-shadow: 10px 0 30px rgba(0, 0, 0, 0.3) !important;
+        width: 280px !important;
+        transform: translateX(0);
+        transition: transform 0.3s cubic-bezier(0.25, 0.8, 0.25, 1) !important;
+    }
+    .app-sidebar.sidebar-collapsed {
+        transform: translateX(-100%) !important;
+        width: 280px !important;
+        padding: 24px 18px !important;
+        border-right: none !important;
+    }
+    .app-sidebar.sidebar-collapsed > * {
+        opacity: 0 !important;
+        pointer-events: none !important;
+    }
+
+    /* Responsive Suggestion Grid (2 columns on mobile) */
+    .suggestion-grid-nexa {
+        grid-template-columns: repeat(2, 1fr) !important;
+        gap: 12px !important;
+        margin-top: 20px !important;
+    }
+    .suggestion-pill-nexa {
+        padding: 16px 14px !important;
+        border-radius: 16px !important;
+        font-size: 13px !important;
+    }
+
+    /* Welcome header responsiveness */
+    .landing-title {
+        font-size: 28px !important;
+        padding: 0 10px;
+    }
+    .landing-subtitle {
+        font-size: 13px !important;
+        padding: 0 10px;
+        line-height: 1.5 !important;
+    }
+
+    /* Input area layout tweaks for mobile */
+    .chat-input-box {
+        margin: 10px !important;
+        padding: 12px 14px !important;
+        border-radius: 20px !important;
+    }
+    .submit-btn-nexa {
+        width: 38px !important;
+        height: 38px !important;
+    }
+    .control-pill-nexa {
+        padding: 6px 10px !important;
+        font-size: 12px !important;
+    }
 }
 
