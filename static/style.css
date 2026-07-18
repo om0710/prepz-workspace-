@@ -2915,21 +2915,17 @@ body, html {
     width: 24px;
     height: 24px;
     object-fit: contain;
-    border-radius: 50%;
-    background-color: #ffffff;
-    padding: 2px;
-    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 6px;
+    background-color: transparent;
+    filter: invert(1) hue-rotate(180deg);
+    mix-blend-mode: screen;
 }
 
 .welcome-logo-img {
     width: 80px;
     height: 80px;
     object-fit: contain;
-    border-radius: 50%;
-    background-color: #ffffff;
-    padding: 8px;
-    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
-    border: 1px solid rgba(0, 0, 0, 0.04);
+    mix-blend-mode: multiply;
 }
 
 /* Mobile Responsiveness Overrides */
@@ -2964,13 +2960,17 @@ body, html {
         padding-bottom: 24px !important;
     }
     .content-wrapper.landing-mode .landing-container {
-        margin: 24px auto 0 auto !important;
+        margin: -3vh auto 0 auto !important;
         flex-shrink: 0 !important;
     }
     .welcome-logo-img {
-        width: 64px !important;
-        height: 64px !important;
-        padding: 6px !important;
+        width: 80px !important;
+        height: 80px !important;
+        border-radius: 0 !important;
+        background-color: transparent !important;
+        box-shadow: none !important;
+        border: none !important;
+        mix-blend-mode: multiply !important;
     }
 
     /* Responsive Suggestion Grid (2 columns on mobile) */
