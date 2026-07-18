@@ -2919,6 +2919,8 @@ body, html {
     background-color: transparent;
     filter: invert(1) hue-rotate(180deg);
     mix-blend-mode: screen;
+    transform: translate3d(0, 0, 0);
+    will-change: transform;
 }
 
 .welcome-logo-img {
@@ -2926,6 +2928,8 @@ body, html {
     height: 80px;
     object-fit: contain;
     mix-blend-mode: multiply;
+    transform: translate3d(0, 0, 0);
+    will-change: transform;
 }
 
 /* Mobile Responsiveness Overrides */
