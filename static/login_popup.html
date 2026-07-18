@@ -345,41 +345,14 @@
             console.log("sendPayload triggered for:", name, email);
             const user = { name, email, picture };
             
-            // 1. Fallback: Write user details to localStorage for same-origin tab communication
             try {
-                console.log("Writing login details to localStorage...");
-                localStorage.setItem("google-login-success-event", JSON.stringify({
-                    user: user,
-                    timestamp: Date.now()
-                }));
+                localStorage.setItem("docpilot-user", JSON.stringify(user));
                 console.log("localStorage write successful.");
             } catch (storageErr) {
-                console.error("Failed to write login event to localStorage:", storageErr);
+                console.error("Failed to write user to localStorage:", storageErr);
             }
 
-            // 2. Primary: Send postMessage payload to opener window
-            try {
-                if (window.opener) {
-                    console.log("Sending postMessage payload to parent...");
-                    window.opener.postMessage({
-                        type: 'google-login-success',
-                        user: user
-                    }, '*');
-                    console.log("postMessage dispatched.");
-                } else {
-                    console.warn("window.opener is null, parent window communication skipped.");
-                }
-            } catch (err) {
-                console.error("Error communicating with parent window:", err);
-            }
-            
-            // 3. Close the popup window
-            try {
-                console.log("Closing popup...");
-                window.close();
-            } catch (closeErr) {
-                console.error("Error calling window.close():", closeErr);
-            }
+            window.location.href = 'index.html';
         }
     </script>
 </body>

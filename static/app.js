@@ -78,11 +78,7 @@ function initializeDocPilotApp() {
     function initAuth() {
         if (loginBtn) {
             loginBtn.addEventListener("click", () => {
-                const width = 500;
-                const height = 600;
-                const left = (screen.width / 2) - (width / 2);
-                const top = (screen.height / 2) - (height / 2);
-                window.open('login_popup.html', 'Google Sign-In', `width=${width},height=${height},left=${left},top=${top}`);
+                window.location.href = 'login_popup.html';
             });
         }
 
