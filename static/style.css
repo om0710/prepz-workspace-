@@ -2953,14 +2953,18 @@ body, html {
         pointer-events: none !important;
     }
 
-    /* Prevent welcome logo/titles from shrinking and allow page scrolling */
+    /* Reduce empty space at top of mobile */
+    .main-header {
+        height: 50px !important;
+        padding: 0 16px !important;
+    }
     .content-wrapper.landing-mode {
         height: auto !important;
-        min-height: calc(100vh - 70px) !important;
+        min-height: calc(100vh - 50px) !important;
         padding-bottom: 24px !important;
     }
     .content-wrapper.landing-mode .landing-container {
-        margin: -3vh auto 0 auto !important;
+        margin: -5vh auto 0 auto !important;
         flex-shrink: 0 !important;
     }
     .welcome-logo-img {
