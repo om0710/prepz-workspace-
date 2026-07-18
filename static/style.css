@@ -2953,6 +2953,17 @@ body, html {
         pointer-events: none !important;
     }
 
+    /* Prevent welcome logo/titles from shrinking and allow page scrolling */
+    .content-wrapper.landing-mode {
+        height: auto !important;
+        min-height: calc(100vh - 70px) !important;
+        padding-bottom: 24px !important;
+    }
+    .landing-container {
+        margin-top: 1vh !important;
+        flex-shrink: 0 !important;
+    }
+
     /* Responsive Suggestion Grid (2 columns on mobile) */
     .suggestion-grid-nexa {
         grid-template-columns: repeat(2, 1fr) !important;
