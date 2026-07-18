@@ -2963,9 +2963,14 @@ body, html {
         min-height: calc(100vh - 70px) !important;
         padding-bottom: 24px !important;
     }
-    .landing-container {
-        margin-top: 1vh !important;
+    .content-wrapper.landing-mode .landing-container {
+        margin: 24px auto 0 auto !important;
         flex-shrink: 0 !important;
+    }
+    .welcome-logo-img {
+        width: 64px !important;
+        height: 64px !important;
+        padding: 6px !important;
     }
 
     /* Responsive Suggestion Grid (2 columns on mobile) */
