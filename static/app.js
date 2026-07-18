@@ -82,7 +82,7 @@ function initializeDocPilotApp() {
                 const height = 600;
                 const left = (screen.width / 2) - (width / 2);
                 const top = (screen.height / 2) - (height / 2);
-                window.open('/static/login_popup.html', 'Google Sign-In', `width=${width},height=${height},left=${left},top=${top}`);
+                window.open('login_popup.html', 'Google Sign-In', `width=${width},height=${height},left=${left},top=${top}`);
             });
         }
 
