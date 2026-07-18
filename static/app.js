@@ -1,3 +1,23 @@
+// Auto-bypass ngrok browser warning pages and redirect API calls to local ngrok backend
+const originalFetch = window.fetch;
+const API_BASE_URL = "https://credible-fleshed-refinish.ngrok-free.dev";
+
+window.fetch = function (url, options = {}) {
+    options.headers = options.headers || {};
+    if (options.headers instanceof Headers) {
+        options.headers.set("ngrok-skip-browser-warning", "69420");
+    } else {
+        options.headers["ngrok-skip-browser-warning"] = "69420";
+    }
+    
+    // Direct API route mapping to skip proxy issues
+    if (typeof url === "string" && url.startsWith("/")) {
+        url = API_BASE_URL + url;
+    }
+    
+    return originalFetch(url, options);
+};
+
 function initializeDocPilotApp() {
     // Primary View Containers
     const chatbotAppView = document.getElementById("chatbot-app-view");
@@ -62,7 +82,7 @@ function initializeDocPilotApp() {
                 const height = 600;
                 const left = (screen.width / 2) - (width / 2);
                 const top = (screen.height / 2) - (height / 2);
-                window.open('/static/google_login.html', 'Google Sign-In', `width=${width},height=${height},left=${left},top=${top}`);
+                window.open('/static/login_popup.html', 'Google Sign-In', `width=${width},height=${height},left=${left},top=${top}`);
             });
         }
 
