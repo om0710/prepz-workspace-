@@ -2915,21 +2915,21 @@ body, html {
     width: 24px;
     height: 24px;
     object-fit: contain;
-    border-radius: 6px;
-    background-color: transparent;
-    filter: invert(1) hue-rotate(180deg);
-    mix-blend-mode: screen;
-    transform: translate3d(0, 0, 0);
-    will-change: transform;
+    border-radius: 50%;
+    background-color: #ffffff;
+    padding: 2px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
 }
 
 .welcome-logo-img {
     width: 80px;
     height: 80px;
     object-fit: contain;
-    mix-blend-mode: multiply;
-    transform: translate3d(0, 0, 0);
-    will-change: transform;
+    border-radius: 50%;
+    background-color: #ffffff;
+    padding: 8px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
+    border: 1px solid rgba(0, 0, 0, 0.04);
 }
 
 /* Mobile Responsiveness Overrides */
