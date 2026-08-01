@@ -153,7 +153,7 @@ def regenerate_grounded_response(query: str, context: str, thread_id: str = "def
 Context:
 {context}
 
-User Query: {query}
+user Query: {query}
 """
     messages = [
         SystemMessage(content=prompt),
@@ -180,8 +180,9 @@ def reset_bm25_cache():
 
 def get_uploaded_files():
     import os
+    allowed_exts = (".pdf", ".docx", ".doc")
     if os.path.exists("uploads"):
-        return [f for f in os.listdir("uploads") if f.endswith(".pdf")]
+        return [f for f in os.listdir("uploads") if any(f.lower().endswith(ext) for ext in allowed_exts)]
     return []
 
 def route_query_to_files(query: str, uploaded_files: list[str]) -> list[str]:
@@ -191,9 +192,9 @@ def route_query_to_files(query: str, uploaded_files: list[str]) -> list[str]:
         return uploaded_files
     
     files_list_str = "\n".join([f"- {f}" for f in uploaded_files])
-    prompt = f"""System: You are an expert routing assistant. Given a user search query and a list of uploaded PDF files, identify which files are likely to contain the answer to the query.
-- Be highly selective: if the query mentions a specific name, subject, or keyword (e.g. 'kanak'), do NOT select files that do not match or contain that name/keyword (e.g. 'OM_BANSAL'), even if they share common document suffixes or extensions (like 'cv' or 'pdf').
-- If the query references 'my resume', 'my cv', or 'my certificate', and the query does not contain another name, select the primary user resume (e.g., matching 'OM_BANSAL').
+    prompt = f"""System: You are an expert routing assistant. Given a user search query and a list of uploaded documents (.pdf, .docx, .doc), identify which files are likely to contain the answer to the query.
+- Be highly selective: if the query mentions a specific name, subject, or keyword (e.g. 'kanak'), do NOT select files that do not match or contain that name/keyword (e.g. 'OM_BANSAL'), even if they share common document suffixes or extensions.
+- If the query references 'my resume', 'my cv', or 'my certificate', and the query does not contain another name, select the primary user resume (e.g., matching 'OM_BANSAL' or user name).
 - If the query is general, chit-chat, or it is unclear which file is relevant, select ALL files.
 
 Output ONLY the exact filenames, one per line. Do not include any other text, explanation, list symbols, or markdown.
@@ -284,10 +285,8 @@ def get_bm25_retriever(filter_sources: list[str] = None):
 @tool
 def rag_tool(query: str):
     """
-        Retrieve relevant information from the PDF document.
-    Use this tool when the user asks factual or conceptual
-    questions that might be answered from the stored documents.
-
+    Retrieve relevant information from all uploaded documents (PDF, DOCX, and DOC files).
+    Use this tool when the user asks factual, conceptual, or document-specific questions from stored documents.
     """
     # 1. Determine metadata filter dynamically using filenames
     filter_dict = None
@@ -482,11 +481,13 @@ def chat_node(state: ChatState, config = None):
 
 # ---------------- SQLite ---------------- #
 
-conn = sqlite3.connect(
-    "chatbot.db",
-    check_same_thread=False
-)
+def get_rag_db():
+    c = sqlite3.connect("chatbot.db", timeout=60.0, check_same_thread=False)
+    c.execute("PRAGMA journal_mode=WAL;")
+    c.execute("PRAGMA busy_timeout=60000;")
+    return c
 
+conn = get_rag_db()
 memory = SqliteSaver(conn)
 
 # ---------------- Graph ---------------- #
@@ -518,93 +519,87 @@ workflow = graph.compile(
 
 # ---------------- Thread Utility ---------------- #
 
-# ---------------- Thread Utility ---------------- #
-
 def init_metadata_db():
-    import sqlite3
-    conn = sqlite3.connect("chatbot.db")
-    cursor = conn.cursor()
-    cursor.execute("""
-        CREATE TABLE IF NOT EXISTS thread_metadata (
-            thread_id TEXT PRIMARY KEY,
-            is_pinned INTEGER DEFAULT 0,
-            is_archived INTEGER DEFAULT 0
-        );
-    """)
-    conn.commit()
-    conn.close()
+    with get_rag_db() as c:
+        cursor = c.cursor()
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS thread_metadata (
+                thread_id TEXT PRIMARY KEY,
+                is_pinned INTEGER DEFAULT 0,
+                is_archived INTEGER DEFAULT 0
+            );
+        """)
+        c.commit()
 
 init_metadata_db()
 
 def get_thread_metadata(thread_id: str):
-    import sqlite3
     try:
-        conn = sqlite3.connect("chatbot.db")
-        cursor = conn.cursor()
-        cursor.execute("SELECT is_pinned, is_archived FROM thread_metadata WHERE thread_id = ?;", (thread_id,))
-        row = cursor.fetchone()
-        conn.close()
-        if row:
-            return {"is_pinned": bool(row[0]), "is_archived": bool(row[1])}
+        with get_rag_db() as c:
+            cursor = c.cursor()
+            cursor.execute("SELECT is_pinned, is_archived FROM thread_metadata WHERE thread_id = ?;", (thread_id,))
+            row = cursor.fetchone()
+            if row:
+                return {"is_pinned": bool(row[0]), "is_archived": bool(row[1])}
     except Exception:
         pass
     return {"is_pinned": False, "is_archived": False}
 
 def set_thread_metadata(thread_id: str, is_pinned: bool = None, is_archived: bool = None):
-    import sqlite3
     try:
-        conn = sqlite3.connect("chatbot.db")
-        cursor = conn.cursor()
-        cursor.execute("SELECT is_pinned, is_archived FROM thread_metadata WHERE thread_id = ?;", (thread_id,))
-        row = cursor.fetchone()
-        curr_pinned = row[0] if row else 0
-        curr_archived = row[1] if row else 0
-        
-        new_pinned = int(is_pinned) if is_pinned is not None else curr_pinned
-        new_archived = int(is_archived) if is_archived is not None else curr_archived
-        
-        cursor.execute("""
-            INSERT INTO thread_metadata (thread_id, is_pinned, is_archived)
-            VALUES (?, ?, ?)
-            ON CONFLICT(thread_id) DO UPDATE SET is_pinned=excluded.is_pinned, is_archived=excluded.is_archived;
-        """, (thread_id, new_pinned, new_archived))
-        conn.commit()
-        conn.close()
+        with get_rag_db() as c:
+            cursor = c.cursor()
+            cursor.execute("SELECT is_pinned, is_archived FROM thread_metadata WHERE thread_id = ?;", (thread_id,))
+            row = cursor.fetchone()
+            curr_pinned = row[0] if row else 0
+            curr_archived = row[1] if row else 0
+            
+            new_pinned = int(is_pinned) if is_pinned is not None else curr_pinned
+            new_archived = int(is_archived) if is_archived is not None else curr_archived
+            
+            cursor.execute("""
+                INSERT INTO thread_metadata (thread_id, is_pinned, is_archived)
+                VALUES (?, ?, ?)
+                ON CONFLICT(thread_id) DO UPDATE SET is_pinned=excluded.is_pinned, is_archived=excluded.is_archived;
+            """, (thread_id, new_pinned, new_archived))
+            c.commit()
     except Exception as e:
         print(f"Error setting thread metadata: {e}")
 
 def delete_thread_from_db(thread_id: str):
-    import sqlite3
     try:
-        conn = sqlite3.connect("chatbot.db")
-        cursor = conn.cursor()
-        cursor.execute("DELETE FROM checkpoints WHERE thread_id = ?;", (thread_id,))
-        cursor.execute("DELETE FROM checkpoint_blobs WHERE thread_id = ?;", (thread_id,))
-        cursor.execute("DELETE FROM checkpoint_writes WHERE thread_id = ?;", (thread_id,))
-        cursor.execute("DELETE FROM thread_metadata WHERE thread_id = ?;", (thread_id,))
-        conn.commit()
-        conn.close()
+        with get_rag_db() as c:
+            cursor = c.cursor()
+            cursor.execute("DELETE FROM checkpoints WHERE thread_id = ?;", (thread_id,))
+            try:
+                cursor.execute("DELETE FROM checkpoint_blobs WHERE thread_id = ?;", (thread_id,))
+            except Exception:
+                pass
+            try:
+                cursor.execute("DELETE FROM checkpoint_writes WHERE thread_id = ?;", (thread_id,))
+            except Exception:
+                pass
+            cursor.execute("DELETE FROM thread_metadata WHERE thread_id = ?;", (thread_id,))
+            c.commit()
     except Exception as e:
         print(f"Error deleting thread: {e}")
 
 def retrieve_all_threads_metadata():
-    import sqlite3
     threads = []
     try:
-        conn = sqlite3.connect("chatbot.db")
-        cursor = conn.cursor()
-        cursor.execute("""
-            SELECT c.thread_id, MAX(c.checkpoint_id) as latest, COALESCE(m.is_pinned, 0) as pinned
-            FROM checkpoints c
-            LEFT JOIN thread_metadata m ON c.thread_id = m.thread_id
-            WHERE COALESCE(m.is_archived, 0) = 0
-            GROUP BY c.thread_id
-            ORDER BY pinned DESC, latest DESC;
-        """)
-        rows = cursor.fetchall()
-        for row in rows:
-            threads.append({"thread_id": row[0], "is_pinned": bool(row[2])})
-        conn.close()
+        with get_rag_db() as c:
+            cursor = c.cursor()
+            cursor.execute("""
+                SELECT c.thread_id, MAX(c.checkpoint_id) as latest, COALESCE(m.is_pinned, 0) as pinned
+                FROM checkpoints c
+                LEFT JOIN thread_metadata m ON c.thread_id = m.thread_id
+                WHERE COALESCE(m.is_archived, 0) = 0
+                GROUP BY c.thread_id
+                ORDER BY pinned DESC, latest DESC;
+            """)
+            rows = cursor.fetchall()
+            for row in rows:
+                threads.append({"thread_id": row[0], "is_pinned": bool(row[2])})
     except Exception as e:
         print(f"Error retrieving threads metadata: {e}")
     

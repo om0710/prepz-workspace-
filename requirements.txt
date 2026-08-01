@@ -9,14 +9,13 @@ langchain-chroma
 chromadb
 groq
 python-dotenv
-langchain-huggingface
 sentence-transformers
 fastapi
 uvicorn
-torch
-torchvision
 langgraph==1.2.2
 langgraph-checkpoint==4.1.1
 langgraph-checkpoint-sqlite==3.1.0
 pypdf==5.9.0
 rank-bm25
+huggingface_hub==0.22.2
+python-docx

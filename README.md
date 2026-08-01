@@ -1,156 +1,118 @@
+# 📚 Prepz AI Workspace - Engineering Study & RAG Platform
 
-# 🤖 LangGraph AI Agent with RAG & Tool Calling
-
-An AI-powered chatbot built using **LangGraph**, **LangChain**, **Groq Llama 3.3**, **Streamlit**, **SQLite**, and **ChromaDB**.
-
-This project demonstrates how to build a production-style AI Agent with:
-
-- 🧠 Retrieval-Augmented Generation (RAG)
-- 🛠️ Tool Calling
-- 💬 Multi-turn Conversations
-- ⚡ Streaming Responses
-- 💾 Persistent Memory
-- 🗄️ SQLite Chat History
-- 📄 Resume Chat
-- 🔍 Semantic Search with ChromaDB
+> **AI-Powered Engineering Study Assistant with Multi-Format RAG Search, Automated PYQ Paper Generation, and In-Browser Document Reader.**
 
 ---
 
-# 🚀 Features
+## ✨ Key Features
 
-- ✅ LangGraph State Machine
-- ✅ AI Agent Workflow
-- ✅ Tool Calling
-- ✅ RAG Pipeline
-- ✅ Resume Chat
-- ✅ Streaming Responses
-- ✅ SQLite Persistence
-- ✅ Conversation Memory
-- ✅ ChromaDB Vector Store
-- ✅ Streamlit Chat Interface
-- ✅ Groq Llama-3.3-70B
+- **📄 Multi-Format RAG Engine (`.pdf`, `.docx`, `.doc`)**:
+  - Ingest, chunk, and search engineering notes, tutorial sheets, and past year question papers (PYQs).
+  - Native text & table extraction for Word documents and PDFs into ChromaDB vector storage.
 
----
+- **🔒 Private Library vs. 🌐 Shared Community Catalog**:
+  - **My Documents**: Keep your personal assignments, resumes, and private notes private to your account.
+  - **Shared Catalog**: Browse, search, and download public study materials contributed by engineering students.
 
-# 🏗️ Tech Stack
+- **📝 Custom In-Browser Document Reader**:
+  - View Word documents (`.docx`, `.doc`) inline inside the browser with formatted typography, tables, and quick download links without needing Microsoft Word installed.
 
-- Python
-- LangGraph
-- LangChain
-- Groq
-- Streamlit
-- SQLite
-- ChromaDB
-- HuggingFace Embeddings
+- **🎯 AI Exam Paper & PYQ Generator**:
+  - Automatically analyzes uploaded PYQs for any subject & semester to generate predicted exam question papers with frequency analysis and probability scores.
+
+- **💬 LangGraph Multi-Turn Agentic Chat**:
+  - Powered by Groq `llama-3.3-70b-versatile` with fallbacks, hybrid vector + BM25 search routing, and full conversation thread persistence.
+
+- **🔥 Gamified Learning & Contribution Score**:
+  - Tracks student study streaks, awards contribution points for uploads, and maintains a community leaderboard.
 
 ---
 
-# 📂 Project Structure
+## 🛠️ Tech Stack
 
-```
-backend.py
-frontend.py
-backend_rag.py
-front_end_rag.py
-database.py
-rag.py
-tools.py
+- **Backend Framework**: FastAPI (Python 3.10+)
+- **AI / LLM**: Groq API (`llama-3.3-70b-versatile`)
+- **Agent Orchestration**: LangGraph, LangChain, LangChain-Core
+- **Vector Database**: ChromaDB + HuggingFace Embeddings (`all-mpnet-base-v2`)
+- **Keyword Search**: Rank-BM25 (Hybrid Dense + Sparse Retrieval)
+- **Database**: SQLite3 (WAL Write-Ahead Logging Mode for concurrency)
+- **Frontend**: Vanilla HTML5, CSS3, JavaScript (ES6+), Google Fonts (Plus Jakarta Sans)
+
+---
+
+## 📂 Project Structure
+
+```text
+.
+├── app.py                 # Primary FastAPI Web Server & API Endpoints
+├── backend_rag.py         # LangGraph Chat Workflow & Tool Routing Engine
+├── rag.py                 # Multi-Format Text Extraction & Vector Store Ingestion
+├── database.py            # SQLite User Profiles, Upload Metadata & Thread Storage
+├── tools.py               # Auxiliary AI Tools (Calculator, Wikipedia Search, Time)
+├── static/                # Frontend UI Assets
+│   ├── index.html         # Main Workspace & Documents Web Interface
+│   ├── style.css          # Modern Glassmorphic CSS Styling & Design System
+│   └── app.js             # Interactive SPA Logic & Real-time Streaming Handler
+├── uploads/               # Local Storage Directory for Uploaded Documents
+├── Dockerfile             # Docker Container Configuration
+├── Procfile               # Render / Railway Deployment Procfile
+├── requirements.txt       # Python Package Dependencies
+└── README.md              # Project Documentation
 ```
 
 ---
 
-# ⚙️ Installation
+## ⚙️ Local Setup & Installation
 
-Clone the repository
-
+### 1. Clone the Repository
 ```bash
-git clone https://github.com/om0710/langgraph---chatbot-.git
+git clone https://github.com/om0710/prepz-workspace-.git
+cd prepz-workspace-
 ```
 
-Go inside the project
-
+### 2. Create and Activate Virtual Environment
 ```bash
-cd langgraph---chatbot-
+python3 -m venv venv
+source venv/bin/activate        # On Mac / Linux
+# venv\Scripts\activate          # On Windows
 ```
 
-Create virtual environment
-
-```bash
-python -m venv venv
-```
-
-Activate
-
-Mac/Linux
-
-```bash
-source venv/bin/activate
-```
-
-Windows
-
-```bash
-venv\Scripts\activate
-```
-
-Install dependencies
-
+### 3. Install Dependencies
 ```bash
 pip install -r requirements.txt
 ```
 
----
-
-# 🔑 Environment Variables
-
-Create a `.env` file
-
+### 4. Configure Environment Variables
+Create a `.env` file in the root directory:
 ```env
-GROQ_API_KEY=YOUR_GROQ_API_KEY
+GROQ_API_KEY=your_groq_api_key_here
 ```
 
----
-
-# ▶️ Run
-
+### 5. Run the Server
 ```bash
-streamlit run frontend.py
+python app.py
 ```
+Open your browser and navigate to **`http://localhost:7865`**.
 
 ---
 
-# 📚 What I Learned
+## ☁️ Deployment Guide
 
-- LangGraph
-- StateGraph
-- Nodes & Edges
-- Reducers
-- Persistence
-- Streaming
-- SQLite
-- ChromaDB
-- Tool Calling
-- Retrieval-Augmented Generation
-- Streamlit
-- Git & GitHub
+### Deploying to Render.com
+
+1. Create a **New Web Service** on [Render.com](https://render.com).
+2. Connect your GitHub repository `om0710/prepz-workspace-`.
+3. Set the following build options:
+   - **Environment**: `Python 3`
+   - **Build Command**: `pip install -r requirements.txt`
+   - **Start Command**: `uvicorn app:app --host 0.0.0.0 --port $PORT`
+4. Add Environment Variable: `GROQ_API_KEY` = *your API key*.
+5. Click **Create Web Service**.
 
 ---
 
-# 🔮 Future Improvements
+## 👨‍💻 Author
 
-- Corrective RAG (CRAG)
-- Self-RAG
-- FastAPI Backend
-- Docker
-- LangSmith
-- Multi-Agent Systems
-
----
-
-# 👨‍💻 Author
-
-**Om Bansal**
-
-LinkedIn: *(https://www.linkedin.com/in/om-bansal-78420430a/)*
-
-GitHub: https://github.com/om0710
+**Om Bansal**  
+- GitHub: [@om0710](https://github.com/om0710)  
+- LinkedIn: [Om Bansal](https://www.linkedin.com/in/om-bansal-78420430a/)

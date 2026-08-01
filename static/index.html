@@ -3,39 +3,113 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>DocPilot Workspace</title>
+    <title>Prepz Workspace</title>
     <!-- Fonts: Outfit (headings) and Inter (body) -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="style.css?v=2.0">
+    <link rel="stylesheet" href="style.css?v=9.0">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    <script>
+        function switchAuthTab(tab) {
+            var tabLogin = document.getElementById("tab-login");
+            var tabSignup = document.getElementById("tab-signup");
+            var formLogin = document.getElementById("form-login");
+            var formSignup = document.getElementById("form-signup");
+            var authErrorMsg = document.getElementById("auth-error-msg");
+
+            if (authErrorMsg) {
+                authErrorMsg.textContent = "";
+                authErrorMsg.className = "auth-error hidden";
+            }
+
+            if (tab === "signup") {
+                if (tabSignup) tabSignup.className = "auth-tab-btn active";
+                if (tabLogin) tabLogin.className = "auth-tab-btn";
+                if (formSignup) {
+                    formSignup.classList.remove("hidden");
+                    formSignup.style.display = "flex";
+                }
+                if (formLogin) {
+                    formLogin.classList.add("hidden");
+                    formLogin.style.display = "none";
+                }
+            } else {
+                if (tabLogin) tabLogin.className = "auth-tab-btn active";
+                if (tabSignup) tabSignup.className = "auth-tab-btn";
+                if (formLogin) {
+                    formLogin.classList.remove("hidden");
+                    formLogin.style.display = "flex";
+                }
+                if (formSignup) {
+                    formSignup.classList.add("hidden");
+                    formSignup.style.display = "none";
+                }
+            }
+        }
+    </script>
 </head>
 <body>
 
     <!-- ============================================ -->
-    <!-- 1. Google Login / Authentication View        -->
+    <!-- 1. Google / Email Authentication View         -->
     <!-- ============================================ -->
     <div id="landing-page-view" class="view-container login-wrapper">
         <div class="login-card">
-            <!-- Qubi flower logo pattern (8 dots circular) -->
-            <div class="login-logo-wrapper">
-                <svg width="48" height="48" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                    <circle cx="12" cy="4" r="2" fill="currentColor"/>
-                    <circle cx="18" cy="6" r="2" fill="currentColor"/>
-                    <circle cx="20" cy="12" r="2" fill="currentColor"/>
-                    <circle cx="18" cy="18" r="2" fill="currentColor"/>
-                    <circle cx="12" cy="20" r="2" fill="currentColor"/>
-                    <circle cx="6" cy="18" r="2" fill="currentColor"/>
-                    <circle cx="4" cy="12" r="2" fill="currentColor"/>
-                    <circle cx="6" cy="6" r="2" fill="currentColor"/>
+            <div class="login-logo-wrapper" style="background: rgba(99, 102, 241, 0.1); border-radius: 16px; width: 64px; height: 64px; display: flex; align-items: center; justify-content: center; margin: 0 auto 16px auto;">
+                <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#6366f1" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/>
+                    <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>
                 </svg>
             </div>
             
-            <h1 class="login-title">Welcome to DocPilot</h1>
-            <p class="login-subtitle">Unlock smarter document assistance and AI guidance.</p>
+            <h1 class="login-title">Prepz for Students</h1>
+            <p class="login-subtitle">Sign in or create a student account to link and manage your document uploads.</p>
             
-            <button id="btn-google-login" class="btn-google-signin">
-                <!-- Google colored G icon -->
+            <!-- Auth Navigation Tabs -->
+            <div class="auth-tabs">
+                <button type="button" id="tab-login" class="auth-tab-btn active" onclick="switchAuthTab('login')">Log In</button>
+                <button type="button" id="tab-signup" class="auth-tab-btn" onclick="switchAuthTab('signup')">Sign Up</button>
+            </div>
+
+            <!-- Error / Status Notification -->
+            <div id="auth-error-msg" class="auth-error hidden"></div>
+
+            <!-- Login Form -->
+            <form id="form-login" class="auth-form" onsubmit="handleLoginSubmit(event)">
+                <div class="form-group">
+                    <label for="login-email">College Email</label>
+                    <input type="email" id="login-email" placeholder="student@college.edu" required>
+                </div>
+                <div class="form-group">
+                    <label for="login-password">Password</label>
+                    <input type="password" id="login-password" placeholder="••••••••" required>
+                </div>
+                <button type="submit" class="btn-auth-primary">Log In</button>
+            </form>
+
+            <!-- Signup Form (Initially hidden) -->
+            <form id="form-signup" class="auth-form hidden" style="display: none;" onsubmit="handleSignupSubmit(event)">
+                <div class="form-group">
+                    <label for="signup-name">Full Name</label>
+                    <input type="text" id="signup-name" placeholder="e.g. Om Bansal" required>
+                </div>
+                <div class="form-group">
+                    <label for="signup-email">College Email</label>
+                    <input type="email" id="signup-email" placeholder="student@college.edu" required>
+                </div>
+                <div class="form-group">
+                    <label for="signup-password">Password</label>
+                    <input type="password" id="signup-password" placeholder="••••••••" required>
+                </div>
+                <button type="submit" class="btn-auth-primary">Create Student Account</button>
+            </form>
+
+            <div class="auth-divider">
+                <span>OR</span>
+            </div>
+            
+            <button id="btn-google-login" type="button" class="btn-google-signin" onclick="handleGoogleLogin()">
                 <svg class="btn-google-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                     <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
                     <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
@@ -51,8 +125,64 @@
         </div>
     </div>
 
+    <!-- Google Account Chooser Modal -->
+    <div id="google-account-modal" class="modal-overlay hidden" style="display: none;">
+        <div class="google-chooser-card">
+            <div class="google-chooser-header">
+                <svg class="google-logo-svg" viewBox="0 0 24 24" width="32" height="32" style="margin: 0 auto 8px auto; display: block;">
+                    <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
+                    <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
+                    <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l3.66-2.85z" fill="#FBBC05"/>
+                    <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.85c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
+                </svg>
+                <h2>Choose an account</h2>
+                <p>to continue to <strong>Prepz Workspace</strong></p>
+            </div>
+
+            <div id="google-accounts-list" class="google-accounts-list">
+                <!-- Loaded dynamically -->
+            </div>
+
+            <div class="google-chooser-actions" style="margin-top: 8px;">
+                <button type="button" id="btn-use-another-account" class="btn-google-account-item add-account-item">
+                    <div class="account-avatar-circle icon-add">+</div>
+                    <div class="account-text-info">
+                        <span class="account-name">Use another Google account</span>
+                    </div>
+                </button>
+            </div>
+
+            <div class="google-chooser-footer" style="margin-top: 16px;">
+                <button type="button" onclick="closeGoogleAccountModal()" class="btn-cancel-google">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- First-Time User Onboarding Modal -->
+    <div id="onboarding-modal" class="modal-overlay hidden" style="display: none;">
+        <div class="onboarding-card">
+            <button type="button" id="btn-skip-onboarding" class="onboarding-skip-btn">Skip</button>
+            
+            <div class="onboarding-dots">
+                <span class="onboarding-dot active" data-step="1"></span>
+                <span class="onboarding-dot" data-step="2"></span>
+                <span class="onboarding-dot" data-step="3"></span>
+                <span class="onboarding-dot" data-step="4"></span>
+            </div>
+
+            <div id="onboarding-step-content" class="onboarding-step-content">
+                <!-- Dynamically updated -->
+            </div>
+
+            <div class="onboarding-footer">
+                <span id="onboarding-step-indicator" class="onboarding-step-text">Step 1 of 4</span>
+                <button type="button" id="btn-next-onboarding" class="btn-onboarding-primary">Next →</button>
+            </div>
+        </div>
+    </div>
+
     <!-- ============================================ -->
-    <!-- 2. Dark DocPilot App Workspace View          -->
+    <!-- 2. Dark Prepz App Workspace View          -->
     <!-- ============================================ -->
     <div id="chatbot-app-view" class="view-container app-wrapper" style="display: none;">
         
@@ -60,8 +190,8 @@
         <aside class="app-sidebar">
             <div class="sidebar-top">
                 <div class="sidebar-logo">
-                    <img src="data:image/png;base64,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" class="sidebar-logo-img" alt="DocPilot Logo">
-                    <span>DocPilot</span>
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="color: #6366f1;"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
+                    <span>Prepz</span>
                 </div>
                 <button class="sidebar-collapse-btn" title="Toggle Sidebar">
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="9" y1="3" x2="9" y2="21"/></svg>
@@ -73,6 +203,22 @@
                 <button id="nav-new-chat" class="sidebar-link active">
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="3" y="3" width="7" height="9"/><rect x="14" y="3" width="7" height="5"/><rect x="14" y="12" width="7" height="9"/><rect x="3" y="16" width="7" height="5"/></svg>
                     <span>Home</span>
+                </button>
+                <button id="nav-pinned-library" class="sidebar-link" title="My Library (My Uploads & Pinned Files)">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
+                    <span>My Library</span>
+                </button>
+                <button id="nav-browse-documents" class="sidebar-link">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="3"/></svg>
+                    <span>Browse Documents</span>
+                </button>
+                <button id="nav-exam-predictor" class="sidebar-link" title="Generate AI Predicted Question Papers from past PYQs">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><line x1="9" y1="15" x2="15" y2="15"/></svg>
+                    <span>Exam Predictor 🎯</span>
+                </button>
+                <button id="nav-leaderboard" class="sidebar-link" title="View Top 10 Contributors Leaderboard">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"></path><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"></path><path d="M4 22h16"></path><path d="M10 14.66V17c0 .55-.45 1-1 1H7c-.55 0-1-.45-1-1v-2.34"></path><path d="M14 14.66V17c0 .55.45 1 1 1h2c.55 0 1-.45 1-1v-2.34"></path><path d="M18 2H6v7a6 6 0 0 0 12 0V2z"></path></svg>
+                    <span>Leaderboard 🏆</span>
                 </button>
                 <button id="nav-new-chat-btn" class="sidebar-link">
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14" stroke-linecap="round"/></svg>
@@ -123,6 +269,9 @@
             </div>
         </aside>
 
+        <!-- Translucent Backdrop Overlay for Mobile Sidebar -->
+        <div id="sidebar-backdrop" class="sidebar-backdrop hidden"></div>
+
         <!-- 2. Main Panel Workspace -->
         <div class="main-panel">
             
@@ -136,7 +285,12 @@
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
                         <span>Back</span>
                     </button>
+                    <div id="header-view-title" class="header-view-title">
+                        <span class="header-title-sparkle">✨</span>
+                        <span id="header-view-name">Prepz Workspace</span>
+                    </div>
                 </div>
+
                 <div class="header-right">
                     <div class="settings-container">
                         <button id="btn-header-settings" class="btn-header-action" title="Settings">
@@ -172,22 +326,102 @@
                         </div>
                     </div>
 
-                    <!-- Landing State (Centered Qubi Title & Cards) -->
+                    <!-- Landing State (Rich Engineering Student Dashboard) -->
                     <div id="landing-container" class="landing-container">
-                        <div class="welcome-logo-wrapper">
-                            <img src="data:image/png;base64,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" class="welcome-logo-img" alt="DocPilot Logo">
-                        </div>
                         
-                        <h1 class="landing-title">How can we <span class="gradient-text">assist</span> you today?</h1>
+                        <!-- Hero Section -->
+                        <div class="landing-hero-badge">
+                            <span class="hero-pulse-dot"></span>
+                            <span class="hero-badge-text">⚡ Engineering Exam & Study Assistant</span>
+                        </div>
+
+                        <h1 class="landing-title">Engineering Exam Prep & <span class="gradient-text">Study Assistant</span></h1>
                         <p class="landing-subtitle">
-                            Upload and index your PDF documents to get instant, accurate, and context-grounded answers. Start chatting or search through your document history below.
+                            Upload course notes, generate high-yield predicted question papers, track daily study streaks, and chat with AI grounded directly in your university curriculum.
                         </p>
+
+                        <!-- Platform Quick Metrics Ribbon -->
+                        <div class="landing-metrics-ribbon">
+                            <div class="metric-pill">
+                                <span class="metric-icon">📚</span>
+                                <span class="metric-text"><strong>24+</strong> Subjects</span>
+                            </div>
+                            <div class="metric-pill">
+                                <span class="metric-icon">🔮</span>
+                                <span class="metric-text"><strong>AI</strong> Exam Predictor</span>
+                            </div>
+                            <div class="metric-pill">
+                                <span class="metric-icon">🔥</span>
+                                <span class="metric-text"><strong>Daily</strong> Streaks</span>
+                            </div>
+                            <div class="metric-pill">
+                                <span class="metric-icon">⚡</span>
+                                <span class="metric-text"><strong>Instant</strong> RAG Search</span>
+                            </div>
+                        </div>
+
+                        <!-- 4 Core Feature Launcher Cards Grid -->
+                        <div class="landing-features-grid">
+                            <div class="landing-feature-card card-predictor" onclick="showPredictorState()">
+                                <div class="card-icon-box icon-purple">
+                                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+                                </div>
+                                <div class="card-content">
+                                    <h3>AI Exam Predictor</h3>
+                                    <p>Predict upcoming question papers & topic frequency weights from PYQs.</p>
+                                </div>
+                                <span class="card-arrow-icon">→</span>
+                            </div>
+
+                            <div class="landing-feature-card card-library" onclick="showPinnedLibraryState()">
+                                <div class="card-icon-box icon-blue">
+                                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
+                                </div>
+                                <div class="card-content">
+                                    <h3>My Personal Library</h3>
+                                    <p>Manage your private uploaded study notes, lab manuals & assignments.</p>
+                                </div>
+                                <span class="card-arrow-icon">→</span>
+                            </div>
+
+                            <div class="landing-feature-card card-browse" onclick="showBrowseState()">
+                                <div class="card-icon-box icon-emerald">
+                                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/><line x1="11" y1="8" x2="11" y2="14"/><line x1="8" y1="11" x2="14" y2="11"/></svg>
+                                </div>
+                                <div class="card-content">
+                                    <h3>Browse Documents</h3>
+                                    <p>Explore community notes, PYQs and study files across all 8 semesters.</p>
+                                </div>
+                                <span class="card-arrow-icon">→</span>
+                            </div>
+
+                            <div class="landing-feature-card card-leaderboard" onclick="showLeaderboardState()">
+                                <div class="card-icon-box icon-amber">
+                                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2z"/></svg>
+                                </div>
+                                <div class="card-content">
+                                    <h3>Leaderboard & Streaks</h3>
+                                    <p>Earn points for sharing notes, build daily study streaks & check rank.</p>
+                                </div>
+                                <span class="card-arrow-icon">→</span>
+                            </div>
+                        </div>
+
+                        <!-- Curriculum Quick Subject Chips -->
+                        <div class="landing-chip-row">
+                            <span class="chip-row-label">Popular Subjects:</span>
+                            <button type="button" class="subject-chip-btn" onclick="showBrowseState(); document.getElementById('browse-search-input').value = 'Computational Thinking'; renderBrowseTable();">Computational Thinking</button>
+                            <button type="button" class="subject-chip-btn" onclick="showBrowseState(); document.getElementById('browse-search-input').value = 'DSA'; renderBrowseTable();">DSA using C++</button>
+                            <button type="button" class="subject-chip-btn" onclick="showBrowseState(); document.getElementById('browse-search-input').value = 'Operating Systems'; renderBrowseTable();">Operating Systems</button>
+                            <button type="button" class="subject-chip-btn" onclick="showBrowseState(); document.getElementById('browse-search-input').value = 'Artificial Intelligence'; renderBrowseTable();">Artificial Intelligence</button>
+                            <button type="button" class="subject-chip-btn" onclick="showBrowseState(); document.getElementById('browse-search-input').value = 'Networks'; renderBrowseTable();">Computer Networks</button>
+                        </div>
                     </div>
 
                     <!-- Input Box Panel -->
                     <div class="input-panel-wrapper">
                         <form id="chat-form" class="chat-input-box">
-                            <input type="file" id="file-input" accept=".pdf" style="display: none;">
+                            <input type="file" id="file-input" accept=".pdf,.docx,.doc" style="display: none;">
                             <div id="upload-status" style="display: none;"></div>
 
                             <!-- Attach button (circular charcoal grey background) -->
@@ -225,27 +459,333 @@
                             </div>
                         </form>
 
-                        <!-- Suggestion Cards Grid (Qubi style cards, 4 columns layout) -->
+                        <!-- Suggestion Cards Grid (Engineering Study Assistant niche) -->
                         <div class="suggestion-grid-nexa">
-                            <button class="suggestion-pill suggestion-pill-nexa" data-prompt="Discover the best marketing strategies to showcase your properties.">
-                                <span>Marketing Insights</span>
+                            <button class="suggestion-pill suggestion-pill-nexa" data-prompt="Summarize key formulas, definitions, and PYQ exam questions from my uploaded notes.">
+                                <span>Exam Preparation</span>
                             </button>
-                            <button class="suggestion-pill suggestion-pill-nexa" data-prompt="Learn expert negotiation tips to close deals effectively.">
-                                <span>Negotiation Tactics</span>
+                            <button class="suggestion-pill suggestion-pill-nexa" data-prompt="Help me solve step-by-step tutorial sheet assignments and explain underlying equations.">
+                                <span>Assignment Helper</span>
                             </button>
-                            <button class="suggestion-pill suggestion-pill-nexa" data-prompt="Get tailored advice on increasing property visibility and driving sales.">
-                                <span>Sales Strategies</span>
+                            <button class="suggestion-pill suggestion-pill-nexa" data-prompt="Explain core concepts in Operating Systems, DBMS, DSA, and Networks with clear examples.">
+                                <span>Engineering Concepts</span>
                             </button>
-                            <button class="suggestion-pill suggestion-pill-nexa" data-prompt="Need help with something else? Ask away, and we'll guide you.">
-                                <span>General Support</span>
+                            <button class="suggestion-pill suggestion-pill-nexa" data-prompt="Create a 5-minute quick revision cheat sheet and key takeaways from my uploaded PDF documents.">
+                                <span>Quick Revision</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Personal My Library Page View -->
+                    <div id="pinned-library-container" class="pinned-library-container hidden">
+                        <div class="library-header-box">
+                            <div class="library-header-title">
+                                <h2>📚 My Documents</h2>
+                                <p>Your personal collection of uploaded engineering notes, PYQs, and assignments.</p>
+                            </div>
+                            <button type="button" id="btn-library-upload-trigger" class="btn-main-upload">+ Upload Document (.pdf, .docx, .doc)</button>
+                        </div>
+
+                        <!-- Personal User Stats Card (Study Streak & Contribution Score) -->
+                        <div class="user-stats-card">
+                            <div class="user-stats-info">
+                                <div id="stats-user-avatar" class="stats-user-avatar"></div>
+                                <div class="stats-user-details">
+                                    <h3 id="stats-user-name">Student User</h3>
+                                    <p id="stats-user-email">student@college.edu</p>
+                                </div>
+                            </div>
+                            <div class="user-stats-badges">
+                                <div class="stat-badge streak-badge" title="Daily study streak count">
+                                    <span class="badge-icon">🔥</span>
+                                    <div class="badge-content">
+                                        <span class="badge-title">Study Streak</span>
+                                        <h4 id="user-streak-display">1 Day Streak</h4>
+                                    </div>
+                                </div>
+                                <div class="stat-badge score-badge" title="Running contribution points">
+                                    <span class="badge-icon">⭐</span>
+                                    <div class="badge-content">
+                                        <span class="badge-title">Contribution Score</span>
+                                        <h4 id="user-score-display">0 Points</h4>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Filter Bar -->
+                        <div class="library-filter-bar">
+                            <div class="filter-search-box">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                                <input type="text" id="library-filter-search" placeholder="Search my uploaded files...">
+                            </div>
+                            <select id="library-filter-subject" class="filter-select">
+                                <option value="">All Engineering Subjects</option>
+                                <option value="Computational Thinking & Programming">Computational Thinking & Programming</option>
+                                <option value="Engineering Calculus">Engineering Calculus</option>
+                                <option value="Introduction to Electricals & Electronics">Introduction to Electricals & Electronics</option>
+                                <option value="Electromagnetism & Mechanics">Electromagnetism & Mechanics</option>
+                                <option value="Linear Algebra & Ordinary Differential Equation">Linear Algebra & Ordinary Differential Equation</option>
+                                <option value="Digital Design">Digital Design</option>
+                                <option value="Discrete Mathematical Structure">Discrete Mathematical Structure</option>
+                                <option value="OOPS using Java">OOPS using Java</option>
+                                <option value="Probability & Statistics">Probability & Statistics</option>
+                                <option value="Statistical Machine Learning">Statistical Machine Learning</option>
+                                <option value="Information Management System">Information Management System</option>
+                                <option value="DSA using C++">DSA using C++</option>
+                                <option value="Computer Networks">Computer Networks</option>
+                                <option value="Operating Systems">Operating Systems</option>
+                                <option value="DAA">DAA</option>
+                                <option value="Microprocessor">Microprocessor</option>
+                                <option value="Artificial Intelligence">Artificial Intelligence</option>
+                                <option value="Fullstack Development">Fullstack Development</option>
+                                <option value="Cyber Security">Cyber Security</option>
+                                <option value="Quantum Computing">Quantum Computing</option>
+                                <option value="UI/UX Design">UI/UX Design</option>
+                                <option value="Cloud Computing">Cloud Computing</option>
+                                <option value="Blockchain">Blockchain</option>
+                                <option value="DevOps">DevOps</option>
+                            </select>
+                            <select id="library-filter-semester" class="filter-select">
+                                <option value="">All Semesters</option>
+                                <option value="Semester 1">Semester 1</option>
+                                <option value="Semester 2">Semester 2</option>
+                                <option value="Semester 3">Semester 3</option>
+                                <option value="Semester 4">Semester 4</option>
+                                <option value="Semester 5">Semester 5</option>
+                                <option value="Semester 6">Semester 6</option>
+                                <option value="Semester 7">Semester 7</option>
+                                <option value="Semester 8">Semester 8</option>
+                            </select>
+                            <select id="library-filter-filetype" class="filter-select">
+                                <option value="">All File Types</option>
+                                <option value="Notes">Notes</option>
+                                <option value="PYQ">PYQ</option>
+                                <option value="Assignment">Assignment</option>
+                            </select>
+                        </div>
+
+                        <!-- All User Uploads Grid -->
+                        <div id="library-documents-grid" class="library-documents-grid" style="margin-top: 8px;">
+                            <!-- Populated dynamically with user's own uploads -->
+                        </div>
+                    </div>
+
+                    <!-- Browse Documents Page View -->
+                    <div id="browse-container" class="browse-container hidden">
+                        <div class="library-header-box">
+                            <div class="library-header-title">
+                                <h2>📁 Shared Resources Catalog</h2>
+                                <p>Select your semester and subject to quickly find and download shared engineering notes, PYQs, and assignments.</p>
+                            </div>
+                            <button type="button" id="btn-browse-upload-trigger" class="btn-main-upload">+ Upload Document (.pdf, .docx, .doc)</button>
+                        </div>
+
+                        <!-- Filter Controls Card -->
+                        <div class="browse-filter-card">
+                            <div class="browse-search-wrapper">
+                                <label for="browse-search-input">Instant Search:</label>
+                                <div class="browse-search-input-box">
+                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                                    <input type="text" id="browse-search-input" placeholder="Type file name, subject, or type (e.g., dbms, pyq, os)..." autocomplete="off">
+                                </div>
+                            </div>
+
+                            <div class="browse-filter-group">
+                                <label for="browse-semester-select">1. Select Semester:</label>
+                                <select id="browse-semester-select" class="browse-select">
+                                    <option value="">All Semesters</option>
+                                    <option value="Semester 1">Semester 1</option>
+                                    <option value="Semester 2">Semester 2</option>
+                                    <option value="Semester 3">Semester 3</option>
+                                    <option value="Semester 4">Semester 4</option>
+                                    <option value="Semester 5">Semester 5</option>
+                                    <option value="Semester 6">Semester 6</option>
+                                    <option value="Semester 7">Semester 7</option>
+                                    <option value="Semester 8">Semester 8</option>
+                                </select>
+                            </div>
+
+                            <div class="browse-filter-group">
+                                <label for="browse-subject-select">2. Select Subject:</label>
+                                <select id="browse-subject-select" class="browse-select">
+                                    <option value="">All Engineering Subjects</option>
+                                </select>
+                            </div>
+
+                            <div class="browse-filter-group">
+                                <label for="browse-filetype-select">3. Select File Type:</label>
+                                <select id="browse-filetype-select" class="browse-select">
+                                    <option value="">All File Types</option>
+                                    <option value="Notes">Notes</option>
+                                    <option value="PYQ">PYQ</option>
+                                    <option value="Assignment">Assignment</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <!-- Clean List / Table Container -->
+                        <div class="browse-table-wrapper">
+                            <table class="browse-table">
+                                <thead>
+                                    <tr>
+                                        <th>Document Name</th>
+                                        <th>Type</th>
+                                        <th>Subject & Semester</th>
+                                        <th>Uploaded By</th>
+                                        <th>Date & Size</th>
+                                        <th class="col-action">Action</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="browse-files-tbody">
+                                    <!-- Dynamic rows -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- ============================================ -->
+                    <!-- 5. AI Exam Question Paper Predictor View     -->
+                    <!-- ============================================ -->
+                    <div id="predictor-container" class="predictor-container view-section hidden">
+                        <div class="predictor-header-banner">
+                            <div class="predictor-header-text">
+                                <h2>🎯 AI Exam Question Paper Predictor</h2>
+                                <p>Select your Semester & Engineering Subject. Prepz AI will analyze all uploaded Past Year Question Papers (PYQs) to generate a realistic predicted exam paper with question frequency probability tags.</p>
+                            </div>
+                        </div>
+
+                        <!-- Predictor Controls Card -->
+                        <div class="predictor-controls-card">
+                            <div class="predictor-form-row">
+                                <div class="predictor-field">
+                                    <label for="predictor-semester-select">1. Select Semester:</label>
+                                    <select id="predictor-semester-select" class="predictor-select">
+                                        <option value="Semester 1">Semester 1</option>
+                                        <option value="Semester 2">Semester 2</option>
+                                        <option value="Semester 3">Semester 3</option>
+                                        <option value="Semester 4">Semester 4</option>
+                                        <option value="Semester 5">Semester 5</option>
+                                        <option value="Semester 6">Semester 6</option>
+                                        <option value="Semester 7">Semester 7</option>
+                                        <option value="Semester 8">Semester 8</option>
+                                    </select>
+                                </div>
+
+                                <div class="predictor-field">
+                                    <label for="predictor-subject-select">2. Select Subject:</label>
+                                    <select id="predictor-subject-select" class="predictor-select">
+                                        <!-- Dynamically populated -->
+                                    </select>
+                                </div>
+
+                                <div class="predictor-field">
+                                    <label for="predictor-examtype-select">3. Select Exam Type:</label>
+                                    <select id="predictor-examtype-select" class="predictor-select">
+                                        <option value="Mid-Sem" selected>Mid-Sem Exam</option>
+                                        <option value="End-Sem">End-Sem Exam</option>
+                                    </select>
+                                </div>
+
+                                <div class="predictor-field-btn">
+                                    <button type="button" id="btn-generate-predictor" class="btn-primary-nexa btn-predictor-generate">
+                                        ✨ Generate Predicted Paper
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Loading Indicator Card -->
+                        <div id="predictor-loading-card" class="predictor-status-card hidden">
+                            <div class="predictor-spinner-box">
+                                <div class="predictor-spinner"></div>
+                                <h4>Analyzing past PYQs & predicting exam patterns...</h4>
+                                <p>Extracting PYQ text, calculating topic frequency weights, and generating structured exam questions.</p>
+                            </div>
+                        </div>
+
+                        <!-- Insufficient PYQs Warning Card -->
+                        <div id="predictor-warning-card" class="predictor-status-card warning-card hidden">
+                            <div class="warning-icon">⚠️</div>
+                            <h4 id="predictor-warning-title">Not enough PYQs uploaded yet</h4>
+                            <p id="predictor-warning-message">At least 2 Past Year Question papers (PYQs) are required for accurate AI pattern analysis.</p>
+                            <button type="button" id="btn-warning-upload-pyq" class="btn-primary-nexa" style="margin-top: 15px;">
+                                📤 Upload PYQ Document Now
                             </button>
                         </div>
 
+                        <!-- Result Predicted Paper Card -->
+                        <div id="predictor-result-card" class="predictor-result-card hidden">
+                            <div class="predicted-paper-actions">
+                                <div class="paper-meta-tags">
+                                    <span id="badge-pyq-count" class="badge-pyq-count">📊 Based on 3 PYQs</span>
+                                    <span id="badge-predicted-subject" class="badge-subject">Operating Systems</span>
+                                </div>
+                                <div class="paper-action-buttons">
+                                    <button type="button" id="btn-download-predicted-pdf" class="btn-action-pdf">
+                                        📥 Download as PDF
+                                    </button>
+                                </div>
+                            </div>
+
+                            <!-- PYQ Topic & Question Search Insight Toolbar -->
+                            <div class="predictor-search-toolbar">
+                                <div class="predictor-search-wrapper">
+                                    <svg class="search-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <circle cx="11" cy="11" r="8"></circle>
+                                        <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                                    </svg>
+                                    <input type="text" id="predictor-search-input" class="predictor-search-input" placeholder="🔍 Search important questions, key topics, or numericals in tagged PYQs (e.g. Deadlocks, Scheduling, Derivations)..." oninput="filterPredictedPaper(this.value)">
+                                    <span id="predictor-search-count" class="search-count-badge hidden">0 matches</span>
+                                </div>
+                                <div class="predictor-topic-pills">
+                                    <span class="pill-label">Quick Topic Filters:</span>
+                                    <button type="button" class="topic-pill active" onclick="filterTopicPill(this, '')">All Insights</button>
+                                    <button type="button" class="topic-pill" onclick="filterTopicPill(this, 'Frequency')">🔥 High Frequency (>80%)</button>
+                                    <button type="button" class="topic-pill" onclick="filterTopicPill(this, 'Theory')">📖 Theory Based Questions</button>
+                                    <button type="button" class="topic-pill" onclick="filterTopicPill(this, 'Numerical')">🧮 Numerical & Problem Solving</button>
+                                </div>
+                            </div>
+
+                            <!-- Document Paper Sheet Container -->
+                            <div id="predicted-paper-document" class="predicted-paper-sheet">
+                                <div id="predicted-paper-body" class="paper-markdown-body">
+                                    <!-- Dynamic Markdown Content -->
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Top Contributors Leaderboard View -->
+                    <div id="leaderboard-container" class="leaderboard-container hidden" style="display: none;">
+                        <div class="leaderboard-header-banner">
+                            <div class="leaderboard-header-text">
+                                <h2>🏆 Top Contributors Leaderboard</h2>
+                                <p>Rankings based on community document uploads (+10 pts), file downloads (+2 pts), and active AI study sessions (+1 pt).</p>
+                            </div>
+                        </div>
+
+                        <!-- Leaderboard Table Card -->
+                        <div class="leaderboard-card">
+                            <table class="leaderboard-table">
+                                <thead>
+                                    <tr>
+                                        <th style="width: 80px; text-align: center;">Rank</th>
+                                        <th>Contributor</th>
+                                        <th style="text-align: right;">Contribution Score</th>
+                                        <th style="text-align: right;">Study Streak</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="leaderboard-tbody">
+                                    <!-- Loaded dynamically from fetchLeaderboard() -->
+                                </tbody>
+                            </table>
+                        </div>
                     </div>
 
                     <!-- Footer Details -->
                     <footer class="landing-footer-nexa">
-                        <span class="copyright-text">© 2026 DocPilot. All rights reserved.</span>
+                        <span class="copyright-text">© 2026 Prepz. All rights reserved.</span>
                         <div class="footer-links">
                             <a href="#">Privacy Policy</a>
                             <a href="#">Terms of Service</a>
@@ -256,9 +796,128 @@
             </main>
         </div>
 
+    <!-- Upload Document Modal -->
+    <div id="upload-modal" class="modal-overlay hidden">
+        <div class="modal-card">
+            <div class="modal-header">
+                <h3>Upload Student Document</h3>
+                <button type="button" id="btn-close-upload-modal" class="btn-close-modal" aria-label="Close Modal" onclick="document.getElementById('upload-modal').classList.add('hidden')">&times;</button>
+            </div>
+            <form id="form-upload-document" class="modal-form" novalidate>
+                <div class="form-group">
+                    <label for="upload-file-input">Select PDF or Word File (.pdf, .docx, .doc) <span class="req-star">*</span></label>
+                    <div class="custom-file-dropzone" id="file-dropzone-box">
+                        <input type="file" id="upload-file-input" accept=".pdf,.docx,.doc">
+                        <div class="dropzone-text" id="dropzone-text-display">
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                            <span id="file-chosen-label">Click or drag PDF or Word (.docx, .doc) file here</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label for="upload-subject-select">Engineering Subject <span class="req-star">*</span></label>
+                    <select id="upload-subject-select">
+                        <option value="" disabled selected>-- Select Subject --</option>
+                        <option value="Computational Thinking & Programming">Computational Thinking & Programming</option>
+                        <option value="Engineering Calculus">Engineering Calculus</option>
+                        <option value="Introduction to Electricals & Electronics">Introduction to Electricals & Electronics</option>
+                        <option value="Electromagnetism & Mechanics">Electromagnetism & Mechanics</option>
+                        <option value="Linear Algebra & Ordinary Differential Equation">Linear Algebra & Ordinary Differential Equation</option>
+                        <option value="Digital Design">Digital Design</option>
+                        <option value="Discrete Mathematical Structure">Discrete Mathematical Structure</option>
+                        <option value="OOPS using Java">OOPS using Java</option>
+                        <option value="Probability & Statistics">Probability & Statistics</option>
+                        <option value="Statistical Machine Learning">Statistical Machine Learning</option>
+                        <option value="Information Management System">Information Management System</option>
+                        <option value="DSA using C++">DSA using C++</option>
+                        <option value="Computer Networks">Computer Networks</option>
+                        <option value="Operating Systems">Operating Systems</option>
+                        <option value="DAA">DAA</option>
+                        <option value="Microprocessor">Microprocessor</option>
+                        <option value="Artificial Intelligence">Artificial Intelligence</option>
+                        <option value="Fullstack Development">Fullstack Development</option>
+                        <option value="Cyber Security">Cyber Security</option>
+                        <option value="Quantum Computing">Quantum Computing</option>
+                        <option value="UI/UX Design">UI/UX Design</option>
+                        <option value="Cloud Computing">Cloud Computing</option>
+                        <option value="Blockchain">Blockchain</option>
+                        <option value="DevOps">DevOps</option>
+                        <option value="Other Engineering Subject">Other Engineering Subject</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="upload-semester-select">Semester <span class="req-star">*</span></label>
+                    <select id="upload-semester-select">
+                        <option value="" disabled selected>-- Select Semester --</option>
+                        <option value="Semester 1">Semester 1</option>
+                        <option value="Semester 2">Semester 2</option>
+                        <option value="Semester 3">Semester 3</option>
+                        <option value="Semester 4">Semester 4</option>
+                        <option value="Semester 5">Semester 5</option>
+                        <option value="Semester 6">Semester 6</option>
+                        <option value="Semester 7">Semester 7</option>
+                        <option value="Semester 8">Semester 8</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="upload-filetype-select">File Type <span class="req-star">*</span></label>
+                    <select id="upload-filetype-select">
+                        <option value="" disabled selected>-- Select File Type --</option>
+                        <option value="Notes">Notes</option>
+                        <option value="PYQ">PYQ</option>
+                        <option value="Assignment">Assignment</option>
+                    </select>
+                </div>
+                <div class="form-group" id="group-upload-examtype">
+                    <label for="upload-examtype-select">Exam Type <span class="req-star">*</span></label>
+                    <select id="upload-examtype-select">
+                        <option value="Mid-Sem">Mid-Sem</option>
+                        <option value="End-Sem">End-Sem</option>
+                        <option value="Other" selected>Other / N/A</option>
+                    </select>
+                </div>
+                <div id="modal-upload-status" class="modal-status hidden"></div>
+                <button type="submit" id="btn-submit-upload" class="btn-auth-primary" style="margin-top: 12px;">Upload & Index Document</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Report Document Modal -->
+    <div id="report-modal" class="modal-overlay hidden">
+        <div class="modal-card">
+            <div class="modal-header">
+                <h3>🚩 Report Document</h3>
+                <button type="button" id="btn-close-report-modal" class="btn-close-modal" aria-label="Close Modal">&times;</button>
+            </div>
+            <form id="form-report-document" class="modal-form" novalidate>
+                <input type="hidden" id="report-filename-input">
+                <div class="form-group">
+                    <label>Target Document</label>
+                    <div id="report-doc-title-display" style="font-weight: 600; font-size: 13.5px; color: #8b5cf6; background: rgba(139, 92, 246, 0.1); padding: 9px 12px; border-radius: 10px; border: 1px solid rgba(139, 92, 246, 0.2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap;"></div>
+                </div>
+                <div class="form-group">
+                    <label for="report-reason-select">Reason for Report <span class="req-star">*</span></label>
+                    <select id="report-reason-select">
+                        <option value="" disabled selected>-- Select a Reason --</option>
+                        <option value="Spam or Irrelevant Content">Spam or Irrelevant Content</option>
+                        <option value="Incorrect Subject / Semester Label">Incorrect Subject / Semester Label</option>
+                        <option value="Copyright or Intellectual Property Issue">Copyright or Intellectual Property Issue</option>
+                        <option value="Inappropriate or Offensive Material">Inappropriate or Offensive Material</option>
+                        <option value="Corrupted or Unreadable File">Corrupted or Unreadable File</option>
+                        <option value="Other Issue">Other Issue</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="report-notes-input">Additional Details (Optional)</label>
+                    <textarea id="report-notes-input" rows="3" placeholder="Provide extra details to help moderation..." style="width: 100%; border-radius: 10px; border: 1px solid #d1d5db; padding: 10px 12px; font-family: var(--font-body); font-size: 13px; color: #111827; outline: none; resize: none; box-sizing: border-box;"></textarea>
+                </div>
+                <div id="modal-report-status" class="modal-status hidden"></div>
+                <button type="submit" id="btn-submit-report" class="btn-auth-primary" style="margin-top: 8px; background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);">Submit Report</button>
+            </form>
+        </div>
     </div>
 
     <!-- Main JavaScript Link -->
-    <script src="app.js?v=1.3"></script>
+    <script src="app.js?v=9.0"></script>
 </body>
 </html>

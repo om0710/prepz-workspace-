@@ -22,3 +22,10 @@ uploads/
 
 # Scratch Scripts
 scratch/
+
+# Cache & Streamlit
+.cache/
+.streamlit/
+
+# Media
+*.mov

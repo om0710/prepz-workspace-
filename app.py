@@ -2,6 +2,7 @@ import os
 import json
 import uuid
 import shutil
+from typing import Optional
 from fastapi import FastAPI, UploadFile, File, HTTPException
 from fastapi.responses import StreamingResponse, FileResponse
 from fastapi.staticfiles import StaticFiles
@@ -19,7 +20,7 @@ app = FastAPI(title="LangGraph Chatbot Client API")
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
-    allow_credentials=True,
+    allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -27,6 +28,7 @@ app.add_middleware(
 class ChatRequest(BaseModel):
     query: str
     thread_id: str
+    user_email: Optional[str] = None
 
 def serialize_message(msg):
     if isinstance(msg, HumanMessage):
@@ -41,8 +43,21 @@ def serialize_message(msg):
 os.makedirs("static", exist_ok=True)
 
 @app.get("/")
+@app.get("/index.html")
 def read_root():
     return FileResponse("static/index.html")
+
+@app.get("/style.css")
+def read_style():
+    return FileResponse("static/style.css")
+
+@app.get("/app.js")
+def read_app_js():
+    return FileResponse("static/app.js")
+
+@app.get("/login_popup.html")
+def read_login_popup():
+    return FileResponse("static/login_popup.html")
 
 class PinRequest(BaseModel):
     is_pinned: bool
@@ -144,6 +159,10 @@ class QueueCallbackHandler(BaseCallbackHandler):
 
 @app.post("/chat")
 async def chat_stream(request: ChatRequest):
+    if request.user_email:
+        add_contribution_points(request.user_email, 1)
+        update_user_activity(request.user_email)
+
     thread_id = request.thread_id or "default_thread"
     config = {"configurable": {"thread_id": thread_id}}
     state = {"messages": [HumanMessage(content=request.query)]}
@@ -179,53 +198,725 @@ async def chat_stream(request: ChatRequest):
             
     return StreamingResponse(response_generator(), media_type="text/event-stream")
 
+from database import (
+    create_user, get_user_by_email, verify_password,
+    record_upload, get_file_uploads_metadata, delete_upload_record,
+    get_upload_by_filename, record_report, get_reported_files,
+    update_user_activity, add_contribution_points, get_top_contributors,
+    mark_onboarding_completed
+)
+from fastapi import Form
+from typing import Optional
+
+class SignupRequest(BaseModel):
+    name: str
+    email: str
+    password: str
+
+class LoginRequest(BaseModel):
+    email: str
+    password: str
+
+class GoogleLoginRequest(BaseModel):
+    name: str
+    email: str
+    picture: Optional[str] = None
+
+class CompleteOnboardingRequest(BaseModel):
+    email: str
+
+@app.post("/api/signup")
+def signup(req: SignupRequest):
+    if not req.name.strip() or not req.email.strip() or not req.password:
+        raise HTTPException(status_code=400, detail="All fields are required.")
+    
+    if "@" not in req.email:
+        raise HTTPException(status_code=400, detail="Invalid email address.")
+
+    existing = get_user_by_email(req.email)
+    if existing:
+        raise HTTPException(status_code=400, detail="An account with this email already exists. Please log in.")
+    
+    user = create_user(name=req.name, email=req.email, password=req.password, provider="local")
+    user = update_user_activity(req.email) or user
+    return {
+        "status": "success",
+        "user": {
+            "id": user["id"],
+            "name": user["name"],
+            "email": user["email"],
+            "provider": user["provider"],
+            "avatar_url": user["avatar_url"],
+            "contribution_score": user.get("contribution_score", 0),
+            "current_streak": user.get("current_streak", 1),
+            "has_seen_onboarding": user.get("has_seen_onboarding", False)
+        }
+    }
+
+@app.post("/api/login")
+def login(req: LoginRequest):
+    if not req.email.strip() or not req.password:
+        raise HTTPException(status_code=400, detail="Email and password are required.")
+    
+    user = get_user_by_email(req.email)
+    if not user:
+        raise HTTPException(status_code=400, detail="No account found with this email. Please sign up.")
+    
+    if user["provider"] != "local" and not user["password_hash"]:
+        raise HTTPException(status_code=400, detail="This account was created via Google Login. Please use Google Login.")
+
+    if not verify_password(req.password, user["password_hash"]):
+        raise HTTPException(status_code=400, detail="Incorrect password. Please try again.")
+
+    user = update_user_activity(req.email) or user
+    return {
+        "status": "success",
+        "user": {
+            "id": user["id"],
+            "name": user["name"],
+            "email": user["email"],
+            "provider": user["provider"],
+            "avatar_url": user["avatar_url"],
+            "contribution_score": user.get("contribution_score", 0),
+            "current_streak": user.get("current_streak", 1),
+            "has_seen_onboarding": user.get("has_seen_onboarding", False)
+        }
+    }
+
+@app.post("/api/google-login")
+def google_login(req: GoogleLoginRequest):
+    if not req.email.strip() or not req.name.strip():
+        raise HTTPException(status_code=400, detail="Name and email are required.")
+
+    user = get_user_by_email(req.email)
+    if not user:
+        user = create_user(name=req.name, email=req.email, password=None, provider="google", avatar_url=req.picture)
+    
+    user = update_user_activity(req.email) or user
+    return {
+        "status": "success",
+        "user": {
+            "id": user["id"],
+            "name": user["name"],
+            "email": user["email"],
+            "provider": user["provider"],
+            "avatar_url": user["avatar_url"],
+            "contribution_score": user.get("contribution_score", 0),
+            "current_streak": user.get("current_streak", 1),
+            "has_seen_onboarding": user.get("has_seen_onboarding", False)
+        }
+    }
+
+@app.get("/api/user/stats")
+def get_user_stats(email: str):
+    if not email or not email.strip():
+        raise HTTPException(status_code=400, detail="Email parameter is required.")
+    user = update_user_activity(email)
+    if not user:
+        if email.lower().strip() == "anonymous@college.edu":
+            return {
+                "status": "success",
+                "email": email,
+                "name": "Anonymous Student",
+                "contribution_score": 0,
+                "current_streak": 0,
+                "last_active_date": "",
+                "has_seen_onboarding": True
+            }
+        user = create_user(name=email.split("@")[0].capitalize(), email=email)
+    return {
+        "status": "success",
+        "email": user["email"],
+        "name": user["name"],
+        "contribution_score": user.get("contribution_score", 0),
+        "current_streak": user.get("current_streak", 1),
+        "last_active_date": user.get("last_active_date", ""),
+        "has_seen_onboarding": user.get("has_seen_onboarding", False)
+    }
+
+@app.post("/api/user/complete-onboarding")
+def complete_onboarding(req: CompleteOnboardingRequest):
+    if not req.email or not req.email.strip():
+        raise HTTPException(status_code=400, detail="Email parameter is required.")
+    mark_onboarding_completed(req.email.strip())
+    return {"status": "success", "message": "Onboarding marked as completed."}
+
+@app.get("/api/leaderboard")
+def get_leaderboard():
+    leaderboard = get_top_contributors(10)
+    return {
+        "status": "success",
+        "leaderboard": leaderboard
+    }
+
+MAX_FILE_SIZE_BYTES = 20 * 1024 * 1024  # 20MB limit
+
 @app.post("/upload")
-async def upload_file(file: UploadFile = File(...)):
-    if not file.filename.endswith(".pdf"):
-        raise HTTPException(status_code=400, detail="Only PDF files are supported.")
+async def upload_pdf(
+    file: UploadFile = File(...),
+    user_email: str = Form("anonymous@college.edu"),
+    user_name: str = Form("Anonymous Student"),
+    subject: str = Form("General Engineering"),
+    semester: str = Form("Semester 1"),
+    file_type: str = Form("Notes"),
+    exam_type: str = Form("Other"),
+    is_private: int = Form(0),
+    confirm_overwrite: bool = Form(False)
+):
+    allowed_exts = (".pdf", ".docx", ".doc")
+    if not any(file.filename.lower().endswith(ext) for ext in allowed_exts):
+        raise HTTPException(status_code=400, detail="Only PDF (.pdf) and Word (.docx, .doc) files are supported.")
+    
+    if not subject or not subject.strip():
+        raise HTTPException(status_code=400, detail="Subject is required.")
         
+    if not semester or not semester.strip():
+        raise HTTPException(status_code=400, detail="Semester is required.")
+
+    if not file_type or not file_type.strip():
+        raise HTTPException(status_code=400, detail="File Type is required.")
+
+    # Check for existing duplicate file under same subject & semester
+    if not confirm_overwrite:
+        existing = get_upload_by_filename(file.filename)
+        if existing and existing["subject"] == subject and existing["semester"] == semester:
+            raise HTTPException(
+                status_code=409,
+                detail=f"A similar file named '{file.filename}' for {subject} ({semester}) already exists. Do you still want to upload?"
+            )
+
+    # Check headers / size if provided by client
+    if file.size and file.size > MAX_FILE_SIZE_BYTES:
+        size_mb = round(file.size / (1024 * 1024), 2)
+        raise HTTPException(
+            status_code=400,
+            detail=f"File size exceeds 20MB limit ({size_mb} MB). Please select a smaller PDF."
+        )
+
     os.makedirs("uploads", exist_ok=True)
     file_path = os.path.join("uploads", file.filename)
     
     try:
+        content = await file.read()
+        size_bytes = len(content)
+
+        if size_bytes > MAX_FILE_SIZE_BYTES:
+            size_mb = round(size_bytes / (1024 * 1024), 2)
+            raise HTTPException(
+                status_code=400,
+                detail=f"File size exceeds 20MB limit ({size_mb} MB). Please select a smaller PDF."
+            )
+
         with open(file_path, "wb") as buffer:
-            shutil.copyfileobj(file.file, buffer)
+            buffer.write(content)
         
-        # Add to vector DB with clean text parsing
-        add_pdf_to_vectordb(file_path)
-        return {"status": "success", "filename": file.filename}
+        # Record file uploader info and subject/semester/file_type/exam_type/is_private in database
+        record_upload(
+            filename=file.filename,
+            user_email=user_email,
+            user_name=user_name,
+            file_path=file_path,
+            size_bytes=size_bytes,
+            subject=subject,
+            semester=semester,
+            file_type=file_type,
+            exam_type=exam_type,
+            is_private=int(is_private)
+        )
+        
+        # Add to vector DB with clean text parsing and user/subject/semester/file_type metadata
+        add_pdf_to_vectordb(
+            file_path,
+            user_email=user_email,
+            user_name=user_name,
+            subject=subject,
+            semester=semester,
+            file_type=file_type
+        )
+
+        # Award +10 contribution points to uploader & update study streak
+        if user_email and user_email != "anonymous@college.edu":
+            add_contribution_points(user_email, 10)
+            update_user_activity(user_email)
+
+        return {
+            "status": "success",
+            "filename": file.filename,
+            "user_email": user_email,
+            "user_name": user_name,
+            "subject": subject,
+            "semester": semester,
+            "file_type": file_type,
+            "size_bytes": size_bytes
+        }
+    except HTTPException:
+        raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=f"Failed to process document: {str(e)}")
+
+from fastapi.responses import HTMLResponse
+from urllib.parse import quote
+
+def render_docx_viewer_html(filename: str, meta: dict, text_docs: list) -> HTMLResponse:
+    import html
+    title = filename
+    subject = meta.get("subject", "General Engineering") if meta else "General Engineering"
+    semester = meta.get("semester", "Semester 1") if meta else "Semester 1"
+    file_type = meta.get("file_type", "Notes") if meta else "Notes"
+    uploader = meta.get("user_name", "Anonymous Student") if meta else "Anonymous Student"
+    
+    extracted_text = "\n\n".join([d.page_content for d in text_docs]) if text_docs else "No readable text content found in this document."
+    
+    safe_text = html.escape(extracted_text)
+    paragraphs = safe_text.split("\n")
+    
+    body_html = ""
+    for p in paragraphs:
+        p_str = p.strip()
+        if not p_str:
+            continue
+        if p_str.startswith("#"):
+            body_html += f"<h3 style='margin: 18px 0 8px 0; color: #a78bfa; font-size: 18px;'>{p_str.lstrip('#').strip()}</h3>"
+        elif " | " in p_str:
+            cells = p_str.split(" | ")
+            cells_html = "".join([f"<td style='border: 1px solid rgba(255,255,255,0.12); padding: 8px 12px;'>{c}</td>" for c in cells])
+            body_html += f"<table style='width:100%; border-collapse:collapse; margin: 12px 0; font-size: 13.5px; background: rgba(0,0,0,0.2);'><tr>{cells_html}</tr></table>"
+        else:
+            body_html += f"<p style='margin-bottom: 12px; line-height: 1.8; font-size: 15px; color: #e4e4e7;'>{p_str}</p>"
+
+    html_content = f"""<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Prepz Reader - {html.escape(title)}</title>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        * {{ box-sizing: border-box; margin: 0; padding: 0; }}
+        body {{
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            background-color: #09090b;
+            color: #f4f4f5;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }}
+        .reader-header {{
+            background: #0f172a;
+            border-bottom: 1px solid rgba(99, 102, 241, 0.2);
+            padding: 14px 28px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }}
+        .doc-info {{ display: flex; align-items: center; gap: 12px; }}
+        .doc-title {{ font-size: 16px; font-weight: 700; color: #ffffff; }}
+        .badge {{
+            padding: 4px 10px;
+            border-radius: 20px;
+            font-size: 11.5px;
+            font-weight: 600;
+        }}
+        .badge-type {{ background: rgba(99, 102, 241, 0.2); color: #818cf8; border: 1px solid rgba(99, 102, 241, 0.3); }}
+        .badge-sem {{ background: rgba(16, 185, 129, 0.2); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.3); }}
+        .btn-download {{
+            background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%);
+            color: white;
+            padding: 8px 18px;
+            border-radius: 8px;
+            text-decoration: none;
+            font-weight: 600;
+            font-size: 13px;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            transition: all 0.2s;
+        }}
+        .btn-download:hover {{ opacity: 0.9; transform: translateY(-1px); }}
+        .reader-container {{
+            max-width: 860px;
+            width: 92%;
+            margin: 32px auto;
+            padding: 40px;
+            background: #111827;
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 16px;
+            box-shadow: 0 20px 50px rgba(0,0,0,0.5);
+        }}
+        .uploader-bar {{
+            font-size: 12.5px;
+            color: #9ca3af;
+            margin-bottom: 24px;
+            padding-bottom: 16px;
+            border-bottom: 1px solid rgba(255,255,255,0.08);
+        }}
+    </style>
+</head>
+<body>
+    <header class="reader-header">
+        <div class="doc-info">
+            <span style="font-size: 24px;">📝</span>
+            <div>
+                <h1 class="doc-title">{html.escape(title)}</h1>
+                <div style="display: flex; gap: 6px; margin-top: 4px;">
+                    <span class="badge badge-type">{html.escape(file_type)}</span>
+                    <span class="badge badge-sem">{html.escape(semester)} • {html.escape(subject)}</span>
+                </div>
+            </div>
+        </div>
+        <a href="/download/{quote(filename)}?disposition=attachment" class="btn-download" download>
+            📥 Download Original File
+        </a>
+    </header>
+    <main class="reader-container">
+        <div class="uploader-bar">Uploaded by <strong>{html.escape(uploader)}</strong></div>
+        <div class="doc-content">
+            {body_html}
+        </div>
+    </main>
+</body>
+</html>"""
+    return HTMLResponse(content=html_content)
+
+@app.get("/view/{filename}")
+def view_file_route(filename: str):
+    file_path = os.path.join("uploads", filename)
+    if not os.path.exists(file_path):
+        raise HTTPException(status_code=404, detail="File not found.")
+    
+    meta = get_upload_by_filename(filename)
+    if meta and meta.get("user_email"):
+        uploader_email = meta["user_email"]
+        if uploader_email and uploader_email != "anonymous@college.edu":
+            add_contribution_points(uploader_email, 2)
+
+    fn_lower = filename.lower()
+    if fn_lower.endswith(".docx") or fn_lower.endswith(".doc"):
+        from rag import extract_text_from_file
+        docs = extract_text_from_file(file_path)
+        return render_docx_viewer_html(filename, meta or {}, docs)
+
+    return FileResponse(
+        file_path,
+        media_type="application/pdf" if fn_lower.endswith(".pdf") else None,
+        headers={"Content-Disposition": f'inline; filename="{filename}"'}
+    )
+
+@app.get("/files/{filename}")
+def get_file(filename: str):
+    file_path = os.path.join("uploads", filename)
+    if not os.path.exists(file_path):
+        raise HTTPException(status_code=404, detail="File not found.")
+    
+    # Award +2 contribution points to original uploader
+    meta = get_upload_by_filename(filename)
+    if meta and meta.get("user_email"):
+        uploader_email = meta["user_email"]
+        if uploader_email and uploader_email != "anonymous@college.edu":
+            add_contribution_points(uploader_email, 2)
+
+    return FileResponse(
+        file_path,
+        media_type=get_media_type(filename),
+        headers={"Content-Disposition": f'inline; filename="{filename}"'}
+    )
+
+@app.get("/download/{filename}")
+@app.get("/api/download/{filename}")
+def download_file_route(filename: str, disposition: Optional[str] = "inline"):
+    file_path = os.path.join("uploads", filename)
+    if not os.path.exists(file_path):
+        raise HTTPException(status_code=404, detail="File not found.")
+    
+    # Award +2 contribution points to original uploader
+    meta = get_upload_by_filename(filename)
+    if meta and meta.get("user_email"):
+        uploader_email = meta["user_email"]
+        if uploader_email and uploader_email != "anonymous@college.edu":
+            add_contribution_points(uploader_email, 2)
+
+    disp = "attachment" if disposition == "attachment" else "inline"
+    return FileResponse(
+        file_path,
+        media_type=get_media_type(filename),
+        headers={"Content-Disposition": f'{disp}; filename="{filename}"'}
+    )
 
 @app.get("/files")
 def list_files():
     try:
         from backend_rag import get_uploaded_files
-        return {"files": get_uploaded_files()}
+        raw_filenames = get_uploaded_files()
+        metadata_map = get_file_uploads_metadata()
+        
+        files_with_meta = []
+        for filename in raw_filenames:
+            meta = metadata_map.get(filename, {})
+            files_with_meta.append({
+                "filename": filename,
+                "user_email": meta.get("user_email", "anonymous@college.edu"),
+                "user_name": meta.get("user_name", "Anonymous Student"),
+                "uploaded_at": meta.get("uploaded_at", None),
+                "size_bytes": meta.get("size_bytes", 0),
+                "subject": meta.get("subject", "General Engineering"),
+                "semester": meta.get("semester", "Semester 1"),
+                "file_type": meta.get("file_type", "Notes"),
+                "exam_type": meta.get("exam_type", "Other"),
+                "is_private": meta.get("is_private", 0)
+            })
+        return {"files": files_with_meta}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.delete("/files/{filename}")
-def delete_file(filename: str):
+def delete_file(filename: str, user_email: Optional[str] = None, user_name: Optional[str] = None):
     try:
         import os
         from rag import delete_pdf_from_vectordb
         from backend_rag import reset_bm25_cache
         
+        # Ownership verification
+        existing_meta = get_upload_by_filename(filename)
+        if existing_meta:
+            uploader_email = (existing_meta.get("user_email") or "").lower().strip()
+            uploader_name = (existing_meta.get("user_name") or "").lower().strip()
+            req_email = (user_email or "").lower().strip()
+            req_name = (user_name or "").lower().strip()
+
+            if req_email and uploader_email and req_email != uploader_email:
+                raise HTTPException(status_code=403, detail="Permission denied. You can only delete files that you uploaded.")
+            if req_name and uploader_name and req_name != uploader_name and not req_email:
+                raise HTTPException(status_code=403, detail="Permission denied. You can only delete files that you uploaded.")
+
         file_path = os.path.join("uploads", filename)
         if os.path.exists(file_path):
             os.remove(file_path)
             
         delete_pdf_from_vectordb(file_path)
         reset_bm25_cache()
+        delete_upload_record(filename)
         
         return {"status": "success", "message": f"{filename} deleted."}
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-# Mount static folder
+class ReportFileRequest(BaseModel):
+    filename: str
+    reason: str
+    notes: Optional[str] = ""
+    reporter_email: Optional[str] = "anonymous@college.edu"
+    reporter_name: Optional[str] = "Anonymous Student"
+
+@app.post("/report")
+def report_document(req: ReportFileRequest):
+    if not req.filename or not req.filename.strip():
+        raise HTTPException(status_code=400, detail="Filename is required.")
+    if not req.reason or not req.reason.strip():
+        raise HTTPException(status_code=400, detail="Reason for report is required.")
+
+    record_report(
+        filename=req.filename.strip(),
+        reporter_email=req.reporter_email or "anonymous@college.edu",
+        reporter_name=req.reporter_name or "Anonymous Student",
+        reason=req.reason.strip(),
+        notes=req.notes.strip() if req.notes else ""
+    )
+    return {
+        "status": "success",
+        "message": f"Thank you for reporting '{req.filename}'. Our moderation team will review this document."
+    }
+
+@app.get("/reports")
+def list_reports():
+    return {"reports": get_reported_files()}
+
+class PredictPaperRequest(BaseModel):
+    subject: str
+    semester: str
+    exam_type: Optional[str] = "Mid-Sem"
+
+@app.post("/api/predict-paper")
+async def predict_paper(req: PredictPaperRequest):
+    subject = req.subject.strip()
+    semester = req.semester.strip()
+    exam_type = req.exam_type.strip() if req.exam_type else "Mid-Sem"
+
+    if not subject or not semester or not exam_type:
+        raise HTTPException(status_code=400, detail="Subject, Semester, and Exam Type are required.")
+
+    # Fetch metadata for all uploaded files
+    metadata_map = get_file_uploads_metadata()
+    
+    # Filter files that match subject, semester, file_type == 'PYQ', AND exam_type
+    pyq_files = []
+    for filename, meta in metadata_map.items():
+        m_sub = (meta.get("subject") or "").strip()
+        m_sem = (meta.get("semester") or "").strip()
+        m_type = (meta.get("file_type") or "").strip().upper()
+        m_exam = (meta.get("exam_type") or "Other").strip()
+
+        if (m_sub.lower() == subject.lower() and 
+            m_sem.lower() == semester.lower() and 
+            m_type == "PYQ" and 
+            m_exam.lower() == exam_type.lower()):
+            pyq_files.append(filename)
+
+    # Check requirement: At least 2 PYQs needed for the selected exam type
+    if len(pyq_files) < 2:
+        return {
+            "success": False,
+            "pyq_count": len(pyq_files),
+            "message": f"Not enough {exam_type} PYQs uploaded yet for {subject} ({semester}). ({len(pyq_files)} found). Please upload at least 2 {exam_type} PYQ papers to generate an accurate paper prediction."
+        }
+
+    # Extract text from the matching PYQ files
+    from langchain_community.document_loaders import PyPDFLoader
+    from rag import clean_spaced_text, is_spaced_out, llm
+
+    combined_text = ""
+    extracted_count = 0
+
+    for idx, fname in enumerate(pyq_files, 1):
+        file_path = os.path.join("uploads", fname)
+        if os.path.exists(file_path):
+            try:
+                loader = PyPDFLoader(file_path)
+                docs = loader.load()
+                file_text = ""
+                for doc in docs:
+                    pcontent = doc.page_content or ""
+                    if is_spaced_out(pcontent):
+                        pcontent = clean_spaced_text(pcontent)
+                    file_text += f"\n{pcontent}"
+                
+                if len(file_text) > 8000:
+                    file_text = file_text[:8000] + "\n...[truncated]..."
+
+                combined_text += f"\n\n=== PAST YEAR QUESTION PAPER #{idx} ({fname}) ===\n{file_text}"
+                extracted_count += 1
+            except Exception as e:
+                print(f"Error extracting text from {fname}: {e}")
+
+    if not combined_text.strip():
+        return {
+            "success": False,
+            "pyq_count": len(pyq_files),
+            "message": f"Could not extract text content from the uploaded PYQ files for {subject}."
+        }
+
+    import re
+    # Search for actual course code in extracted PYQ text (e.g. CS-301, KCS401, EE-101)
+    extracted_course_code = None
+    code_match = re.search(r'\b([A-Z]{2,4}\s*[-–]?\s*\d{3,4})\b', combined_text)
+    if code_match:
+        extracted_course_code = code_match.group(1).replace(" ", "-")
+
+    COURSE_CODE_MAP = {
+        "Computer Science & Programming": "CS-101",
+        "Engineering Mathematics": "MA-101",
+        "Engineering Physics": "PH-101",
+        "Basic Electrical & Electronics": "EE-101",
+        "Environmental Studies": "EV-101",
+        "Data Structures & Algorithms": "CS-201",
+        "Engineering Chemistry": "CH-101",
+        "Digital Logic Design": "CS-202",
+        "Discrete Mathematics": "MA-202",
+        "Object Oriented Programming": "CS-203",
+        "Computer Organization & Architecture": "CS-301",
+        "Database Management Systems": "CS-302",
+        "Theory of Computation": "CS-303",
+        "Operating Systems": "CS-304",
+        "Software Engineering": "CS-305",
+        "Design & Analysis of Algorithms": "CS-401",
+        "Computer Networks": "CS-402",
+        "Microprocessors & Microcontrollers": "EC-403",
+        "Artificial Intelligence": "CS-404",
+        "Signals & Systems": "EC-405",
+        "Machine Learning": "CS-501",
+        "Web Technologies & Frameworks": "CS-502",
+        "Compiler Design": "CS-503",
+        "Information Security": "CS-504",
+        "Computer Graphics": "CS-505",
+        "Cloud Computing": "CS-601",
+        "Big Data Analytics": "CS-602",
+        "Cyber Security & Cryptography": "CS-603",
+        "Mobile Application Development": "CS-604",
+        "Deep Learning": "CS-605",
+        "Data Science": "CS-701",
+        "Internet of Things (IoT)": "CS-702",
+        "Blockchain Technologies": "CS-703",
+        "Natural Language Processing": "CS-704",
+        "Software Testing": "CS-705",
+        "Major Capstone Project": "CS-801",
+        "Distributed Systems": "CS-802",
+        "High Performance Computing": "CS-803",
+        "Neural Networks": "CS-804",
+        "Advanced AI": "CS-805"
+    }
+
+    course_code = extracted_course_code or COURSE_CODE_MAP.get(subject, f"ENG-{subject[:3].upper()}-2026")
+
+    prompt = f"""You are a senior engineering university examiner and question paper creator for {subject} ({semester}).
+You are provided with text extracted from {extracted_count} past year question papers (PYQs) for {subject} ({semester}):
+
+{combined_text[:25000]}
+
+INSTRUCTIONS & EXAM PAPER CREATION RULES:
+1. Analyze the provided PYQ texts carefully. Identify recurring topics, repeated numericals, essential core concepts, and high-frequency question patterns across the different exam years.
+2. Generate an explicit TOP HIGH-YIELD RECURRING TOPICS & INSIGHTS section followed by a complete PREDICTED QUESTION PAPER for the upcoming examination in {subject} ({semester}).
+3. Structure the entire output in clean Markdown as follows:
+
+## 💡 TOP HIGH-YIELD RECURRING TOPICS & INSIGHTS
+- Provide 4 to 6 bullet points listing the top repeated topics identified across the PYQs.
+- For each topic, include its repetition frequency tag and key exam preparation advice, e.g.:
+  `🔥 **Topic Name**: Appeared in X of Y past years (Z% Probability) — Focus on [specific derivation/numerical/concept].`
+
+---
+
+# PREPZ ACADEMIC EXAMINATION
+- Header: Subject: {subject} | {semester}
+- Exam Info: Time Allowed: 3 Hours | Maximum Marks: 70 Marks | Course Code: {course_code}
+- Instructions to Candidates (4 bullet points)
+- SECTION A (Short Answer Questions | 7 Questions x 2 Marks = 14 Marks | Mandatory)
+- SECTION B (Medium / Analytical / Problem-Solving Questions | Answer 4 out of 5 Questions x 7 Marks = 28 Marks)
+- SECTION C (Long Answer / Comprehensive / Numerical Questions | Answer 2 out of 3 Questions x 14 Marks = 28 Marks)
+
+4. CRITICAL MANDATORY REQUIREMENT: For EVERY single question in Section A, Section B, and Section C, you MUST append a frequency probability tag and question type tag at the very end in bold brackets, e.g.:
+   `**[Frequency: Appeared in 3 of the last 4 years | 90% Probability | Type: Theory]**` or `**[Frequency: Appeared in 2 of last 3 years | 85% Probability | Type: Numerical]**`
+
+Format the entire output in clean, professional Markdown with clear section headings, bolding, and numbered questions. Do NOT wrap your output in code block backticks (no ``` markdown). Output only the document content."""
+
+    try:
+        response = await run_in_threadpool(llm.invoke, prompt)
+        paper_content = response.content if hasattr(response, 'content') else str(response)
+
+        return {
+            "success": True,
+            "subject": subject,
+            "semester": semester,
+            "exam_type": exam_type,
+            "pyq_count": len(pyq_files),
+            "pyq_filenames": pyq_files,
+            "paper_markdown": paper_content
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"AI Paper Generation failed: {str(e)}")
+
+# Mount static and uploads folders
+os.makedirs("uploads", exist_ok=True)
+app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run("app:app", host="0.0.0.0", port=7860)
+    port = int(os.environ.get("PORT", 7865))
+    print(f"Starting server on http://0.0.0.0:{port}...")
+    uvicorn.run("app:app", host="0.0.0.0", port=port)
+
+
+
