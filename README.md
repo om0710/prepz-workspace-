@@ -1,3 +1,13 @@
+---
+title: Prepz AI Workspace
+emoji: 📚
+colorFrom: indigo
+colorTo: blue
+sdk: docker
+app_port: 7860
+pinned: false
+---
+
 # 📚 Prepz AI Workspace - Engineering Study & RAG Platform
 
 > **AI-Powered Engineering Study Assistant with Multi-Format RAG Search, Automated PYQ Paper Generation, and In-Browser Document Reader.**
