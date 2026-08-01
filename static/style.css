@@ -6161,4 +6161,86 @@ html, body, #chatbot-app-view, .app-wrapper, .main-panel, .main-container, .cont
     }
 }
 
+/* ----------------------------------------------------
+   Developer Profile Card Footer
+   ---------------------------------------------------- */
+.developer-profile-card {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    background: rgba(18, 18, 20, 0.7);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid rgba(255, 255, 255, 0.18);
+    border-radius: 20px;
+    padding: 16px 28px 16px 20px;
+    max-width: 520px;
+    width: 100%;
+    margin: 20px auto 10px auto;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+    transition: all 0.3s ease;
+}
+
+.developer-profile-card:hover {
+    border-color: rgba(192, 132, 252, 0.4);
+    box-shadow: 0 10px 36px rgba(139, 92, 246, 0.15);
+    transform: translateY(-2px);
+}
+
+.dev-avatar-wrapper {
+    width: 58px;
+    height: 58px;
+    border-radius: 50%;
+    overflow: hidden;
+    flex-shrink: 0;
+    border: 2px solid rgba(255, 255, 255, 0.2);
+    background: linear-gradient(135deg, #1e1b4b, #311b92);
+}
+
+.dev-avatar-img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.dev-info-box {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+}
+
+.dev-name {
+    font-size: 16.5px;
+    font-weight: 700;
+    color: #ffffff;
+    margin: 0;
+    letter-spacing: -0.2px;
+}
+
+.dev-role {
+    font-size: 13px;
+    font-weight: 500;
+    color: #a1a1aa;
+    margin: 0 0 6px 0;
+}
+
+.dev-social-links {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.dev-social-icon {
+    color: #d4d4d8;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s ease;
+}
+
+.dev-social-icon:hover {
+    color: #c084fc;
+    transform: scale(1.15);
+}
+
 
