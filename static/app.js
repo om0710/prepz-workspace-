@@ -553,7 +553,7 @@ window.handleLoginSubmit = async function (e) {
     const email = emailInput ? emailInput.value.trim().toLowerCase() : "";
     const password = pwdInput ? pwdInput.value : "";
 
-    console.log(`[FIREBASE CLIENT] Login submitted for email='${email}'`);
+    console.log(`[AUTH CLIENT] Login submitted for email='${email}'`);
 
     if (!email || !password) {
         showAuthErrorMsg("Please enter both email and password.");
@@ -565,23 +565,70 @@ window.handleLoginSubmit = async function (e) {
         return;
     }
 
-    if (!firebaseAuth) {
-        showAuthErrorMsg("Firebase SDK not ready. Please refresh the page.");
-        return;
+    // Attempt Firebase Login First
+    if (typeof firebaseAuth !== "undefined" && firebaseAuth) {
+        try {
+            const userCred = await firebaseAuth.signInWithEmailAndPassword(email, password);
+            const user = userCred.user;
+
+            if (user && !user.emailVerified) {
+                showAuthErrorMsg("Your email is not verified yet. A verification link has been sent to your inbox. Please check and verify!", "warning");
+                try { await user.sendEmailVerification(); } catch (err) {}
+                return;
+            }
+
+            if (user) {
+                // Sync to backend and login
+                try {
+                    const syncRes = await fetch("/api/firebase-sync", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({
+                            uid: user.uid,
+                            email: user.email,
+                            name: user.displayName || email.split("@")[0],
+                            provider: "password"
+                        })
+                    });
+                    const syncData = await syncRes.json();
+                    if (syncRes.ok && syncData.user) {
+                        window.loginUser(syncData.user);
+                        return;
+                    }
+                } catch(e) {}
+
+                window.loginUser({
+                    id: user.uid,
+                    name: user.displayName || email.split("@")[0],
+                    email: user.email,
+                    provider: "password"
+                });
+                return;
+            }
+        } catch (error) {
+            console.warn("[AUTH CLIENT] Firebase login error, attempting backend API fallback:", error.code);
+            if (error.code === "auth/wrong-password" || error.code === "auth/user-not-found" || error.code === "auth/invalid-credential") {
+                showAuthErrorMsg("Invalid email or password. Please check your credentials.");
+                return;
+            }
+        }
     }
 
+    // Direct Backend API Fallback
     try {
-        const userCred = await firebaseAuth.signInWithEmailAndPassword(email, password);
-        const user = userCred.user;
-
-        if (!user.emailVerified) {
-            showAuthErrorMsg("Your email is not verified yet. We have dispatched a verification link to your inbox. Please verify before logging in!", "warning");
-            try { await user.sendEmailVerification(); } catch (err) {}
-            return;
+        const res = await fetch("/api/login", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ email, password })
+        });
+        const data = await res.json();
+        if (res.ok && data.user) {
+            window.loginUser(data.user);
+        } else {
+            showAuthErrorMsg(data.detail || "Invalid email or password. Please check your credentials.");
         }
-    } catch (error) {
-        console.error("[FIREBASE CLIENT] Login error:", error);
-        showAuthErrorMsg(window.mapFirebaseError(error.code, error.message));
+    } catch (err) {
+        showAuthErrorMsg("Connection error. Please check your network connection.");
     }
 };
 
@@ -603,7 +650,7 @@ window.handleSignupSubmit = async function (e) {
     const password = pwdInput ? pwdInput.value : "";
     const captchaAns = captchaInput ? captchaInput.value.trim() : "";
 
-    console.log(`[FIREBASE CLIENT] Signup submitted for name='${name}', email='${email}'`);
+    console.log(`[AUTH CLIENT] Signup submitted for name='${name}', email='${email}'`);
 
     if (!name || !email || !password) {
         showAuthErrorMsg("All fields are required for sign up.");
@@ -630,27 +677,56 @@ window.handleSignupSubmit = async function (e) {
         return;
     }
 
-    if (!firebaseAuth) {
-        showAuthErrorMsg("Firebase SDK not ready. Please refresh the page.");
-        return;
+    // Attempt Firebase Signup
+    if (typeof firebaseAuth !== "undefined" && firebaseAuth) {
+        try {
+            const userCred = await firebaseAuth.createUserWithEmailAndPassword(email, password);
+            const user = userCred.user;
+            await user.updateProfile({ displayName: name });
+            await user.sendEmailVerification();
+
+            fetch("/api/firebase-sync", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    uid: user.uid,
+                    email: email,
+                    name: name,
+                    provider: "password"
+                })
+            }).catch(e => {});
+
+            showAuthErrorMsg("Account created! A verification link has been sent to " + email + ". Please verify before logging in.", "success");
+            setTimeout(() => {
+                window.switchAuthTab("login");
+                const loginEmail = document.getElementById("login-email");
+                if (loginEmail) loginEmail.value = email;
+            }, 2000);
+            return;
+        } catch (error) {
+            console.warn("[AUTH CLIENT] Firebase signup error, attempting backend API fallback:", error.code);
+            if (error.code === "auth/email-already-in-use") {
+                showAuthErrorMsg("An account with this email address already exists. Please switch to the Log In tab.");
+                return;
+            }
+        }
     }
 
+    // Backend Signup Fallback
     try {
-        const userCred = await firebaseAuth.createUserWithEmailAndPassword(email, password);
-        const user = userCred.user;
-        await user.updateProfile({ displayName: name });
-        await user.sendEmailVerification();
-
-        showAuthErrorMsg("Account created successfully! A verification link has been sent to " + email + ". Please verify your email before logging in.", "success");
-        setTimeout(() => {
-            window.switchAuthTab("login");
-            const loginEmail = document.getElementById("login-email");
-            if (loginEmail) loginEmail.value = email;
-        }, 2000);
-    } catch (error) {
-        console.error("[FIREBASE CLIENT] Signup error:", error);
-        showAuthErrorMsg(window.mapFirebaseError(error.code, error.message));
-        window.generateCaptcha("signup");
+        const res = await fetch("/api/signup", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ name, email, password })
+        });
+        const data = await res.json();
+        if (res.ok && data.user) {
+            window.loginUser(data.user);
+        } else {
+            showAuthErrorMsg(data.detail || "Signup failed. Please try again.");
+        }
+    } catch(err) {
+        showAuthErrorMsg("Connection error. Please try again.");
     }
 };
 
