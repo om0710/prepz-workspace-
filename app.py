@@ -227,6 +227,15 @@ import smtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 
+import re
+
+EMAIL_REGEX = re.compile(r"^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$")
+
+def is_valid_email(email: str) -> bool:
+    if not email or not isinstance(email, str):
+        return False
+    return bool(EMAIL_REGEX.match(email.strip()))
+
 def send_otp_email(to_email: str, otp_code: str, subject: str, body_text: str):
     smtp_host = os.environ.get("SMTP_HOST")
     smtp_port = int(os.environ.get("SMTP_PORT", 587))
@@ -296,35 +305,39 @@ class CompleteOnboardingRequest(BaseModel):
 
 @app.post("/api/signup")
 def signup(req: SignupRequest):
-    if not req.name.strip() or not req.email.strip() or not req.password:
+    email = req.email.strip().lower() if req.email else ""
+    name = req.name.strip() if req.name else ""
+    password = req.password if req.password else ""
+
+    if not name or not email or not password:
         raise HTTPException(status_code=400, detail="All fields are required.")
     
-    if "@" not in req.email:
-        raise HTTPException(status_code=400, detail="Invalid email address.")
+    if not is_valid_email(email):
+        raise HTTPException(status_code=400, detail="Please enter a valid email address.")
 
     verify_captcha_challenge(req.captcha_answer, req.captcha_expected)
 
     # Rate limiting on OTP / Signup
-    if not check_rate_limit(req.email, "signup_otp", max_attempts=5, window_minutes=60):
+    if not check_rate_limit(email, "signup_otp", max_attempts=5, window_minutes=60):
         raise HTTPException(status_code=429, detail="Too many signup OTP requests. Please wait an hour before trying again.")
 
     # Validate password strength
-    is_valid, pwd_msg = validate_password_strength(req.password)
+    is_valid, pwd_msg = validate_password_strength(password)
     if not is_valid:
         raise HTTPException(status_code=400, detail=pwd_msg)
 
-    existing = get_user_by_email(req.email)
+    existing = get_user_by_email(email)
     if existing and existing.get("is_verified", True):
         raise HTTPException(status_code=400, detail="An account with this email already exists. Please log in.")
     
     if not existing:
-        user = create_user(name=req.name, email=req.email, password=req.password, provider="local", is_verified=False)
+        user = create_user(name=name, email=email, password=password, provider="local", is_verified=False)
     else:
         user = existing
 
     # Create OTP for signup verification
-    otp_code = create_otp(req.email, otp_type="signup", expiry_minutes=10)
-    record_rate_limit_attempt(req.email, "signup_otp")
+    otp_code = create_otp(email, otp_type="signup", expiry_minutes=10)
+    record_rate_limit_attempt(email, "signup_otp")
 
     email_html = f"""
     <div style="font-family: Arial, sans-serif; padding: 20px; background-color: #f4f4f5; color: #18181b;">
@@ -335,13 +348,13 @@ def signup(req: SignupRequest):
         <p>This OTP will expire in 10 minutes. Please do not share this code with anyone.</p>
     </div>
     """
-    send_otp_email(req.email, otp_code, "Verify your Prepz Workspace Account", email_html)
+    send_otp_email(email, otp_code, "Verify your Prepz Workspace Account", email_html)
 
     return {
         "status": "otp_required",
-        "email": req.email,
+        "email": email,
         "otp_code": otp_code,
-        "message": f"Verification OTP sent to {req.email}. Please enter the 6-digit code to activate your account."
+        "message": f"Verification OTP sent to {email}. Please enter the 6-digit code to activate your account."
     }
 
 @app.post("/api/verify-otp")
@@ -379,36 +392,43 @@ def verify_otp(req: VerifyOTPRequest):
 
 @app.post("/api/login")
 def login(req: LoginRequest):
-    if not req.email.strip() or not req.password:
-        raise HTTPException(status_code=400, detail="Email and password are required.")
+    email = req.email.strip().lower() if req.email else ""
+    password = req.password if req.password else ""
+
+    if not email or not password:
+        raise HTTPException(status_code=400, detail="Please enter both email and password.")
+
+    if not is_valid_email(email):
+        raise HTTPException(status_code=400, detail="Please enter a valid email address.")
 
     # Rate limiting on failed login attempts (Max 5 failed attempts per 15 mins)
-    if not check_rate_limit(req.email, "login_fail", max_attempts=5, window_minutes=15):
+    if not check_rate_limit(email, "login_fail", max_attempts=5, window_minutes=15):
         raise HTTPException(status_code=429, detail="Too many failed login attempts. Please wait 15 minutes before trying again.")
 
-    user = get_user_by_email(req.email)
+    user = get_user_by_email(email)
     if not user:
-        record_rate_limit_attempt(req.email, "login_fail")
-        raise HTTPException(status_code=400, detail="No account found with this email. Please sign up.")
+        record_rate_limit_attempt(email, "login_fail")
+        raise HTTPException(status_code=400, detail="Invalid email or password.")
     
-    if user["provider"] != "local" and not user["password_hash"]:
-        raise HTTPException(status_code=400, detail="This account was created via Google Login. Please use Google Login.")
+    if user["provider"] != "local" and not user.get("password_hash"):
+        record_rate_limit_attempt(email, "login_fail")
+        raise HTTPException(status_code=400, detail="This account was created via Google Sign-In. Please click 'Google Sign-In'.")
 
-    if not verify_password(req.password, user["password_hash"]):
-        record_rate_limit_attempt(req.email, "login_fail")
-        raise HTTPException(status_code=400, detail="Incorrect password. Please try again.")
+    if not user.get("password_hash") or not verify_password(password, user["password_hash"]):
+        record_rate_limit_attempt(email, "login_fail")
+        raise HTTPException(status_code=400, detail="Invalid email or password.")
 
     if not user.get("is_verified", True):
         # Generate fresh verification OTP
-        otp_code = create_otp(req.email, otp_type="signup", expiry_minutes=10)
+        otp_code = create_otp(email, otp_type="signup", expiry_minutes=10)
         return {
             "status": "otp_required",
-            "email": req.email,
+            "email": email,
             "otp_code": otp_code,
             "message": "Your account is not verified yet. Please enter the 6-digit OTP code sent to your email."
         }
 
-    user = update_user_activity(req.email) or user
+    user = update_user_activity(email) or user
     return {
         "status": "success",
         "user": {

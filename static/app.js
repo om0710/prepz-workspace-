@@ -244,6 +244,12 @@ window.generateCaptcha = function(type) {
     }
 };
 
+window.isValidEmail = function(email) {
+    if (!email || typeof email !== "string") return false;
+    const emailRegex = /^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$/;
+    return emailRegex.test(email.trim());
+};
+
 window.handleLoginSubmit = async function (e) {
     if (e) e.preventDefault();
     const authErrorMsg = document.getElementById("auth-error-msg");
@@ -262,6 +268,11 @@ window.handleLoginSubmit = async function (e) {
         return;
     }
 
+    if (!window.isValidEmail(email)) {
+        showAuthErrorMsg("Please enter a valid email address.");
+        return;
+    }
+
     try {
         const res = await fetch("/api/login", {
             method: "POST",
@@ -274,17 +285,8 @@ window.handleLoginSubmit = async function (e) {
         } else if (data.status === "otp_required") {
             window.openOtpModal(data.email, "signup");
         } else {
-            const errorText = data && data.detail ? data.detail : "Login failed. Please check credentials.";
+            const errorText = data && data.detail ? data.detail : "Invalid email or password.";
             showAuthErrorMsg(errorText);
-            
-            if (errorText.toLowerCase().includes("no account found")) {
-                setTimeout(() => {
-                    window.switchAuthTab("signup");
-                    const signupEmail = document.getElementById("signup-email");
-                    if (signupEmail) signupEmail.value = email;
-                    showAuthErrorMsg("No account found with this email. We've switched you to Sign Up!");
-                }, 1000);
-            }
         }
     } catch (err) {
         showAuthErrorMsg("Unable to connect to server. Please check your connection.");
@@ -311,6 +313,11 @@ window.handleSignupSubmit = async function (e) {
 
     if (!name || !email || !password) {
         showAuthErrorMsg("All fields are required for sign up.");
+        return;
+    }
+
+    if (!window.isValidEmail(email)) {
+        showAuthErrorMsg("Please enter a valid email address.");
         return;
     }
 
