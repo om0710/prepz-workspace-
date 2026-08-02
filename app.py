@@ -502,14 +502,20 @@ def forgot_password_reset(req: ResetPasswordRequest):
 
 @app.post("/api/google-login")
 def google_login(req: GoogleLoginRequest):
-    if not req.email.strip() or not req.name.strip():
+    email = req.email.strip().lower() if req.email else ""
+    name = req.name.strip() if req.name else ""
+
+    if not email or not name:
         raise HTTPException(status_code=400, detail="Name and email are required.")
 
-    user = get_user_by_email(req.email)
+    if not is_valid_email(email):
+        raise HTTPException(status_code=400, detail="Please enter a valid Gmail address.")
+
+    user = get_user_by_email(email)
     if not user:
-        user = create_user(name=req.name, email=req.email, password=None, provider="google", avatar_url=req.picture, is_verified=True)
+        user = create_user(name=name, email=email, password=None, provider="google", avatar_url=req.picture, is_verified=True)
     
-    user = update_user_activity(req.email) or user
+    user = update_user_activity(email) or user
     return {
         "status": "success",
         "user": {

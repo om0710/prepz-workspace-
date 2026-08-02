@@ -126,12 +126,16 @@ window.closeGoogleAccountModal = function() {
 
 window.selectGoogleAccount = async function(name, email, avatar_url) {
     window.closeGoogleAccountModal();
+    if (!email || !window.isValidEmail(email)) {
+        showAuthErrorMsg("Please enter a valid Gmail address (e.g. user@gmail.com).");
+        return;
+    }
+
     const accObj = {
         name: name,
-        email: email,
-        picture: avatar_url || `https://api.dicebear.com/7.x/bottts/svg?seed=${email}`
+        email: email.trim().toLowerCase(),
+        picture: avatar_url || `https://api.dicebear.com/7.x/bottts/svg?seed=${encodeURIComponent(email)}`
     };
-    saveGoogleAccountToHistory({ name, email, avatar_url: accObj.picture });
 
     try {
         const res = await fetch("/api/google-login", {
@@ -140,25 +144,15 @@ window.selectGoogleAccount = async function(name, email, avatar_url) {
             body: JSON.stringify(accObj)
         });
         const data = await res.json();
-        if (data && data.user) {
+        if (res.ok && data.user) {
+            saveGoogleAccountToHistory({ name: data.user.name, email: data.user.email, avatar_url: data.user.avatar_url });
             window.loginUser(data.user);
         } else {
-            window.loginUser({
-                id: Date.now(),
-                name: name,
-                email: email,
-                provider: "google",
-                avatar_url: accObj.picture
-            });
+            const errDetail = data && data.detail ? data.detail : "Google Sign-In failed. Please enter a valid Gmail address.";
+            showAuthErrorMsg(errDetail);
         }
     } catch (err) {
-        window.loginUser({
-            id: Date.now(),
-            name: name,
-            email: email,
-            provider: "google",
-            avatar_url: accObj.picture
-        });
+        showAuthErrorMsg("Unable to connect to server for Google Sign-In. Please check your connection.");
     }
 };
 
@@ -173,6 +167,10 @@ window.handleGoogleLogin = function () {
         const inputEmail = prompt("Enter your Gmail address to Continue with Google:", "");
         if (inputEmail && inputEmail.trim()) {
             const rawEmail = inputEmail.trim().toLowerCase();
+            if (!window.isValidEmail(rawEmail)) {
+                showAuthErrorMsg("Please enter a valid Gmail address (e.g. user@gmail.com).");
+                return;
+            }
             const rawName = rawEmail.split("@")[0].replace(/[._-]/g, " ");
             const formattedName = rawName.charAt(0).toUpperCase() + rawName.slice(1);
             window.selectGoogleAccount(formattedName, rawEmail, `https://api.dicebear.com/7.x/bottts/svg?seed=${encodeURIComponent(rawEmail)}`);
@@ -207,7 +205,11 @@ window.handleGoogleLogin = function () {
             window.closeGoogleAccountModal();
             const inputEmail = prompt("Enter another Gmail address:", "");
             if (inputEmail && inputEmail.trim()) {
-                const rawEmail = inputEmail.trim();
+                const rawEmail = inputEmail.trim().toLowerCase();
+                if (!window.isValidEmail(rawEmail)) {
+                    showAuthErrorMsg("Please enter a valid Gmail address (e.g. user@gmail.com).");
+                    return;
+                }
                 const rawName = rawEmail.split("@")[0].replace(/[._-]/g, " ");
                 const formattedName = rawName.charAt(0).toUpperCase() + rawName.slice(1);
                 window.selectGoogleAccount(formattedName, rawEmail, `https://api.dicebear.com/7.x/bottts/svg?seed=${rawEmail}`);
