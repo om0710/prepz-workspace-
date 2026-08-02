@@ -1187,72 +1187,10 @@ function initializeDocPilotApp() {
                     showLoginScreen();
                 }
             } else {
-                showLoginScreen();
+                window.showLoginScreen();
             }
         }
     }
-
-    function showLoginScreen() {
-        currentUser = null;
-        if (navPinnedLibrary) navPinnedLibrary.style.display = "none";
-        if (landingPageView) {
-            landingPageView.classList.remove("hidden");
-            landingPageView.style.display = "flex";
-        }
-        if (chatbotAppView) {
-            chatbotAppView.classList.add("hidden");
-            chatbotAppView.style.display = "none";
-        }
-    }
-
-    function logoutUser() {
-        localStorage.removeItem("docpilot-user");
-        localStorage.removeItem("prepz_user");
-        sessionStorage.clear();
-        currentUser = null;
-        showLoginScreen();
-    }
-
-    function loginUser(user) {
-        currentUser = user;
-        localStorage.setItem("docpilot-user", JSON.stringify(user));
-        if (userAvatar) {
-            const avatarUrl = user.avatar_url || user.picture || `https://api.dicebear.com/7.x/bottts/svg?seed=${user.email || 'Om'}`;
-            userAvatar.style.backgroundImage = `url('${avatarUrl}')`;
-            userAvatar.innerHTML = "";
-        }
-        if (userName) userName.textContent = user.name || "Student User";
-        if (userEmail) userEmail.textContent = user.email || "student@college.edu";
-
-        if (navPinnedLibrary) navPinnedLibrary.style.display = "flex";
-        if (landingPageView) {
-            landingPageView.classList.add("hidden");
-            landingPageView.style.display = "none";
-        }
-        if (chatbotAppView) {
-            chatbotAppView.classList.remove("hidden");
-            chatbotAppView.style.display = "flex";
-        }
-
-        // Fetch folders, threads, and user stats
-        fetchThreads();
-        fetchIndexedFiles();
-        fetchUserStats();
-
-        // Check if first-time user onboarding tour needs to be shown
-        if (user && !user.has_seen_onboarding) {
-            const showingOnboarding = checkAndShowOnboarding(user);
-            if (showingOnboarding) return;
-        }
-
-        if (currentThreadId) {
-            loadThreadHistory(currentThreadId);
-        } else {
-            showLandingState();
-        }
-    }
-
-    window.loginUser = loginUser;
 
     function logoutUser() {
         if (typeof firebaseAuth !== "undefined" && firebaseAuth && firebaseAuth.currentUser) {
