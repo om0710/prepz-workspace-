@@ -165,23 +165,17 @@ window.selectGoogleAccount = async function(name, email, avatar_url) {
 window.handleGoogleLogin = function () {
     let accounts = getGoogleAccountsHistory();
 
-    // If no previous Google accounts saved on this device, pre-seed default account options
-    if (!accounts || accounts.length === 0) {
-        accounts = [
-            { name: "Om Bansal", email: "ombansal221@gmail.com", avatar_url: "https://api.dicebear.com/7.x/bottts/svg?seed=ombansal" },
-            { name: "Google Student User", email: "student.google@college.edu", avatar_url: "https://api.dicebear.com/7.x/bottts/svg?seed=GoogleStudent" }
-        ];
-    }
-
     const modal = document.getElementById("google-account-modal");
     const accountsListContainer = document.getElementById("google-accounts-list");
-    if (!modal || !accountsListContainer) {
+
+    // If no previous Google accounts saved on this device, prompt directly for user's own email
+    if (!accounts || accounts.length === 0) {
         const inputEmail = prompt("Enter your Gmail address to Continue with Google:", "");
         if (inputEmail && inputEmail.trim()) {
-            const rawEmail = inputEmail.trim();
+            const rawEmail = inputEmail.trim().toLowerCase();
             const rawName = rawEmail.split("@")[0].replace(/[._-]/g, " ");
             const formattedName = rawName.charAt(0).toUpperCase() + rawName.slice(1);
-            window.selectGoogleAccount(formattedName, rawEmail, `https://api.dicebear.com/7.x/bottts/svg?seed=${rawEmail}`);
+            window.selectGoogleAccount(formattedName, rawEmail, `https://api.dicebear.com/7.x/bottts/svg?seed=${encodeURIComponent(rawEmail)}`);
         }
         return;
     }
