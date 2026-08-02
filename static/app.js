@@ -522,8 +522,11 @@ window.handleForgotPasswordSubmit = async function(e) {
 window.openResetPasswordModal = function(email, prefilledOtp = "", message = "") {
     currentPendingOtpEmail = email;
     const modal = document.getElementById("reset-password-modal");
+    const emailInput = document.getElementById("reset-email-input");
     const otpInput = document.getElementById("reset-otp-input");
     const errEl = document.getElementById("reset-error-msg");
+
+    if (emailInput && email) emailInput.value = email;
 
     if (errEl) {
         if (message || prefilledOtp) {
@@ -545,6 +548,7 @@ window.openResetPasswordModal = function(email, prefilledOtp = "", message = "")
     if (modal) {
         modal.classList.remove("hidden");
         modal.style.display = "flex";
+        if (otpInput) setTimeout(() => otpInput.focus(), 100);
     }
 };
 
@@ -555,18 +559,41 @@ window.closeResetPasswordModal = function() {
 
 window.handleResetPasswordSubmit = async function(e) {
     if (e) e.preventDefault();
+    const emailInput = document.getElementById("reset-email-input");
     const otpInput = document.getElementById("reset-otp-input");
     const newPwdInput = document.getElementById("reset-new-password");
     const errEl = document.getElementById("reset-error-msg");
 
+    const email = (emailInput && emailInput.value.trim()) || currentPendingOtpEmail;
     const otpCode = otpInput ? otpInput.value.trim() : "";
     const newPassword = newPwdInput ? newPwdInput.value : "";
+
+    if (!email) {
+        if (errEl) {
+            errEl.textContent = "Please enter your registered email address.";
+            errEl.classList.remove("hidden");
+            errEl.style.display = "block";
+            errEl.style.color = ""; errEl.style.background = ""; errEl.style.border = "";
+        }
+        return;
+    }
+
+    if (!otpCode || otpCode.length !== 6) {
+        if (errEl) {
+            errEl.textContent = "Please enter a valid 6-digit OTP code.";
+            errEl.classList.remove("hidden");
+            errEl.style.display = "block";
+            errEl.style.color = ""; errEl.style.background = ""; errEl.style.border = "";
+        }
+        return;
+    }
 
     if (newPassword.length < 8 || !/[A-Za-z]/.test(newPassword) || !/\d/.test(newPassword)) {
         if (errEl) {
             errEl.textContent = "Password must be at least 8 characters long with letters and numbers.";
             errEl.classList.remove("hidden");
             errEl.style.display = "block";
+            errEl.style.color = ""; errEl.style.background = ""; errEl.style.border = "";
         }
         return;
     }
@@ -576,7 +603,7 @@ window.handleResetPasswordSubmit = async function(e) {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
-                email: currentPendingOtpEmail,
+                email: email.toLowerCase(),
                 otp_code: otpCode,
                 new_password: newPassword
             })
@@ -584,11 +611,11 @@ window.handleResetPasswordSubmit = async function(e) {
         const data = await res.json();
         if (res.ok) {
             window.closeResetPasswordModal();
-            showAuthErrorMsg("Password reset successful! Logging you in...");
+            showAuthErrorMsg("Password updated successfully! Logging you in...");
             const loginRes = await fetch("/api/login", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ email: currentPendingOtpEmail, password: newPassword })
+                body: JSON.stringify({ email: email.toLowerCase(), password: newPassword })
             });
             const loginData = await loginRes.json();
             if (loginRes.ok && loginData.user) {
@@ -602,13 +629,15 @@ window.handleResetPasswordSubmit = async function(e) {
                 errEl.textContent = err;
                 errEl.classList.remove("hidden");
                 errEl.style.display = "block";
+                errEl.style.color = ""; errEl.style.background = ""; errEl.style.border = "";
             }
         }
     } catch (err) {
         if (errEl) {
-            errEl.textContent = "Network error resetting password.";
+            errEl.textContent = "Network error. Please try again.";
             errEl.classList.remove("hidden");
             errEl.style.display = "block";
+            errEl.style.color = ""; errEl.style.background = ""; errEl.style.border = "";
         }
     }
 };

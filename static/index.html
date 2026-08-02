@@ -1094,6 +1094,10 @@
             <div id="reset-error-msg" class="auth-error hidden" style="margin-top: 8px;"></div>
             <form id="form-reset-password" class="modal-form" onsubmit="handleResetPasswordSubmit(event)">
                 <div class="form-group">
+                    <label for="reset-email-input">Registered Email</label>
+                    <input type="email" id="reset-email-input" placeholder="student@college.edu" style="color: #ffffff !important; background: #18181b !important;" required>
+                </div>
+                <div class="form-group">
                     <label for="reset-otp-input">6-Digit Reset OTP</label>
                     <input type="text" id="reset-otp-input" placeholder="123456" maxlength="6" pattern="[0-9]{6}" style="letter-spacing: 6px; font-size: 20px; font-weight: 700; text-align: center; color: #6366f1;" required autocomplete="off">
                 </div>
@@ -1108,6 +1112,6 @@
     </div>
 
     <!-- Main JavaScript Link -->
-    <script src="app.js?v=12.0"></script>
+    <script src="app.js?v=13.0"></script>
 </body>
 </html>
