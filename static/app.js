@@ -50,6 +50,9 @@ try {
             firebaseApp = firebase.app();
         }
         firebaseAuth = firebase.auth();
+        firebaseAuth.setPersistence(firebase.auth.Auth.Persistence.LOCAL)
+            .then(() => console.log("[FIREBASE CLIENT] Persistence set to LOCAL"))
+            .catch(err => console.warn("[FIREBASE CLIENT] Error setting persistence:", err));
         console.log("[FIREBASE CLIENT] SDK Initialized Successfully!");
     } else {
         console.warn("[FIREBASE CLIENT] Firebase CDN scripts not loaded yet.");
@@ -438,16 +441,51 @@ window.handleGoogleLogin = function () {
     const provider = new firebase.auth.GoogleAuthProvider();
     provider.setCustomParameters({ prompt: 'select_account' });
 
-    console.log("[FIREBASE CLIENT] Initiating pure Firebase Google Sign-In redirect...");
-    try {
-        firebaseAuth.signInWithRedirect(provider).catch((error) => {
-            console.error("[FIREBASE CLIENT] signInWithRedirect error:", error);
-            showAuthErrorMsg(window.mapFirebaseError(error.code, error.message));
+    console.log("[FIREBASE CLIENT] Triggering synchronous signInWithPopup...");
+    
+    // SYNCHRONOUS AND IMMEDIATE POPUP CALL INSIDE CLICK HANDLER
+    firebaseAuth.signInWithPopup(provider)
+        .then(async (result) => {
+            console.log("[FIREBASE CLIENT] signInWithPopup SUCCESS:", result.user ? result.user.email : "No user");
+            if (result && result.user) {
+                const user = result.user;
+                const userData = {
+                    uid: user.uid,
+                    email: user.email,
+                    name: user.displayName || user.email.split("@")[0].replace(/[._-]/g, " "),
+                    provider: "google",
+                    avatar_url: user.photoURL || `https://api.dicebear.com/7.x/bottts/svg?seed=${encodeURIComponent(user.email)}`
+                };
+                
+                try {
+                    const syncRes = await fetch("/api/firebase-sync", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify(userData)
+                    });
+                    const syncData = await syncRes.json();
+                    if (syncRes.ok && syncData.user) {
+                        console.log("[FIREBASE CLIENT] Backend sync successful -> logging in user:", syncData.user.email);
+                        window.loginUser(syncData.user);
+                        return;
+                    }
+                } catch (err) {
+                    console.error("[FIREBASE CLIENT] Error syncing popup user to backend:", err);
+                }
+                window.loginUser(userData);
+            }
+        })
+        .catch((error) => {
+            console.error("[FIREBASE CLIENT] signInWithPopup error:", error);
+            if (error.code === "auth/popup-blocked") {
+                console.log("[FIREBASE CLIENT] Popup blocked -> falling back to signInWithRedirect");
+                firebaseAuth.signInWithRedirect(provider).catch((err) => {
+                    showAuthErrorMsg(window.mapFirebaseError(err.code, err.message));
+                });
+            } else if (error.code !== "auth/popup-closed-by-user" && error.code !== "auth/cancelled-popup-request") {
+                showAuthErrorMsg(window.mapFirebaseError(error.code, error.message));
+            }
         });
-    } catch (err) {
-        console.error("[FIREBASE CLIENT] Synchronous redirect error:", err);
-        showAuthErrorMsg("Firebase redirect failed. Please refresh the page.");
-    }
 };
 
 function showAuthErrorMsg(msg, type = "error") {
