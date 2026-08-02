@@ -27,15 +27,23 @@ window.fetch = function (url, options = {}) {
 };
 
 // Global Fail-Proof Auth Handlers
+// CRITICAL FIX: authDomain must match the hosted domain so Firebase popup
+// can communicate results back via window.opener postMessage (same-origin).
+// Using firebaseapp.com when hosted on hf.space causes cross-origin block.
+const hostedDomain = window.location.hostname;
 const defaultFirebaseConfig = {
     apiKey: "AIzaSyAFe1P9Jss-J9EwfwLUOfnxv5BaVyuoGew",
-    authDomain: "prepz-workspace.firebaseapp.com",
+    authDomain: (hostedDomain && hostedDomain !== "localhost" && !hostedDomain.includes("127.0.0"))
+        ? hostedDomain
+        : "prepz-workspace.firebaseapp.com",
     projectId: "prepz-workspace",
     storageBucket: "prepz-workspace.firebasestorage.app",
     messagingSenderId: "585299422541",
     appId: "1:585299422541:web:a3734d501021c5bc581b04",
     measurementId: "G-MMM66H0FWG"
 };
+
+console.log("[FIREBASE CLIENT] authDomain set to:", defaultFirebaseConfig.authDomain);
 
 const firebaseConfig = (typeof window.FIREBASE_CONFIG === "object" && window.FIREBASE_CONFIG) ? window.FIREBASE_CONFIG : defaultFirebaseConfig;
 
@@ -161,45 +169,26 @@ window.logoutUser = function() {
     if (typeof window.showLoginScreen === "function") window.showLoginScreen();
 };
 
-// Listen for Firebase Auth redirect results and state changes
+// Listen for Firebase Auth state changes
+// onAuthStateChanged is the single source of truth - handles both popup and
+// persisted sessions. When popup succeeds, Firebase sets currentUser, which
+// fires this listener automatically. We just sync to backend and loginUser.
 if (firebaseAuth) {
-    console.log("[AUTH TRACE] (a) Invoking firebaseAuth.getRedirectResult()...");
+    // Handle redirect result (for browsers that fell back to redirect flow)
     firebaseAuth.getRedirectResult().then(async (result) => {
-        console.log("[AUTH TRACE] (a) getRedirectResult() resolved, result:", result ? (result.user ? result.user.email : "No user in result") : "Null result");
         if (result && result.user) {
-            const user = result.user;
-            const userData = {
-                uid: user.uid,
-                email: user.email,
-                name: user.displayName || user.email.split("@")[0].replace(/[._-]/g, " "),
-                provider: "google",
-                avatar_url: user.photoURL || `https://api.dicebear.com/7.x/bottts/svg?seed=${encodeURIComponent(user.email)}`
-            };
-            console.log("[AUTH TRACE] (a) Syncing redirect user to backend:", userData.email);
-            try {
-                const syncRes = await fetch("/api/firebase-sync", {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify(userData)
-                });
-                const syncData = await syncRes.json();
-                if (syncRes.ok && syncData.user) {
-                    console.log("[AUTH TRACE] (a) Backend sync successful, activating workspace for:", syncData.user.email);
-                    window.loginUser(syncData.user);
-                    return;
-                }
-            } catch (err) {
-                console.error("[AUTH TRACE] Error syncing redirect user:", err);
-            }
-            window.loginUser(userData);
+            console.log("[AUTH TRACE] getRedirectResult() got user:", result.user.email);
+            // onAuthStateChanged will also fire - it handles the login, so nothing extra needed here
+        } else {
+            console.log("[AUTH TRACE] getRedirectResult() - no pending redirect user");
         }
     }).catch((error) => {
-        console.error("[AUTH TRACE] (a) getRedirectResult() error:", error);
-        showAuthErrorMsg(window.mapFirebaseError(error.code, error.message));
+        // Silently ignore cross-domain storage errors - onAuthStateChanged handles real sessions
+        console.warn("[AUTH TRACE] getRedirectResult() error (expected on cross-domain, ignoring):", error.code);
     });
 
     firebaseAuth.onAuthStateChanged(async (user) => {
-        console.log("[AUTH TRACE] (b) onAuthStateChanged fired, user:", user ? user.email : "Logged Out");
+        console.log("[AUTH TRACE] onAuthStateChanged fired, user:", user ? user.email : "Logged Out");
         if (user) {
             const providerId = (user.providerData && user.providerData[0]) ? user.providerData[0].providerId : "firebase";
 
@@ -222,7 +211,7 @@ if (firebaseAuth) {
                 });
                 const syncData = await syncRes.json();
                 if (syncRes.ok && syncData.user) {
-                    console.log("[AUTH TRACE] (b) onAuthStateChanged sync successful, activating workspace for:", syncData.user.email);
+                    console.log("[AUTH TRACE] onAuthStateChanged sync successful, logging in:", syncData.user.email);
                     window.loginUser(syncData.user);
                 } else {
                     window.loginUser({
@@ -234,7 +223,7 @@ if (firebaseAuth) {
                     });
                 }
             } catch (err) {
-                console.error("[AUTH TRACE] Error syncing user onAuthStateChanged:", err);
+                console.error("[AUTH TRACE] Error syncing user:", err);
                 window.loginUser({
                     id: user.uid,
                     name: user.displayName || user.email.split("@")[0],
@@ -287,6 +276,9 @@ window.switchAuthTab = function (tab) {
     }
 };
 
+// Google Sign-In: pure synchronous signInWithPopup
+// onAuthStateChanged above handles everything after popup succeeds.
+// No redirect fallback needed because authDomain now matches hosted domain.
 window.handleGoogleLogin = function (e) {
     if (e) e.preventDefault();
     if (!firebaseAuth) {
@@ -296,43 +288,15 @@ window.handleGoogleLogin = function (e) {
     const provider = new firebase.auth.GoogleAuthProvider();
     provider.setCustomParameters({ prompt: 'select_account' });
     
-    console.log("[GOOGLE SIGNIN] Initiating synchronous signInWithPopup...");
+    // SYNCHRONOUS - first line executed, no async before this
     firebaseAuth.signInWithPopup(provider)
-        .then(async (result) => {
-            const user = result.user;
-            const userData = {
-                uid: user.uid,
-                email: user.email,
-                name: user.displayName || user.email.split('@')[0],
-                provider: 'google',
-                avatar_url: user.photoURL || `https://api.dicebear.com/7.x/bottts/svg?seed=${encodeURIComponent(user.email)}`
-            };
-            const syncRes = await fetch('/api/firebase-sync', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(userData)
-            });
-            const syncData = await syncRes.json();
-            if (syncRes.ok && syncData.user) {
-                window.loginUser(syncData.user);
-            }
+        .then((result) => {
+            console.log("[GOOGLE SIGNIN] Popup succeeded for:", result.user ? result.user.email : "unknown");
+            // onAuthStateChanged will fire automatically and handle loginUser()
         })
         .catch((error) => {
-            console.error('[GOOGLE SIGNIN] Error:', error);
-            
-            // IF POPUP IS BLOCKED BY BROWSER -> SEAMLESS AUTOMATIC REDIRECT FALLBACK (NO RED ERROR BANNER!)
-            if (
-                error.code === "auth/popup-blocked" || 
-                error.code === "auth/unauthorized-domain" ||
-                (error.message && (error.message.includes("popup") || error.message.includes("blocked")))
-            ) {
-                console.log("[GOOGLE SIGNIN] Popup blocked by browser -> redirecting seamlessly with signInWithRedirect...");
-                firebaseAuth.signInWithRedirect(provider).catch((err) => {
-                    showAuthErrorMsg(window.mapFirebaseError(err.code, err.message));
-                });
-                return;
-            }
-
+            console.error('[GOOGLE SIGNIN] Error code:', error.code);
+            // Only show error for real errors, not user-dismissed popup
             if (error.code !== "auth/popup-closed-by-user" && error.code !== "auth/cancelled-popup-request") {
                 showAuthErrorMsg(window.mapFirebaseError(error.code, error.message));
             }
