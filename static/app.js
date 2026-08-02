@@ -434,20 +434,16 @@ window.handleGmailModalSubmit = async function(e) {
 
 window.handleGoogleLogin = function () {
     if (!firebaseAuth) {
-        if (typeof window.openGmailInputModal === "function") {
-            window.openGmailInputModal();
-        } else {
-            showAuthErrorMsg("Firebase SDK not ready. Please refresh the page.");
-        }
+        showAuthErrorMsg("Firebase SDK not ready. Please refresh the page.");
         return;
     }
     
     const provider = new firebase.auth.GoogleAuthProvider();
     provider.setCustomParameters({ prompt: 'select_account' });
 
-    console.log("[FIREBASE CLIENT] Triggering synchronous signInWithPopup...");
+    console.log("[FIREBASE CLIENT] Triggering 100% pure Firebase signInWithPopup...");
     
-    // SYNCHRONOUS AND IMMEDIATE POPUP CALL INSIDE CLICK HANDLER
+    // PURE NATIVE FIREBASE POPUP ONLY - NO CUSTOM MODAL FALLBACK
     firebaseAuth.signInWithPopup(provider)
         .then(async (result) => {
             console.log("[FIREBASE CLIENT] signInWithPopup SUCCESS:", result.user ? result.user.email : "No user");
@@ -477,24 +473,11 @@ window.handleGoogleLogin = function () {
                     console.error("[FIREBASE CLIENT] Error syncing popup user to backend:", err);
                 }
                 window.loginUser(userData);
-            } else {
-                console.log("[FIREBASE CLIENT] Popup returned null user -> opening Gmail Modal fallback");
-                if (typeof window.openGmailInputModal === "function") window.openGmailInputModal();
             }
         })
         .catch((error) => {
-            console.error("[FIREBASE CLIENT] signInWithPopup error/closed:", error);
-            if (
-                error.code === "auth/popup-blocked" || 
-                error.code === "auth/popup-closed-by-user" || 
-                error.code === "auth/cancelled-popup-request" || 
-                error.code === "auth/unauthorized-domain" || 
-                error.code === "auth/operation-not-allowed" || 
-                (error.message && (error.message.includes("popup") || error.message.includes("blocked") || error.message.includes("closed")))
-            ) {
-                console.log("[FIREBASE CLIENT] Popup blocked, closed, or domain unauthorized -> opening in-app Gmail Account Modal");
-                if (typeof window.openGmailInputModal === "function") window.openGmailInputModal();
-            } else {
+            console.error("[FIREBASE CLIENT] signInWithPopup error:", error);
+            if (error.code !== "auth/popup-closed-by-user" && error.code !== "auth/cancelled-popup-request") {
                 showAuthErrorMsg(window.mapFirebaseError(error.code, error.message));
             }
         });
