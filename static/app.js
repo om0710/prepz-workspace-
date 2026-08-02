@@ -320,11 +320,8 @@ window.handleGmailModalSubmit = async function(e) {
 };
 
 window.handleGoogleLogin = async function () {
-    const isPlaceholderConfig = !window.FIREBASE_CONFIG && firebaseConfig.apiKey.includes("PlaceholderApiKey");
-    
-    if (!firebaseAuth || isPlaceholderConfig) {
-        console.log("[FIREBASE CLIENT] Using placeholder Firebase config keys -> opening Gmail Account Modal fallback");
-        window.openGmailInputModal();
+    if (!firebaseAuth) {
+        showAuthErrorMsg("Firebase SDK not ready. Please refresh the page.");
         return;
     }
     
@@ -337,10 +334,21 @@ window.handleGoogleLogin = async function () {
         console.log("[FIREBASE CLIENT] Google Sign-In SUCCESS:", result.user.email);
     } catch (error) {
         console.error("[FIREBASE CLIENT] Google Sign-In error:", error);
-        if (error.code === "auth/invalid-api-key" || error.code === "auth/operation-not-allowed" || (error.message && error.message.includes("invalid"))) {
-            console.log("[FIREBASE CLIENT] Firebase Popup failed -> falling back to Gmail Account Modal");
+        
+        // Handle popup blocked / unauthorized domain / API key errors with instant seamless fallback to Gmail Account modal
+        if (
+            error.code === "auth/popup-blocked" || 
+            error.code === "auth/unauthorized-domain" ||
+            error.code === "auth/operation-not-allowed" ||
+            error.code === "auth/invalid-api-key" ||
+            (error.message && (error.message.includes("popup") || error.message.includes("blocked") || error.message.includes("invalid")))
+        ) {
+            console.log("[FIREBASE CLIENT] Popup blocked or unauthorized domain -> opening in-app Gmail Account Modal fallback");
             window.openGmailInputModal();
-        } else if (error.code !== "auth/popup-closed-by-user" && error.code !== "auth/cancelled-popup-request") {
+            return;
+        }
+
+        if (error.code !== "auth/popup-closed-by-user" && error.code !== "auth/cancelled-popup-request") {
             showAuthErrorMsg(window.mapFirebaseError(error.code, error.message));
         }
     }
