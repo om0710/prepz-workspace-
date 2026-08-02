@@ -287,51 +287,38 @@ window.switchAuthTab = function (tab) {
     }
 };
 
-window.handleGoogleLogin = function () {
+window.handleGoogleLogin = function (e) {
+    if (e) e.preventDefault();
     if (!firebaseAuth) {
         showAuthErrorMsg("Firebase SDK not ready. Please refresh the page.");
         return;
     }
-    
     const provider = new firebase.auth.GoogleAuthProvider();
     provider.setCustomParameters({ prompt: 'select_account' });
-
-    console.log("[FIREBASE CLIENT] Triggering 100% pure Firebase signInWithPopup...");
     
-    // PURE NATIVE FIREBASE POPUP ONLY - NO CUSTOM MODAL FALLBACK
+    console.log("[GOOGLE SIGNIN] Initiating synchronous signInWithPopup...");
     firebaseAuth.signInWithPopup(provider)
         .then(async (result) => {
-            console.log("[FIREBASE CLIENT] signInWithPopup SUCCESS:", result.user ? result.user.email : "No user");
-            if (result && result.user) {
-                const user = result.user;
-                const userData = {
-                    uid: user.uid,
-                    email: user.email,
-                    name: user.displayName || user.email.split("@")[0].replace(/[._-]/g, " "),
-                    provider: "google",
-                    avatar_url: user.photoURL || `https://api.dicebear.com/7.x/bottts/svg?seed=${encodeURIComponent(user.email)}`
-                };
-                
-                try {
-                    const syncRes = await fetch("/api/firebase-sync", {
-                        method: "POST",
-                        headers: { "Content-Type": "application/json" },
-                        body: JSON.stringify(userData)
-                    });
-                    const syncData = await syncRes.json();
-                    if (syncRes.ok && syncData.user) {
-                        console.log("[FIREBASE CLIENT] Backend sync successful -> logging in user:", syncData.user.email);
-                        window.loginUser(syncData.user);
-                        return;
-                    }
-                } catch (err) {
-                    console.error("[FIREBASE CLIENT] Error syncing popup user to backend:", err);
-                }
-                window.loginUser(userData);
+            const user = result.user;
+            const userData = {
+                uid: user.uid,
+                email: user.email,
+                name: user.displayName || user.email.split('@')[0],
+                provider: 'google',
+                avatar_url: user.photoURL || `https://api.dicebear.com/7.x/bottts/svg?seed=${encodeURIComponent(user.email)}`
+            };
+            const syncRes = await fetch('/api/firebase-sync', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(userData)
+            });
+            const syncData = await syncRes.json();
+            if (syncRes.ok && syncData.user) {
+                window.loginUser(syncData.user);
             }
         })
         .catch((error) => {
-            console.error("[FIREBASE CLIENT] signInWithPopup error:", error);
+            console.error('[GOOGLE SIGNIN] Error:', error);
             if (error.code !== "auth/popup-closed-by-user" && error.code !== "auth/cancelled-popup-request") {
                 showAuthErrorMsg(window.mapFirebaseError(error.code, error.message));
             }
