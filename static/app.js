@@ -88,9 +88,32 @@ window.mapFirebaseError = function (code, defaultMsg) {
 // Listen for Firebase Auth redirect results and state changes
 if (firebaseAuth) {
     // Process redirect result after returning from Google Sign-In redirect
-    firebaseAuth.getRedirectResult().then((result) => {
+    firebaseAuth.getRedirectResult().then(async (result) => {
         if (result && result.user) {
             console.log("[FIREBASE CLIENT] getRedirectResult SUCCESS:", result.user.email);
+            const user = result.user;
+            const userData = {
+                uid: user.uid,
+                email: user.email,
+                name: user.displayName || user.email.split("@")[0].replace(/[._-]/g, " "),
+                provider: "google",
+                avatar_url: user.photoURL || `https://api.dicebear.com/7.x/bottts/svg?seed=${encodeURIComponent(user.email)}`
+            };
+            try {
+                const syncRes = await fetch("/api/firebase-sync", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify(userData)
+                });
+                const syncData = await syncRes.json();
+                if (syncRes.ok && syncData.user) {
+                    window.loginUser(syncData.user);
+                    return;
+                }
+            } catch (err) {
+                console.error("[FIREBASE CLIENT] Error syncing redirect user:", err);
+            }
+            window.loginUser(userData);
         }
     }).catch((error) => {
         console.error("[FIREBASE CLIENT] getRedirectResult error:", error);
@@ -1047,8 +1070,6 @@ function initializeDocPilotApp() {
 
     function showLoginScreen() {
         currentUser = null;
-        localStorage.removeItem("docpilot-user");
-        localStorage.removeItem("prepz_user");
         if (navPinnedLibrary) navPinnedLibrary.style.display = "none";
         if (landingPageView) {
             landingPageView.classList.remove("hidden");
