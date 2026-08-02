@@ -142,11 +142,23 @@ window.closeGmailInputModal = function() {
 
 window.handleGmailModalSubmit = async function(e) {
     if (e) e.preventDefault();
-    const inputEl = document.getElementById("gmail-modal-email-input");
+    const emailInput = document.getElementById("gmail-modal-email-input");
+    const pwdInput = document.getElementById("gmail-modal-password-input");
     const errEl = document.getElementById("gmail-modal-error-msg");
-    const rawEmail = inputEl ? inputEl.value.trim().toLowerCase() : "";
 
-    if (!rawEmail || !window.isValidEmail(rawEmail)) {
+    const email = emailInput ? emailInput.value.trim().toLowerCase() : "";
+    const password = pwdInput ? pwdInput.value : "";
+
+    if (!email || !password) {
+        if (errEl) {
+            errEl.textContent = "Please enter both Gmail address and password.";
+            errEl.classList.remove("hidden");
+            errEl.style.display = "block";
+        }
+        return;
+    }
+
+    if (!window.isValidEmail(email)) {
         if (errEl) {
             errEl.textContent = "Please enter a valid Gmail address (e.g. user@gmail.com).";
             errEl.classList.remove("hidden");
@@ -155,11 +167,34 @@ window.handleGmailModalSubmit = async function(e) {
         return;
     }
 
-    const rawName = rawEmail.split("@")[0].replace(/[._-]/g, " ");
-    const formattedName = rawName.charAt(0).toUpperCase() + rawName.slice(1);
-    
-    window.closeGmailInputModal();
-    window.selectGoogleAccount(formattedName, rawEmail, `https://api.dicebear.com/7.x/bottts/svg?seed=${encodeURIComponent(rawEmail)}`);
+    try {
+        const res = await fetch("/api/login", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ email, password })
+        });
+        const data = await res.json();
+        if (res.ok && data.user) {
+            window.closeGmailInputModal();
+            window.loginUser(data.user);
+        } else if (data.status === "otp_required") {
+            window.closeGmailInputModal();
+            window.openOtpModal(data.email, "signup");
+        } else {
+            const errText = data && data.detail ? data.detail : "Invalid email or password.";
+            if (errEl) {
+                errEl.textContent = errText;
+                errEl.classList.remove("hidden");
+                errEl.style.display = "block";
+            }
+        }
+    } catch (err) {
+        if (errEl) {
+            errEl.textContent = "Unable to connect to server. Please check your connection.";
+            errEl.classList.remove("hidden");
+            errEl.style.display = "block";
+        }
+    }
 };
 
 window.handleGoogleLogin = function () {
