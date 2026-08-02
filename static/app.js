@@ -57,6 +57,10 @@ try {
 
 window.mapFirebaseError = function (code, defaultMsg) {
     switch (code) {
+        case "auth/unauthorized-domain":
+            return "Domain unauthorized! Please add 'om123bansal-prepz-workspace.hf.space' in Firebase Console -> Authentication -> Settings -> Authorized domains.";
+        case "auth/operation-not-allowed":
+            return "Google Sign-In is not enabled! Please enable Google under Firebase Console -> Authentication -> Sign-in method.";
         case "auth/email-already-in-use":
             return "An account with this email address already exists. Please switch to the Log In tab.";
         case "auth/invalid-email":
@@ -73,10 +77,6 @@ window.mapFirebaseError = function (code, defaultMsg) {
             return "Network connection error. Please check your internet connection.";
         case "auth/user-disabled":
             return "This user account has been disabled. Please contact support.";
-        case "auth/popup-closed-by-user":
-            return "Google Sign-In popup was closed before completing authentication.";
-        case "auth/cancelled-popup-request":
-            return "Google Sign-In popup request was cancelled.";
         default:
             return defaultMsg || "Authentication failed. Please check credentials and try again.";
     }
@@ -91,12 +91,7 @@ if (firebaseAuth) {
         }
     }).catch((error) => {
         console.error("[FIREBASE CLIENT] getRedirectResult error:", error);
-        if (error.code === "auth/unauthorized-domain" || error.code === "auth/operation-not-allowed") {
-            console.log("[FIREBASE CLIENT] Unauthorized domain -> opening in-app Gmail Account Modal fallback");
-            if (typeof window.openGmailInputModal === "function") window.openGmailInputModal();
-        } else if (error.code !== "auth/popup-closed-by-user") {
-            showAuthErrorMsg(window.mapFirebaseError(error.code, error.message));
-        }
+        showAuthErrorMsg(window.mapFirebaseError(error.code, error.message));
     });
 
     firebaseAuth.onAuthStateChanged(async (user) => {
@@ -343,20 +338,15 @@ window.handleGoogleLogin = function () {
     const provider = new firebase.auth.GoogleAuthProvider();
     provider.setCustomParameters({ prompt: 'select_account' });
 
-    console.log("[FIREBASE CLIENT] Initiating Google Sign-In via signInWithRedirect...");
+    console.log("[FIREBASE CLIENT] Initiating pure Firebase Google Sign-In redirect...");
     try {
         firebaseAuth.signInWithRedirect(provider).catch((error) => {
             console.error("[FIREBASE CLIENT] signInWithRedirect error:", error);
-            if (error.code === "auth/unauthorized-domain" || error.code === "auth/operation-not-allowed" || (error.message && error.message.includes("domain"))) {
-                console.log("[FIREBASE CLIENT] Unauthorized domain -> opening in-app Gmail Account Modal fallback");
-                window.openGmailInputModal();
-            } else {
-                showAuthErrorMsg(window.mapFirebaseError(error.code, error.message));
-            }
+            showAuthErrorMsg(window.mapFirebaseError(error.code, error.message));
         });
     } catch (err) {
         console.error("[FIREBASE CLIENT] Synchronous redirect error:", err);
-        window.openGmailInputModal();
+        showAuthErrorMsg("Firebase redirect failed. Please refresh the page.");
     }
 };
 
