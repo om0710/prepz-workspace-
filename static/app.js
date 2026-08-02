@@ -3023,23 +3023,40 @@ function initializeDocPilotApp() {
 
     function initFullscreenToggle() {
         const btnFullscreen = document.getElementById("btn-fullscreen-toggle");
-        if (btnFullscreen) {
-            btnFullscreen.addEventListener("click", () => {
-                if (!document.fullscreenElement && !document.webkitFullscreenElement) {
-                    if (document.documentElement.requestFullscreen) {
-                        document.documentElement.requestFullscreen();
-                    } else if (document.documentElement.webkitRequestFullscreen) {
-                        document.documentElement.webkitRequestFullscreen();
-                    }
-                } else {
-                    if (document.exitFullscreen) {
-                        document.exitFullscreen();
-                    } else if (document.webkitExitFullscreen) {
-                        document.webkitExitFullscreen();
-                    }
-                }
-            });
+        if (!btnFullscreen) return;
+
+        const expandSvg = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/></svg>`;
+        const minimizeSvg = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M4 14h6v6m10-10h-6V4m0 16h6v-6M10 4H4v6"/></svg>`;
+
+        function updateFullscreenUI() {
+            const isFull = !!(document.fullscreenElement || document.webkitFullscreenElement);
+            if (isFull) {
+                btnFullscreen.innerHTML = `${minimizeSvg}<span>Exit Fullscreen</span>`;
+                btnFullscreen.title = "Exit Fullscreen Mode (Esc)";
+            } else {
+                btnFullscreen.innerHTML = `${expandSvg}<span>Fullscreen</span>`;
+                btnFullscreen.title = "Toggle Fullscreen Mode";
+            }
         }
+
+        btnFullscreen.addEventListener("click", () => {
+            if (!document.fullscreenElement && !document.webkitFullscreenElement) {
+                if (document.documentElement.requestFullscreen) {
+                    document.documentElement.requestFullscreen();
+                } else if (document.documentElement.webkitRequestFullscreen) {
+                    document.documentElement.webkitRequestFullscreen();
+                }
+            } else {
+                if (document.exitFullscreen) {
+                    document.exitFullscreen();
+                } else if (document.webkitExitFullscreen) {
+                    document.webkitExitFullscreen();
+                }
+            }
+        });
+
+        document.addEventListener("fullscreenchange", updateFullscreenUI);
+        document.addEventListener("webkitfullscreenchange", updateFullscreenUI);
     }
 
     // Start flows
