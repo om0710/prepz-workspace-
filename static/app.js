@@ -8,16 +8,19 @@ if (window.location.protocol === "file:") {
 }
 
 window.fetch = function (url, options = {}) {
-    options.headers = options.headers || {};
-    if (options.headers instanceof Headers) {
-        options.headers.set("ngrok-skip-browser-warning", "69420");
-    } else {
-        options.headers["ngrok-skip-browser-warning"] = "69420";
-    }
+    let urlStr = typeof url === "string" ? url : (url && url.url ? url.url : "");
     
-    // Direct API route mapping to skip proxy issues
-    if (typeof url === "string" && url.startsWith("/")) {
-        url = API_BASE_URL + url;
+    // Only apply ngrok headers and origin mapping to local API routes (starting with / or matching location.origin)
+    if (urlStr.startsWith("/") || urlStr.includes(window.location.origin) || urlStr.includes("ngrok")) {
+        options.headers = options.headers || {};
+        if (options.headers instanceof Headers) {
+            options.headers.set("ngrok-skip-browser-warning", "69420");
+        } else {
+            options.headers["ngrok-skip-browser-warning"] = "69420";
+        }
+        if (urlStr.startsWith("/")) {
+            url = API_BASE_URL + urlStr;
+        }
     }
     
     return originalFetch(url, options);
