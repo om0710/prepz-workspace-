@@ -1027,18 +1027,22 @@ function initializeDocPilotApp() {
                 }
                 const provider = new firebase.auth.GoogleAuthProvider();
                 provider.setCustomParameters({ prompt: 'select_account' });
-                // signInWithPopup MUST be first synchronous call in click handler
-                firebaseAuth.signInWithPopup(provider)
-                    .then((result) => {
-                        console.log('[GOOGLE SIGNIN] Popup success:', result.user.email);
-                        // onAuthStateChanged handles loginUser() automatically
-                    })
-                    .catch((error) => {
-                        console.error('[GOOGLE SIGNIN] Error:', error.code);
-                        if (error.code !== 'auth/popup-closed-by-user' && error.code !== 'auth/cancelled-popup-request') {
-                            showAuthError(window.mapFirebaseError(error.code, error.message));
-                        }
-                    });
+                
+                // Sign out first so cached session doesn't auto-select wrong account
+                firebaseAuth.signOut().finally(() => {
+                    // signInWithPopup MUST be called in this user-gesture context
+                    firebaseAuth.signInWithPopup(provider)
+                        .then((result) => {
+                            console.log('[GOOGLE SIGNIN] Popup success:', result.user.email);
+                            // onAuthStateChanged handles loginUser() automatically
+                        })
+                        .catch((error) => {
+                            console.error('[GOOGLE SIGNIN] Error:', error.code);
+                            if (error.code !== 'auth/popup-closed-by-user' && error.code !== 'auth/cancelled-popup-request') {
+                                showAuthError(window.mapFirebaseError(error.code, error.message));
+                            }
+                        });
+                });
             });
         }
 
