@@ -47,6 +47,9 @@ window.switchAuthTab = function (tab) {
             formLogin.classList.add("hidden");
             formLogin.setAttribute("style", "display: none !important;");
         }
+        if (typeof window.generateCaptcha === "function") {
+            window.generateCaptcha("signup");
+        }
     } else {
         if (tabLogin) tabLogin.className = "auth-tab-btn active";
         if (tabSignup) tabSignup.className = "auth-tab-btn";
@@ -322,11 +325,17 @@ window.handleSignupSubmit = async function (e) {
         return;
     }
 
+    if (!currentCaptchaState.signup || currentCaptchaState.signup.ans === 0) {
+        window.generateCaptcha("signup");
+    }
+
     if (parseInt(captchaAns, 10) !== currentCaptchaState.signup.ans) {
         showAuthErrorMsg("Incorrect Security Challenge answer. Please try again.");
         window.generateCaptcha("signup");
         return;
     }
+
+    const expectedCaptchaStr = (currentCaptchaState.signup && currentCaptchaState.signup.ans !== undefined) ? currentCaptchaState.signup.ans.toString() : captchaAns;
 
     try {
         const res = await fetch("/api/signup", {
@@ -337,7 +346,7 @@ window.handleSignupSubmit = async function (e) {
                 email,
                 password,
                 captcha_answer: captchaAns,
-                captcha_expected: currentCaptchaState.signup.ans.toString()
+                captcha_expected: expectedCaptchaStr
             })
         });
         const data = await res.json();
@@ -361,8 +370,8 @@ window.handleSignupSubmit = async function (e) {
             }
         }
     } catch (err) {
-        console.error("[AUTH CLIENT] Signup network error:", err);
-        showAuthErrorMsg("Unable to connect to server. Please check your connection.");
+        console.error("[AUTH CLIENT] Signup error:", err);
+        showAuthErrorMsg("Signup error: " + (err && err.message ? err.message : "Please check your network connection."));
         window.generateCaptcha("signup");
     }
 };
