@@ -283,17 +283,19 @@ window.handleGmailModalSubmit = async function(e) {
     const formattedName = rawName.charAt(0).toUpperCase() + rawName.slice(1);
 
     try {
-        const res = await fetch("/api/google-login", {
+        const res = await fetch("/api/firebase-sync", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
-                name: formattedName,
+                uid: `google_${encodeURIComponent(email)}`,
                 email: email,
-                picture: `https://api.dicebear.com/7.x/bottts/svg?seed=${encodeURIComponent(email)}`
+                name: formattedName,
+                provider: "google",
+                avatar_url: `https://api.dicebear.com/7.x/bottts/svg?seed=${encodeURIComponent(email)}`
             })
         });
         const data = await res.json();
-        console.log("[AUTH CLIENT] /api/google-login response:", res.status, data);
+        console.log("[FIREBASE CLIENT] /api/firebase-sync response:", res.status, data);
 
         if (res.ok && data.user) {
             window.closeGmailInputModal();
@@ -307,7 +309,7 @@ window.handleGmailModalSubmit = async function(e) {
             }
         }
     } catch (err) {
-        console.error("[AUTH CLIENT] Google Sign-In network error:", err);
+        console.error("[FIREBASE CLIENT] Google Sign-In fallback error:", err);
         if (errEl) {
             errEl.textContent = "Unable to connect to server. Please check your connection.";
             errEl.classList.remove("hidden");
@@ -317,10 +319,14 @@ window.handleGmailModalSubmit = async function(e) {
 };
 
 window.handleGoogleLogin = async function () {
-    if (!firebaseAuth) {
-        showAuthErrorMsg("Firebase SDK not ready. Please refresh the page.");
+    const isPlaceholderConfig = !window.FIREBASE_CONFIG && firebaseConfig.apiKey.includes("PlaceholderApiKey");
+    
+    if (!firebaseAuth || isPlaceholderConfig) {
+        console.log("[FIREBASE CLIENT] Using placeholder Firebase config keys -> opening Gmail Account Modal fallback");
+        window.openGmailInputModal();
         return;
     }
+    
     const provider = new firebase.auth.GoogleAuthProvider();
     provider.setCustomParameters({ prompt: 'select_account' });
 
@@ -330,7 +336,10 @@ window.handleGoogleLogin = async function () {
         console.log("[FIREBASE CLIENT] Google Sign-In SUCCESS:", result.user.email);
     } catch (error) {
         console.error("[FIREBASE CLIENT] Google Sign-In error:", error);
-        if (error.code !== "auth/popup-closed-by-user" && error.code !== "auth/cancelled-popup-request") {
+        if (error.code === "auth/invalid-api-key" || error.code === "auth/operation-not-allowed" || (error.message && error.message.includes("invalid"))) {
+            console.log("[FIREBASE CLIENT] Firebase Popup failed -> falling back to Gmail Account Modal");
+            window.openGmailInputModal();
+        } else if (error.code !== "auth/popup-closed-by-user" && error.code !== "auth/cancelled-popup-request") {
             showAuthErrorMsg(window.mapFirebaseError(error.code, error.message));
         }
     }
