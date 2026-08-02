@@ -3012,13 +3012,34 @@ function initializeDocPilotApp() {
         }
 
         dots.forEach(dot => {
-            dot.addEventListener("click", () => {
+                    dot.addEventListener("click", () => {
                 const step = parseInt(dot.dataset.step, 10);
                 if (step >= 1 && step <= 4) {
                     renderOnboardingStep(step);
                 }
             });
         });
+    }
+
+    function initFullscreenToggle() {
+        const btnFullscreen = document.getElementById("btn-fullscreen-toggle");
+        if (btnFullscreen) {
+            btnFullscreen.addEventListener("click", () => {
+                if (!document.fullscreenElement && !document.webkitFullscreenElement) {
+                    if (document.documentElement.requestFullscreen) {
+                        document.documentElement.requestFullscreen();
+                    } else if (document.documentElement.webkitRequestFullscreen) {
+                        document.documentElement.webkitRequestFullscreen();
+                    }
+                } else {
+                    if (document.exitFullscreen) {
+                        document.exitFullscreen();
+                    } else if (document.webkitExitFullscreen) {
+                        document.webkitExitFullscreen();
+                    }
+                }
+            });
+        }
     }
 
     // Start flows
@@ -3031,6 +3052,7 @@ function initializeDocPilotApp() {
     initAuth();
     initReportModal();
     initOnboardingListeners();
+    initFullscreenToggle();
 
     // Auto-sync uploaded files across all users in real-time every 4 seconds
     fetchIndexedFiles();
