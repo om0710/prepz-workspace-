@@ -2847,8 +2847,8 @@ function initializeDocPilotApp() {
         const isCollapsed = savedState !== "false";
         setSidebarState(isCollapsed);
 
-        // Auto-close sidebar on mobile when clicking any sidebar navigation link
-        document.querySelectorAll(".app-sidebar nav a, .app-sidebar .btn-sidebar-new-chat, .app-sidebar .thread-item").forEach(el => {
+        // Auto-close sidebar on mobile when clicking any sidebar navigation link or button
+        document.querySelectorAll(".app-sidebar nav a, .app-sidebar nav button, .app-sidebar .sidebar-link, .app-sidebar .btn-sidebar-new-chat, .app-sidebar .thread-item").forEach(el => {
             el.addEventListener("click", () => {
                 if (window.innerWidth <= 768) {
                     setSidebarState(true);

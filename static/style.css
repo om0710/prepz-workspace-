@@ -3184,21 +3184,24 @@ body, html {
 @media (max-width: 768px) {
     /* Mobile Sidebar Overlay */
     .app-sidebar {
-        position: absolute !important;
+        position: fixed !important;
         left: 0;
         top: 0;
+        bottom: 0;
         height: 100vh !important;
-        z-index: 1000 !important;
-        box-shadow: 10px 0 30px rgba(0, 0, 0, 0.3) !important;
+        z-index: 10000 !important;
+        box-shadow: 10px 0 30px rgba(0, 0, 0, 0.5) !important;
         width: 280px !important;
+        max-width: 82vw !important;
         transform: translateX(0);
         transition: transform 0.3s cubic-bezier(0.25, 0.8, 0.25, 1) !important;
+        visibility: visible;
     }
     .app-sidebar.sidebar-collapsed {
         transform: translateX(-100%) !important;
+        visibility: hidden !important;
+        pointer-events: none !important;
         width: 280px !important;
-        padding: 24px 18px !important;
-        border-right: none !important;
     }
     .app-sidebar.sidebar-collapsed > * {
         opacity: 0 !important;
@@ -6118,7 +6121,9 @@ html, body, #chatbot-app-view, .app-wrapper, .main-panel, .main-container, .cont
 
     /* Chat View & Input Box */
     .chat-messages-container {
-        padding: 12px 10px 90px 10px !important;
+        padding: 12px 10px 110px 10px !important;
+        overflow-y: auto !important;
+        -webkit-overflow-scrolling: touch;
     }
     .chat-welcome-card {
         padding: 20px 14px !important;
@@ -6135,29 +6140,68 @@ html, body, #chatbot-app-view, .app-wrapper, .main-panel, .main-container, .cont
         grid-template-columns: 1fr !important;
     }
     .input-panel-wrapper {
-        padding: 8px 10px !important;
+        position: fixed !important;
+        bottom: 0 !important;
+        left: 0 !important;
+        right: 0 !important;
+        padding: 10px 12px calc(10px + env(safe-area-inset-bottom, 0px)) 12px !important;
+        background: rgba(13, 13, 16, 0.95) !important;
+        backdrop-filter: blur(16px) !important;
+        -webkit-backdrop-filter: blur(16px) !important;
+        border-top: 1px solid rgba(255, 255, 255, 0.1) !important;
+        z-index: 990 !important;
     }
     .chat-input-box {
         padding: 8px 10px !important;
     }
+    .chat-input-textarea,
+    input,
+    select,
+    textarea {
+        font-size: 16px !important; /* Prevents auto-zoom on iOS Safari */
+    }
     .input-controls {
-        flex-wrap: wrap !important;
+        display: flex !important;
+        flex-wrap: nowrap !important;
+        overflow-x: auto !important;
+        -webkit-overflow-scrolling: touch;
+        scrollbar-width: none !important;
         gap: 6px !important;
+        padding-bottom: 4px !important;
+    }
+    .input-controls::-webkit-scrollbar {
+        display: none !important;
     }
     .control-pill-nexa {
+        flex-shrink: 0 !important;
         padding: 6px 10px !important;
-        font-size: 12px !important;
+        font-size: 11.5px !important;
+        white-space: nowrap !important;
     }
 
-    /* Modals */
+    /* Modals & Popups */
     .google-chooser-card,
     .upload-modal-card,
-    .onboarding-card {
-        width: 92% !important;
-        max-width: 400px !important;
+    .onboarding-card,
+    .profile-modal {
+        width: 94% !important;
+        max-width: 420px !important;
         padding: 20px 16px !important;
-        max-height: 85vh !important;
+        max-height: 88vh !important;
         overflow-y: auto !important;
+        -webkit-overflow-scrolling: touch;
+        margin: auto !important;
+    }
+
+    /* Developer Profile Card Footer */
+    .developer-profile-card {
+        flex-direction: column !important;
+        text-align: center !important;
+        padding: 18px 16px !important;
+        gap: 12px !important;
+    }
+    .dev-info-box {
+        align-items: center !important;
     }
 }
 
