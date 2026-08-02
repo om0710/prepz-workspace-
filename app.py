@@ -217,19 +217,74 @@ from database import (
     record_upload, get_file_uploads_metadata, delete_upload_record,
     get_upload_by_filename, record_report, get_reported_files,
     update_user_activity, add_contribution_points, get_top_contributors,
-    mark_onboarding_completed
+    mark_onboarding_completed, validate_password_strength, create_otp,
+    verify_otp_code, update_user_password, mark_user_verified,
+    check_rate_limit, record_rate_limit_attempt
 )
 from fastapi import Form
 from typing import Optional
+import smtplib
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
+
+def send_otp_email(to_email: str, otp_code: str, subject: str, body_text: str):
+    smtp_host = os.environ.get("SMTP_HOST")
+    smtp_port = int(os.environ.get("SMTP_PORT", 587))
+    smtp_user = os.environ.get("SMTP_USER")
+    smtp_pass = os.environ.get("SMTP_PASSWORD")
+    from_email = os.environ.get("SMTP_FROM", smtp_user or "noreply@prepz.app")
+
+    if smtp_host and smtp_user and smtp_pass:
+        try:
+            msg = MIMEMultipart()
+            msg["From"] = from_email
+            msg["To"] = to_email
+            msg["Subject"] = subject
+            msg.attach(MIMEText(body_text, "html"))
+
+            server = smtplib.SMTP(smtp_host, smtp_port, timeout=10)
+            server.starttls()
+            server.login(smtp_user, smtp_pass)
+            server.send_message(msg)
+            server.quit()
+            print(f"[EMAIL SENT] OTP successfully sent to {to_email}")
+            return True
+        except Exception as e:
+            print(f"[EMAIL ERROR] Failed to send email to {to_email}: {e}")
+    else:
+        print(f"[DEV NOTICE] SMTP credentials not set. OTP for {to_email} is: {otp_code}")
+    return False
+
+def verify_captcha_challenge(answer: Optional[str], expected: Optional[str]):
+    if expected is not None and answer is not None:
+        if str(answer).strip() != str(expected).strip():
+            raise HTTPException(status_code=400, detail="Security challenge (CAPTCHA) answer is incorrect. Please try again.")
 
 class SignupRequest(BaseModel):
     name: str
     email: str
     password: str
+    captcha_answer: Optional[str] = None
+    captcha_expected: Optional[str] = None
 
 class LoginRequest(BaseModel):
     email: str
     password: str
+
+class VerifyOTPRequest(BaseModel):
+    email: str
+    otp_code: str
+    otp_type: str = "signup"
+
+class ForgotPasswordRequest(BaseModel):
+    email: str
+    captcha_answer: Optional[str] = None
+    captcha_expected: Optional[str] = None
+
+class ResetPasswordRequest(BaseModel):
+    email: str
+    otp_code: str
+    new_password: str
 
 class GoogleLoginRequest(BaseModel):
     name: str
@@ -247,11 +302,112 @@ def signup(req: SignupRequest):
     if "@" not in req.email:
         raise HTTPException(status_code=400, detail="Invalid email address.")
 
+    verify_captcha_challenge(req.captcha_answer, req.captcha_expected)
+
+    # Rate limiting on OTP / Signup
+    if not check_rate_limit(req.email, "signup_otp", max_attempts=5, window_minutes=60):
+        raise HTTPException(status_code=429, detail="Too many signup OTP requests. Please wait an hour before trying again.")
+
+    # Validate password strength
+    is_valid, pwd_msg = validate_password_strength(req.password)
+    if not is_valid:
+        raise HTTPException(status_code=400, detail=pwd_msg)
+
     existing = get_user_by_email(req.email)
-    if existing:
+    if existing and existing.get("is_verified", True):
         raise HTTPException(status_code=400, detail="An account with this email already exists. Please log in.")
     
-    user = create_user(name=req.name, email=req.email, password=req.password, provider="local")
+    if not existing:
+        user = create_user(name=req.name, email=req.email, password=req.password, provider="local", is_verified=False)
+    else:
+        user = existing
+
+    # Create OTP for signup verification
+    otp_code = create_otp(req.email, otp_type="signup", expiry_minutes=10)
+    record_rate_limit_attempt(req.email, "signup_otp")
+
+    email_html = f"""
+    <div style="font-family: Arial, sans-serif; padding: 20px; background-color: #f4f4f5; color: #18181b;">
+        <h2 style="color: #6366f1;">Prepz Workspace - Email Verification</h2>
+        <p>Hello <strong>{user['name']}</strong>,</p>
+        <p>Your 6-digit OTP code to verify your Prepz account is:</p>
+        <div style="font-size: 28px; font-weight: bold; letter-spacing: 4px; color: #4f46e5; margin: 16px 0;">{otp_code}</div>
+        <p>This OTP will expire in 10 minutes. Please do not share this code with anyone.</p>
+    </div>
+    """
+    send_otp_email(req.email, otp_code, "Verify your Prepz Workspace Account", email_html)
+
+    return {
+        "status": "otp_required",
+        "email": req.email,
+        "otp_code": otp_code,
+        "message": f"Verification OTP sent to {req.email}. Please enter the 6-digit code to activate your account."
+    }
+
+@app.post("/api/verify-otp")
+def verify_otp(req: VerifyOTPRequest):
+    if not req.email.strip() or not req.otp_code.strip():
+        raise HTTPException(status_code=400, detail="Email and OTP code are required.")
+
+    is_valid = verify_otp_code(req.email, req.otp_code, otp_type=req.otp_type)
+    if not is_valid:
+        raise HTTPException(status_code=400, detail="Invalid or expired OTP code. Please try again.")
+
+    if req.otp_type == "signup":
+        mark_user_verified(req.email)
+        user = get_user_by_email(req.email)
+        user = update_user_activity(req.email) or user
+        return {
+            "status": "success",
+            "message": "Account verified successfully!",
+            "user": {
+                "id": user["id"],
+                "name": user["name"],
+                "email": user["email"],
+                "provider": user["provider"],
+                "avatar_url": user["avatar_url"],
+                "contribution_score": user.get("contribution_score", 0),
+                "current_streak": user.get("current_streak", 1),
+                "has_seen_onboarding": user.get("has_seen_onboarding", False)
+            }
+        }
+
+    return {
+        "status": "success",
+        "message": "OTP verified successfully. You can now set your new password."
+    }
+
+@app.post("/api/login")
+def login(req: LoginRequest):
+    if not req.email.strip() or not req.password:
+        raise HTTPException(status_code=400, detail="Email and password are required.")
+
+    # Rate limiting on failed login attempts (Max 5 failed attempts per 15 mins)
+    if not check_rate_limit(req.email, "login_fail", max_attempts=5, window_minutes=15):
+        raise HTTPException(status_code=429, detail="Too many failed login attempts. Please wait 15 minutes before trying again.")
+
+    user = get_user_by_email(req.email)
+    if not user:
+        record_rate_limit_attempt(req.email, "login_fail")
+        raise HTTPException(status_code=400, detail="No account found with this email. Please sign up.")
+    
+    if user["provider"] != "local" and not user["password_hash"]:
+        raise HTTPException(status_code=400, detail="This account was created via Google Login. Please use Google Login.")
+
+    if not verify_password(req.password, user["password_hash"]):
+        record_rate_limit_attempt(req.email, "login_fail")
+        raise HTTPException(status_code=400, detail="Incorrect password. Please try again.")
+
+    if not user.get("is_verified", True):
+        # Generate fresh verification OTP
+        otp_code = create_otp(req.email, otp_type="signup", expiry_minutes=10)
+        return {
+            "status": "otp_required",
+            "email": req.email,
+            "otp_code": otp_code,
+            "message": "Your account is not verified yet. Please enter the 6-digit OTP code sent to your email."
+        }
+
     user = update_user_activity(req.email) or user
     return {
         "status": "success",
@@ -267,34 +423,61 @@ def signup(req: SignupRequest):
         }
     }
 
-@app.post("/api/login")
-def login(req: LoginRequest):
-    if not req.email.strip() or not req.password:
-        raise HTTPException(status_code=400, detail="Email and password are required.")
-    
+@app.post("/api/forgot-password/request-otp")
+def forgot_password_request_otp(req: ForgotPasswordRequest):
+    if not req.email.strip():
+        raise HTTPException(status_code=400, detail="Email is required.")
+
+    verify_captcha_challenge(req.captcha_answer, req.captcha_expected)
+
+    # Rate limiting (Max 3 OTP requests per hour)
+    if not check_rate_limit(req.email, "forgot_otp", max_attempts=3, window_minutes=60):
+        raise HTTPException(status_code=429, detail="Too many OTP requests. Please wait an hour before requesting another OTP.")
+
     user = get_user_by_email(req.email)
     if not user:
-        raise HTTPException(status_code=400, detail="No account found with this email. Please sign up.")
-    
-    if user["provider"] != "local" and not user["password_hash"]:
-        raise HTTPException(status_code=400, detail="This account was created via Google Login. Please use Google Login.")
+        raise HTTPException(status_code=400, detail="No account found with this email.")
 
-    if not verify_password(req.password, user["password_hash"]):
-        raise HTTPException(status_code=400, detail="Incorrect password. Please try again.")
+    otp_code = create_otp(req.email, otp_type="forgot_password", expiry_minutes=10)
+    record_rate_limit_attempt(req.email, "forgot_otp")
 
-    user = update_user_activity(req.email) or user
+    email_html = f"""
+    <div style="font-family: Arial, sans-serif; padding: 20px; background-color: #f4f4f5; color: #18181b;">
+        <h2 style="color: #6366f1;">Prepz Workspace - Password Reset OTP</h2>
+        <p>Hello <strong>{user['name']}</strong>,</p>
+        <p>You requested a password reset. Your 6-digit OTP code is:</p>
+        <div style="font-size: 28px; font-weight: bold; letter-spacing: 4px; color: #4f46e5; margin: 16px 0;">{otp_code}</div>
+        <p>This code expires in 10 minutes. If you did not request a password reset, please ignore this email.</p>
+    </div>
+    """
+    send_otp_email(req.email, otp_code, "Prepz Workspace - Reset Password OTP", email_html)
+
     return {
         "status": "success",
-        "user": {
-            "id": user["id"],
-            "name": user["name"],
-            "email": user["email"],
-            "provider": user["provider"],
-            "avatar_url": user["avatar_url"],
-            "contribution_score": user.get("contribution_score", 0),
-            "current_streak": user.get("current_streak", 1),
-            "has_seen_onboarding": user.get("has_seen_onboarding", False)
-        }
+        "email": req.email,
+        "otp_code": otp_code,
+        "message": f"Password reset OTP sent to {req.email}."
+    }
+
+@app.post("/api/forgot-password/reset")
+def forgot_password_reset(req: ResetPasswordRequest):
+    if not req.email.strip() or not req.otp_code.strip() or not req.new_password:
+        raise HTTPException(status_code=400, detail="All fields are required.")
+
+    # Validate OTP code first
+    is_valid = verify_otp_code(req.email, req.otp_code, otp_type="forgot_password")
+    if not is_valid:
+        raise HTTPException(status_code=400, detail="Invalid or expired OTP code.")
+
+    # Validate new password strength
+    is_valid_pwd, pwd_msg = validate_password_strength(req.new_password)
+    if not is_valid_pwd:
+        raise HTTPException(status_code=400, detail=pwd_msg)
+
+    update_user_password(req.email, req.new_password)
+    return {
+        "status": "success",
+        "message": "Password updated successfully! You can now log in with your new password."
     }
 
 @app.post("/api/google-login")
@@ -304,7 +487,7 @@ def google_login(req: GoogleLoginRequest):
 
     user = get_user_by_email(req.email)
     if not user:
-        user = create_user(name=req.name, email=req.email, password=None, provider="google", avatar_url=req.picture)
+        user = create_user(name=req.name, email=req.email, password=None, provider="google", avatar_url=req.picture, is_verified=True)
     
     user = update_user_activity(req.email) or user
     return {

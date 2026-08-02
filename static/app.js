@@ -228,6 +228,22 @@ function showAuthErrorMsg(msg) {
     }
 }
 
+let currentCaptchaState = {
+    signup: { num1: 0, num2: 0, ans: 0 },
+    forgot: { num1: 0, num2: 0, ans: 0 }
+};
+
+window.generateCaptcha = function(type) {
+    const num1 = Math.floor(Math.random() * 9) + 1;
+    const num2 = Math.floor(Math.random() * 9) + 1;
+    currentCaptchaState[type] = { num1, num2, ans: num1 + num2 };
+    
+    const qEl = document.getElementById(`${type}-captcha-question`);
+    if (qEl) {
+        qEl.textContent = `${num1} + ${num2} = ?`;
+    }
+};
+
 window.handleLoginSubmit = async function (e) {
     if (e) e.preventDefault();
     const authErrorMsg = document.getElementById("auth-error-msg");
@@ -255,6 +271,8 @@ window.handleLoginSubmit = async function (e) {
         const data = await res.json();
         if (res.ok && data.user) {
             window.loginUser(data.user);
+        } else if (data.status === "otp_required") {
+            window.openOtpModal(data.email, "signup");
         } else {
             const errorText = data && data.detail ? data.detail : "Login failed. Please check credentials.";
             showAuthErrorMsg(errorText);
@@ -269,12 +287,7 @@ window.handleLoginSubmit = async function (e) {
             }
         }
     } catch (err) {
-        window.loginUser({
-            id: Date.now(),
-            name: email.includes("@") ? email.split("@")[0] : "Student",
-            email: email,
-            provider: "local"
-        });
+        showAuthErrorMsg("Unable to connect to server. Please check your connection.");
     }
 };
 
@@ -289,13 +302,26 @@ window.handleSignupSubmit = async function (e) {
     const nameInput = document.getElementById("signup-name");
     const emailInput = document.getElementById("signup-email");
     const pwdInput = document.getElementById("signup-password");
+    const captchaInput = document.getElementById("signup-captcha-answer");
 
     const name = nameInput && nameInput.value.trim() ? nameInput.value.trim() : "";
     const email = emailInput && emailInput.value.trim() ? emailInput.value.trim() : "";
     const password = pwdInput ? pwdInput.value : "";
+    const captchaAns = captchaInput ? captchaInput.value.trim() : "";
 
     if (!name || !email || !password) {
         showAuthErrorMsg("All fields are required for sign up.");
+        return;
+    }
+
+    if (password.length < 8 || !/[A-Za-z]/.test(password) || !/\d/.test(password)) {
+        showAuthErrorMsg("Password must be at least 8 characters long and contain both letters and numbers.");
+        return;
+    }
+
+    if (parseInt(captchaAns, 10) !== currentCaptchaState.signup.ans) {
+        showAuthErrorMsg("Incorrect Security Challenge answer. Please try again.");
+        window.generateCaptcha("signup");
         return;
     }
 
@@ -303,14 +329,23 @@ window.handleSignupSubmit = async function (e) {
         const res = await fetch("/api/signup", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ name, email, password })
+            body: JSON.stringify({
+                name,
+                email,
+                password,
+                captcha_answer: captchaAns,
+                captcha_expected: currentCaptchaState.signup.ans.toString()
+            })
         });
         const data = await res.json();
-        if (res.ok && data.user) {
+        if (res.ok && data.status === "otp_required") {
+            window.openOtpModal(data.email, "signup");
+        } else if (res.ok && data.user) {
             window.loginUser(data.user);
         } else {
             const errorText = data && data.detail ? data.detail : "Sign up failed. Please try again.";
             showAuthErrorMsg(errorText);
+            window.generateCaptcha("signup");
             
             if (errorText.toLowerCase().includes("already exists")) {
                 setTimeout(() => {
@@ -322,12 +357,235 @@ window.handleSignupSubmit = async function (e) {
             }
         }
     } catch (err) {
-        window.loginUser({
-            id: Date.now(),
-            name: name,
-            email: email,
-            provider: "local"
+        showAuthErrorMsg("Unable to connect to server. Please check your connection.");
+        window.generateCaptcha("signup");
+    }
+};
+
+let currentPendingOtpEmail = "";
+let currentOtpType = "signup";
+
+window.openOtpModal = function(email, otpType = "signup") {
+    currentPendingOtpEmail = email;
+    currentOtpType = otpType;
+    const modal = document.getElementById("otp-verification-modal");
+    const emailDisplay = document.getElementById("otp-target-email-display");
+    const errorMsg = document.getElementById("otp-error-msg");
+    const otpInput = document.getElementById("otp-code-input");
+
+    if (emailDisplay) emailDisplay.textContent = email;
+    if (errorMsg) { errorMsg.textContent = ""; errorMsg.classList.add("hidden"); errorMsg.style.display = "none"; }
+    if (otpInput) { otpInput.value = ""; }
+
+    if (modal) {
+        modal.classList.remove("hidden");
+        modal.style.display = "flex";
+        if (otpInput) setTimeout(() => otpInput.focus(), 100);
+    }
+};
+
+window.closeOtpModal = function() {
+    const modal = document.getElementById("otp-verification-modal");
+    if (modal) {
+        modal.classList.add("hidden");
+        modal.style.display = "none";
+    }
+};
+
+window.handleVerifyOtpSubmit = async function(e) {
+    if (e) e.preventDefault();
+    const otpInput = document.getElementById("otp-code-input");
+    const errorMsg = document.getElementById("otp-error-msg");
+    const otpCode = otpInput ? otpInput.value.trim() : "";
+
+    if (!otpCode || otpCode.length !== 6) {
+        if (errorMsg) {
+            errorMsg.textContent = "Please enter a valid 6-digit OTP code.";
+            errorMsg.classList.remove("hidden");
+            errorMsg.style.display = "block";
+        }
+        return;
+    }
+
+    try {
+        const res = await fetch("/api/verify-otp", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                email: currentPendingOtpEmail,
+                otp_code: otpCode,
+                otp_type: currentOtpType
+            })
         });
+        const data = await res.json();
+        if (res.ok && data.status === "success") {
+            window.closeOtpModal();
+            if (data.user) {
+                window.loginUser(data.user);
+            } else {
+                window.openResetPasswordModal(currentPendingOtpEmail, otpCode);
+            }
+        } else {
+            const err = data.detail || "Invalid or expired OTP code.";
+            if (errorMsg) {
+                errorMsg.textContent = err;
+                errorMsg.classList.remove("hidden");
+                errorMsg.style.display = "block";
+            }
+        }
+    } catch (err) {
+        if (errorMsg) {
+            errorMsg.textContent = "Network error verifying OTP.";
+            errorMsg.classList.remove("hidden");
+            errorMsg.style.display = "block";
+        }
+    }
+};
+
+window.openForgotPasswordModal = function(e) {
+    if (e) e.preventDefault();
+    window.generateCaptcha("forgot");
+    const modal = document.getElementById("forgot-password-modal");
+    const errEl = document.getElementById("forgot-error-msg");
+    if (errEl) { errEl.textContent = ""; errEl.classList.add("hidden"); errEl.style.display = "none"; }
+    if (modal) {
+        modal.classList.remove("hidden");
+        modal.style.display = "flex";
+    }
+};
+
+window.closeForgotPasswordModal = function() {
+    const modal = document.getElementById("forgot-password-modal");
+    if (modal) { modal.classList.add("hidden"); modal.style.display = "none"; }
+};
+
+window.handleForgotPasswordSubmit = async function(e) {
+    if (e) e.preventDefault();
+    const emailInput = document.getElementById("forgot-email-input");
+    const captchaInput = document.getElementById("forgot-captcha-answer");
+    const errEl = document.getElementById("forgot-error-msg");
+
+    const email = emailInput ? emailInput.value.trim() : "";
+    const answer = captchaInput ? captchaInput.value.trim() : "";
+
+    if (parseInt(answer, 10) !== currentCaptchaState.forgot.ans) {
+        if (errEl) {
+            errEl.textContent = "Incorrect Security Challenge answer. Please try again.";
+            errEl.classList.remove("hidden");
+            errEl.style.display = "block";
+        }
+        window.generateCaptcha("forgot");
+        return;
+    }
+
+    try {
+        const res = await fetch("/api/forgot-password/request-otp", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                email,
+                captcha_answer: answer,
+                captcha_expected: currentCaptchaState.forgot.ans.toString()
+            })
+        });
+        const data = await res.json();
+        if (res.ok) {
+            window.closeForgotPasswordModal();
+            window.openResetPasswordModal(email);
+        } else {
+            const err = data.detail || "Failed to send reset OTP.";
+            if (errEl) {
+                errEl.textContent = err;
+                errEl.classList.remove("hidden");
+                errEl.style.display = "block";
+            }
+        }
+    } catch (err) {
+        if (errEl) {
+            errEl.textContent = "Network error. Please try again.";
+            errEl.classList.remove("hidden");
+            errEl.style.display = "block";
+        }
+    }
+};
+
+window.openResetPasswordModal = function(email, prefilledOtp = "") {
+    currentPendingOtpEmail = email;
+    const modal = document.getElementById("reset-password-modal");
+    const otpInput = document.getElementById("reset-otp-input");
+    const errEl = document.getElementById("reset-error-msg");
+
+    if (errEl) { errEl.textContent = ""; errEl.classList.add("hidden"); errEl.style.display = "none"; }
+    if (otpInput && prefilledOtp) otpInput.value = prefilledOtp;
+
+    if (modal) {
+        modal.classList.remove("hidden");
+        modal.style.display = "flex";
+    }
+};
+
+window.closeResetPasswordModal = function() {
+    const modal = document.getElementById("reset-password-modal");
+    if (modal) { modal.classList.add("hidden"); modal.style.display = "none"; }
+};
+
+window.handleResetPasswordSubmit = async function(e) {
+    if (e) e.preventDefault();
+    const otpInput = document.getElementById("reset-otp-input");
+    const newPwdInput = document.getElementById("reset-new-password");
+    const errEl = document.getElementById("reset-error-msg");
+
+    const otpCode = otpInput ? otpInput.value.trim() : "";
+    const newPassword = newPwdInput ? newPwdInput.value : "";
+
+    if (newPassword.length < 8 || !/[A-Za-z]/.test(newPassword) || !/\d/.test(newPassword)) {
+        if (errEl) {
+            errEl.textContent = "Password must be at least 8 characters long with letters and numbers.";
+            errEl.classList.remove("hidden");
+            errEl.style.display = "block";
+        }
+        return;
+    }
+
+    try {
+        const res = await fetch("/api/forgot-password/reset", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                email: currentPendingOtpEmail,
+                otp_code: otpCode,
+                new_password: newPassword
+            })
+        });
+        const data = await res.json();
+        if (res.ok) {
+            window.closeResetPasswordModal();
+            showAuthErrorMsg("Password reset successful! Logging you in...");
+            const loginRes = await fetch("/api/login", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ email: currentPendingOtpEmail, password: newPassword })
+            });
+            const loginData = await loginRes.json();
+            if (loginRes.ok && loginData.user) {
+                window.loginUser(loginData.user);
+            } else {
+                window.switchAuthTab("login");
+            }
+        } else {
+            const err = data.detail || "Failed to reset password.";
+            if (errEl) {
+                errEl.textContent = err;
+                errEl.classList.remove("hidden");
+                errEl.style.display = "block";
+            }
+        }
+    } catch (err) {
+        if (errEl) {
+            errEl.textContent = "Network error resetting password.";
+            errEl.classList.remove("hidden");
+            errEl.style.display = "block";
+        }
     }
 };
 
@@ -417,6 +675,7 @@ function initializeDocPilotApp() {
     // Authentication Manager
     // ----------------------------------------------------
     function initAuth() {
+        if (window.generateCaptcha) window.generateCaptcha("signup");
         const tabLogin = document.getElementById("tab-login");
         const tabSignup = document.getElementById("tab-signup");
         const formLogin = document.getElementById("form-login");

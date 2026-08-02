@@ -152,6 +152,10 @@ def init_user_db():
         cursor.execute("ALTER TABLE users ADD COLUMN has_seen_onboarding INTEGER DEFAULT 0")
     except Exception:
         pass
+    try:
+        cursor.execute("ALTER TABLE users ADD COLUMN is_verified INTEGER DEFAULT 1")
+    except Exception:
+        pass
 
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS reported_files (
@@ -163,6 +167,27 @@ def init_user_db():
             notes TEXT,
             reported_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             status TEXT DEFAULT 'pending'
+        )
+    """)
+
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS password_otps (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            email TEXT NOT NULL,
+            otp_code TEXT NOT NULL,
+            otp_type TEXT NOT NULL,
+            expires_at TIMESTAMP NOT NULL,
+            is_used INTEGER DEFAULT 0,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    """)
+
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS auth_rate_limits (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            identifier TEXT NOT NULL,
+            action_type TEXT NOT NULL,
+            attempt_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
     """)
     conn.commit()
@@ -181,7 +206,20 @@ def hash_password(password: str) -> str:
 def verify_password(password: str, hashed: str) -> bool:
     return hash_password(password) == hashed
 
-def create_user(name: str, email: str, password: str = None, provider: str = "local", avatar_url: str = None):
+import re
+import random
+from datetime import datetime, timedelta
+
+def validate_password_strength(password: str) -> tuple[bool, str]:
+    if len(password) < 8:
+        return False, "Password must be at least 8 characters long."
+    if not re.search(r'[A-Za-z]', password):
+        return False, "Password must contain at least one letter."
+    if not re.search(r'\d', password):
+        return False, "Password must contain at least one number."
+    return True, "Valid"
+
+def create_user(name: str, email: str, password: str = None, provider: str = "local", avatar_url: str = None, is_verified: bool = True):
     email = email.strip().lower()
     name = name.strip()
     pwd_hash = hash_password(password) if password else None
@@ -189,10 +227,11 @@ def create_user(name: str, email: str, password: str = None, provider: str = "lo
         avatar_url = f"https://api.dicebear.com/7.x/bottts/svg?seed={email}"
     
     today_date = datetime.now().strftime("%Y-%m-%d")
+    verified_val = 1 if is_verified else 0
     cursor = conn.cursor()
     cursor.execute(
-        "INSERT INTO users (name, email, password_hash, provider, avatar_url, contribution_score, current_streak, last_active_date, has_seen_onboarding) VALUES (?, ?, ?, ?, ?, 0, 1, ?, 0)",
-        (name, email, pwd_hash, provider, avatar_url, today_date)
+        "INSERT INTO users (name, email, password_hash, provider, avatar_url, contribution_score, current_streak, last_active_date, has_seen_onboarding, is_verified) VALUES (?, ?, ?, ?, ?, 0, 1, ?, 0, ?)",
+        (name, email, pwd_hash, provider, avatar_url, today_date, verified_val)
     )
     conn.commit()
     return get_user_by_email(email)
@@ -205,7 +244,7 @@ def get_user_by_email(email: str):
     cursor.execute("""
         SELECT id, name, email, password_hash, provider, avatar_url, created_at,
                COALESCE(contribution_score, 0), COALESCE(current_streak, 0), last_active_date,
-               COALESCE(has_seen_onboarding, 0)
+               COALESCE(has_seen_onboarding, 0), COALESCE(is_verified, 1)
         FROM users WHERE lower(email) = ?
     """, (email,))
     row = cursor.fetchone()
@@ -221,9 +260,84 @@ def get_user_by_email(email: str):
             "contribution_score": row[7],
             "current_streak": row[8],
             "last_active_date": row[9],
-            "has_seen_onboarding": bool(row[10])
+            "has_seen_onboarding": bool(row[10]),
+            "is_verified": bool(row[11])
         }
     return None
+
+def create_otp(email: str, otp_type: str = "forgot_password", expiry_minutes: int = 10) -> str:
+    email = email.strip().lower()
+    otp_code = f"{random.randint(100000, 999999)}"
+    expires_at = datetime.now() + timedelta(minutes=expiry_minutes)
+    
+    def _do():
+        with get_db() as c:
+            c.execute(
+                "INSERT INTO password_otps (email, otp_code, otp_type, expires_at, is_used) VALUES (?, ?, ?, ?, 0)",
+                (email, otp_code, otp_type, expires_at.strftime("%Y-%m-%d %H:%M:%S"))
+            )
+            c.commit()
+    db_retry(_do)
+    return otp_code
+
+def verify_otp_code(email: str, otp_code: str, otp_type: str = "forgot_password") -> bool:
+    email = email.strip().lower()
+    otp_code = otp_code.strip()
+    now_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    
+    cursor = conn.cursor()
+    cursor.execute("""
+        SELECT id FROM password_otps 
+        WHERE lower(email) = ? AND otp_code = ? AND otp_type = ? AND is_used = 0 AND expires_at > ?
+        ORDER BY id DESC LIMIT 1
+    """, (email, otp_code, otp_type, now_str))
+    row = cursor.fetchone()
+    if row:
+        otp_id = row[0]
+        def _do():
+            with get_db() as c:
+                c.execute("UPDATE password_otps SET is_used = 1 WHERE id = ?", (otp_id,))
+                c.commit()
+        db_retry(_do)
+        return True
+    return False
+
+def update_user_password(email: str, new_password: str) -> bool:
+    email = email.strip().lower()
+    pwd_hash = hash_password(new_password)
+    def _do():
+        with get_db() as c:
+            c.execute("UPDATE users SET password_hash = ?, is_verified = 1 WHERE lower(email) = ?", (pwd_hash, email))
+            c.commit()
+    db_retry(_do)
+    return True
+
+def mark_user_verified(email: str):
+    email = email.strip().lower()
+    def _do():
+        with get_db() as c:
+            c.execute("UPDATE users SET is_verified = 1 WHERE lower(email) = ?", (email,))
+            c.commit()
+    db_retry(_do)
+
+def check_rate_limit(identifier: str, action_type: str, max_attempts: int, window_minutes: int) -> bool:
+    identifier = identifier.strip().lower()
+    window_start = (datetime.now() - timedelta(minutes=window_minutes)).strftime("%Y-%m-%d %H:%M:%S")
+    cursor = conn.cursor()
+    cursor.execute("""
+        SELECT COUNT(*) FROM auth_rate_limits
+        WHERE lower(identifier) = ? AND action_type = ? AND attempt_time > ?
+    """, (identifier, action_type, window_start))
+    count = cursor.fetchone()[0]
+    return count < max_attempts
+
+def record_rate_limit_attempt(identifier: str, action_type: str):
+    identifier = identifier.strip().lower()
+    def _do():
+        with get_db() as c:
+            c.execute("INSERT INTO auth_rate_limits (identifier, action_type) VALUES (?, ?)", (identifier, action_type))
+            c.commit()
+    db_retry(_do)
 
 def mark_onboarding_completed(email: str):
     if not email:
