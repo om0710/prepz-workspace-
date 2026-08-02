@@ -25,12 +25,13 @@ window.fetch = function (url, options = {}) {
 
 // Global Fail-Proof Auth Handlers
 const defaultFirebaseConfig = {
-    apiKey: "AIzaSyB-PrepzPlaceholderApiKeyForFirebase123",
+    apiKey: "AIzaSyAFe1P9Jss-J9EwfwLUOfnxv5BaVyuoGew",
     authDomain: "prepz-workspace.firebaseapp.com",
     projectId: "prepz-workspace",
-    storageBucket: "prepz-workspace.appspot.com",
-    messagingSenderId: "10987654321",
-    appId: "1:10987654321:web:abcdef123456789"
+    storageBucket: "prepz-workspace.firebasestorage.app",
+    messagingSenderId: "585299422541",
+    appId: "1:585299422541:web:a3734d501021c5bc581b04",
+    measurementId: "G-MMM66H0FWG"
 };
 
 const firebaseConfig = (typeof window.FIREBASE_CONFIG === "object" && window.FIREBASE_CONFIG) ? window.FIREBASE_CONFIG : defaultFirebaseConfig;
