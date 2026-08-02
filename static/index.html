@@ -216,11 +216,14 @@
             <form id="form-gmail-input" class="modal-form" onsubmit="handleGmailModalSubmit(event)">
                 <div class="form-group">
                     <label for="gmail-modal-email-input">Gmail Address</label>
-                    <input type="email" id="gmail-modal-email-input" placeholder="yourname@gmail.com" required autocomplete="off">
+                    <input type="email" id="gmail-modal-email-input" placeholder="yourname@gmail.com" style="color: #ffffff !important; background: #18181b !important;" required autocomplete="off">
                 </div>
                 <div class="form-group">
                     <label for="gmail-modal-password-input">Password</label>
-                    <input type="password" id="gmail-modal-password-input" placeholder="••••••••" required>
+                    <input type="password" id="gmail-modal-password-input" placeholder="••••••••" style="color: #ffffff !important; background: #18181b !important;" required>
+                </div>
+                <div style="text-align: right; margin-top: -4px; margin-bottom: 12px;">
+                    <a href="#" onclick="closeGmailInputModal(); openForgotPasswordModal(event);" style="color: #818cf8; font-size: 12.5px; text-decoration: none; font-weight: 500;">Forgot Password?</a>
                 </div>
                 <button type="submit" class="btn-auth-primary" style="margin-top: 6px;">Sign in with Google</button>
             </form>
@@ -1105,6 +1108,6 @@
     </div>
 
     <!-- Main JavaScript Link -->
-    <script src="app.js?v=10.0"></script>
+    <script src="app.js?v=11.0"></script>
 </body>
 </html>

@@ -1594,6 +1594,32 @@ body, html {
     box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.2) !important;
 }
 
+.modal-card input,
+.modal-form input {
+    background-color: #18181b !important;
+    color: #ffffff !important;
+    -webkit-text-fill-color: #ffffff !important;
+    border: 1px solid #27272a !important;
+    border-radius: 12px !important;
+    padding: 12px 14px !important;
+    font-size: 14px !important;
+    outline: none !important;
+    box-sizing: border-box !important;
+    width: 100% !important;
+}
+
+.modal-card input:focus,
+.modal-form input:focus {
+    border-color: #6366f1 !important;
+    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.2) !important;
+}
+
+.modal-card input::placeholder,
+.modal-form input::placeholder {
+    color: #71717a !important;
+    -webkit-text-fill-color: #71717a !important;
+}
+
 .auth-options-row {
     display: flex;
     align-items: center;
