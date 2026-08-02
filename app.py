@@ -309,35 +309,45 @@ def signup(req: SignupRequest):
     name = req.name.strip() if req.name else ""
     password = req.password if req.password else ""
 
+    print(f"[AUTH SERVER] Signup request received for name='{name}', email='{email}'")
+
     if not name or not email or not password:
+        print("[AUTH SERVER] Signup failed: missing required fields")
         raise HTTPException(status_code=400, detail="All fields are required.")
     
     if not is_valid_email(email):
+        print(f"[AUTH SERVER] Signup failed: invalid email format '{email}'")
         raise HTTPException(status_code=400, detail="Please enter a valid email address.")
 
     verify_captcha_challenge(req.captcha_answer, req.captcha_expected)
 
     # Rate limiting on OTP / Signup
     if not check_rate_limit(email, "signup_otp", max_attempts=5, window_minutes=60):
+        print(f"[AUTH SERVER] Signup failed: rate limit exceeded for '{email}'")
         raise HTTPException(status_code=429, detail="Too many signup OTP requests. Please wait an hour before trying again.")
 
     # Validate password strength
     is_valid, pwd_msg = validate_password_strength(password)
     if not is_valid:
+        print(f"[AUTH SERVER] Signup failed: password strength check failed for '{email}' -> {pwd_msg}")
         raise HTTPException(status_code=400, detail=pwd_msg)
 
     existing = get_user_by_email(email)
     if existing and existing.get("is_verified", True):
+        print(f"[AUTH SERVER] Signup failed: verified account already exists for '{email}'")
         raise HTTPException(status_code=400, detail="An account with this email already exists. Please log in.")
     
     if not existing:
         user = create_user(name=name, email=email, password=password, provider="local", is_verified=False)
+        print(f"[AUTH SERVER] New unverified user created in DB: id={user['id']}, email='{email}'")
     else:
         user = existing
+        print(f"[AUTH SERVER] Existing unverified user retrieved from DB: id={user['id']}, email='{email}'")
 
     # Create OTP for signup verification
     otp_code = create_otp(email, otp_type="signup", expiry_minutes=10)
     record_rate_limit_attempt(email, "signup_otp")
+    print(f"[AUTH SERVER] Signup OTP generated for '{email}': OTP={otp_code}")
 
     email_html = f"""
     <div style="font-family: Arial, sans-serif; padding: 20px; background-color: #f4f4f5; color: #18181b;">
@@ -359,17 +369,20 @@ def signup(req: SignupRequest):
 
 @app.post("/api/verify-otp")
 def verify_otp(req: VerifyOTPRequest):
+    print(f"[AUTH SERVER] Verify OTP request for email='{req.email}', type='{req.otp_type}', code='{req.otp_code}'")
     if not req.email.strip() or not req.otp_code.strip():
         raise HTTPException(status_code=400, detail="Email and OTP code are required.")
 
     is_valid = verify_otp_code(req.email, req.otp_code, otp_type=req.otp_type)
     if not is_valid:
+        print(f"[AUTH SERVER] OTP verification failed for '{req.email}'")
         raise HTTPException(status_code=400, detail="Invalid or expired OTP code. Please try again.")
 
     if req.otp_type == "signup":
         mark_user_verified(req.email)
         user = get_user_by_email(req.email)
         user = update_user_activity(req.email) or user
+        print(f"[AUTH SERVER] User '{req.email}' verified successfully! Session issued.")
         return {
             "status": "success",
             "message": "Account verified successfully!",
@@ -385,6 +398,7 @@ def verify_otp(req: VerifyOTPRequest):
             }
         }
 
+    print(f"[AUTH SERVER] Forgot-password OTP verified successfully for '{req.email}'")
     return {
         "status": "success",
         "message": "OTP verified successfully. You can now set your new password."
@@ -395,32 +409,40 @@ def login(req: LoginRequest):
     email = req.email.strip().lower() if req.email else ""
     password = req.password if req.password else ""
 
+    print(f"[AUTH SERVER] Login request received for email='{email}'")
+
     if not email or not password:
+        print("[AUTH SERVER] Login failed: missing email or password")
         raise HTTPException(status_code=400, detail="Please enter both email and password.")
 
     if not is_valid_email(email):
+        print(f"[AUTH SERVER] Login failed: invalid email format '{email}'")
         raise HTTPException(status_code=400, detail="Please enter a valid email address.")
 
     # Rate limiting on failed login attempts (Max 5 failed attempts per 15 mins)
     if not check_rate_limit(email, "login_fail", max_attempts=5, window_minutes=15):
+        print(f"[AUTH SERVER] Login failed: rate limit exceeded for '{email}'")
         raise HTTPException(status_code=429, detail="Too many failed login attempts. Please wait 15 minutes before trying again.")
 
     user = get_user_by_email(email)
     if not user:
         record_rate_limit_attempt(email, "login_fail")
+        print(f"[AUTH SERVER] Login failed: user not found for '{email}'")
         raise HTTPException(status_code=400, detail="Invalid email or password.")
     
     if user["provider"] != "local" and not user.get("password_hash"):
         record_rate_limit_attempt(email, "login_fail")
+        print(f"[AUTH SERVER] Login failed: Google-only user tried password login for '{email}'")
         raise HTTPException(status_code=400, detail="This account was created via Google Sign-In. Please click 'Google Sign-In'.")
 
     if not user.get("password_hash") or not verify_password(password, user["password_hash"]):
         record_rate_limit_attempt(email, "login_fail")
+        print(f"[AUTH SERVER] Login failed: password mismatch for '{email}'")
         raise HTTPException(status_code=400, detail="Invalid email or password.")
 
     if not user.get("is_verified", True):
-        # Generate fresh verification OTP
         otp_code = create_otp(email, otp_type="signup", expiry_minutes=10)
+        print(f"[AUTH SERVER] Login unverified user '{email}': dispatched fresh signup OTP={otp_code}")
         return {
             "status": "otp_required",
             "email": email,
@@ -429,6 +451,7 @@ def login(req: LoginRequest):
         }
 
     user = update_user_activity(email) or user
+    print(f"[AUTH SERVER] Login SUCCESS for '{email}' (id={user['id']})")
     return {
         "status": "success",
         "user": {
@@ -445,21 +468,24 @@ def login(req: LoginRequest):
 
 @app.post("/api/forgot-password/request-otp")
 def forgot_password_request_otp(req: ForgotPasswordRequest):
+    print(f"[AUTH SERVER] Forgot Password OTP request for email='{req.email}'")
     if not req.email.strip():
         raise HTTPException(status_code=400, detail="Email is required.")
 
     verify_captcha_challenge(req.captcha_answer, req.captcha_expected)
 
-    # Rate limiting (Max 3 OTP requests per hour)
     if not check_rate_limit(req.email, "forgot_otp", max_attempts=3, window_minutes=60):
+        print(f"[AUTH SERVER] Forgot Password OTP request rate limited for '{req.email}'")
         raise HTTPException(status_code=429, detail="Too many OTP requests. Please wait an hour before requesting another OTP.")
 
     user = get_user_by_email(req.email)
     if not user:
+        print(f"[AUTH SERVER] Forgot Password OTP request failed: user not found for '{req.email}'")
         raise HTTPException(status_code=400, detail="No account found with this email.")
 
     otp_code = create_otp(req.email, otp_type="forgot_password", expiry_minutes=10)
     record_rate_limit_attempt(req.email, "forgot_otp")
+    print(f"[AUTH SERVER] Forgot Password OTP generated for '{req.email}': OTP={otp_code}")
 
     email_html = f"""
     <div style="font-family: Arial, sans-serif; padding: 20px; background-color: #f4f4f5; color: #18181b;">
@@ -481,20 +507,23 @@ def forgot_password_request_otp(req: ForgotPasswordRequest):
 
 @app.post("/api/forgot-password/reset")
 def forgot_password_reset(req: ResetPasswordRequest):
+    print(f"[AUTH SERVER] Forgot Password Reset request for email='{req.email}', OTP='{req.otp_code}'")
     if not req.email.strip() or not req.otp_code.strip() or not req.new_password:
+        print("[AUTH SERVER] Forgot Password Reset failed: missing required fields")
         raise HTTPException(status_code=400, detail="All fields are required.")
 
-    # Validate OTP code first
     is_valid = verify_otp_code(req.email, req.otp_code, otp_type="forgot_password")
     if not is_valid:
+        print(f"[AUTH SERVER] Forgot Password Reset failed: invalid/expired OTP for '{req.email}'")
         raise HTTPException(status_code=400, detail="Invalid or expired OTP code.")
 
-    # Validate new password strength
     is_valid_pwd, pwd_msg = validate_password_strength(req.new_password)
     if not is_valid_pwd:
+        print(f"[AUTH SERVER] Forgot Password Reset failed: password strength check failed for '{req.email}' -> {pwd_msg}")
         raise HTTPException(status_code=400, detail=pwd_msg)
 
     update_user_password(req.email, req.new_password)
+    print(f"[AUTH SERVER] Password updated successfully for '{req.email}' in SQLite DB")
     return {
         "status": "success",
         "message": "Password updated successfully! You can now log in with your new password."
@@ -505,17 +534,25 @@ def google_login(req: GoogleLoginRequest):
     email = req.email.strip().lower() if req.email else ""
     name = req.name.strip() if req.name else ""
 
+    print(f"[AUTH SERVER] Google Sign-In request received for name='{name}', email='{email}'")
+
     if not email or not name:
+        print("[AUTH SERVER] Google Sign-In failed: missing name or email")
         raise HTTPException(status_code=400, detail="Name and email are required.")
 
     if not is_valid_email(email):
+        print(f"[AUTH SERVER] Google Sign-In failed: invalid email format '{email}'")
         raise HTTPException(status_code=400, detail="Please enter a valid Gmail address.")
 
     user = get_user_by_email(email)
     if not user:
         user = create_user(name=name, email=email, password=None, provider="google", avatar_url=req.picture, is_verified=True)
+        print(f"[AUTH SERVER] Google Sign-In: created new Google user in DB id={user['id']}, email='{email}'")
+    else:
+        print(f"[AUTH SERVER] Google Sign-In: existing user found in DB id={user['id']}, email='{email}'")
     
     user = update_user_activity(email) or user
+    print(f"[AUTH SERVER] Google Sign-In SUCCESS for '{email}' (id={user['id']})")
     return {
         "status": "success",
         "user": {

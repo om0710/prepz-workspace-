@@ -143,15 +143,15 @@ window.closeGmailInputModal = function() {
 window.handleGmailModalSubmit = async function(e) {
     if (e) e.preventDefault();
     const emailInput = document.getElementById("gmail-modal-email-input");
-    const pwdInput = document.getElementById("gmail-modal-password-input");
     const errEl = document.getElementById("gmail-modal-error-msg");
 
     const email = emailInput ? emailInput.value.trim().toLowerCase() : "";
-    const password = pwdInput ? pwdInput.value : "";
 
-    if (!email || !password) {
+    console.log(`[AUTH CLIENT] Google Sign-In submitted with email='${email}'`);
+
+    if (!email) {
         if (errEl) {
-            errEl.textContent = "Please enter both Gmail address and password.";
+            errEl.textContent = "Please enter your Gmail address.";
             errEl.classList.remove("hidden");
             errEl.style.display = "block";
         }
@@ -167,21 +167,27 @@ window.handleGmailModalSubmit = async function(e) {
         return;
     }
 
+    const rawName = email.split("@")[0].replace(/[._-]/g, " ");
+    const formattedName = rawName.charAt(0).toUpperCase() + rawName.slice(1);
+
     try {
-        const res = await fetch("/api/login", {
+        const res = await fetch("/api/google-login", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ email, password })
+            body: JSON.stringify({
+                name: formattedName,
+                email: email,
+                picture: `https://api.dicebear.com/7.x/bottts/svg?seed=${encodeURIComponent(email)}`
+            })
         });
         const data = await res.json();
+        console.log("[AUTH CLIENT] /api/google-login response:", res.status, data);
+
         if (res.ok && data.user) {
             window.closeGmailInputModal();
             window.loginUser(data.user);
-        } else if (data.status === "otp_required") {
-            window.closeGmailInputModal();
-            window.openOtpModal(data.email, "signup");
         } else {
-            const errText = data && data.detail ? data.detail : "Invalid email or password.";
+            const errText = data && data.detail ? data.detail : "Google Sign-In failed. Please try again.";
             if (errEl) {
                 errEl.textContent = errText;
                 errEl.classList.remove("hidden");
@@ -189,6 +195,7 @@ window.handleGmailModalSubmit = async function(e) {
             }
         }
     } catch (err) {
+        console.error("[AUTH CLIENT] Google Sign-In network error:", err);
         if (errEl) {
             errEl.textContent = "Unable to connect to server. Please check your connection.";
             errEl.classList.remove("hidden");
@@ -242,8 +249,10 @@ window.handleLoginSubmit = async function (e) {
 
     const emailInput = document.getElementById("login-email");
     const pwdInput = document.getElementById("login-password");
-    const email = emailInput ? emailInput.value.trim() : "";
+    const email = emailInput ? emailInput.value.trim().toLowerCase() : "";
     const password = pwdInput ? pwdInput.value : "";
+
+    console.log(`[AUTH CLIENT] Login form submitted for email='${email}'`);
 
     if (!email || !password) {
         showAuthErrorMsg("Please enter both email and password.");
@@ -262,6 +271,8 @@ window.handleLoginSubmit = async function (e) {
             body: JSON.stringify({ email, password })
         });
         const data = await res.json();
+        console.log("[AUTH CLIENT] /api/login response:", res.status, data);
+
         if (res.ok && data.user) {
             window.loginUser(data.user);
         } else if (data.status === "otp_required") {
@@ -271,6 +282,7 @@ window.handleLoginSubmit = async function (e) {
             showAuthErrorMsg(errorText);
         }
     } catch (err) {
+        console.error("[AUTH CLIENT] Login network error:", err);
         showAuthErrorMsg("Unable to connect to server. Please check your connection.");
     }
 };
@@ -289,9 +301,11 @@ window.handleSignupSubmit = async function (e) {
     const captchaInput = document.getElementById("signup-captcha-answer");
 
     const name = nameInput && nameInput.value.trim() ? nameInput.value.trim() : "";
-    const email = emailInput && emailInput.value.trim() ? emailInput.value.trim() : "";
+    const email = emailInput && emailInput.value.trim() ? emailInput.value.trim().toLowerCase() : "";
     const password = pwdInput ? pwdInput.value : "";
     const captchaAns = captchaInput ? captchaInput.value.trim() : "";
+
+    console.log(`[AUTH CLIENT] Signup form submitted for name='${name}', email='${email}'`);
 
     if (!name || !email || !password) {
         showAuthErrorMsg("All fields are required for sign up.");
@@ -327,6 +341,8 @@ window.handleSignupSubmit = async function (e) {
             })
         });
         const data = await res.json();
+        console.log("[AUTH CLIENT] /api/signup response:", res.status, data);
+
         if (res.ok && data.status === "otp_required") {
             window.openOtpModal(data.email, "signup");
         } else if (res.ok && data.user) {
@@ -341,11 +357,11 @@ window.handleSignupSubmit = async function (e) {
                     window.switchAuthTab("login");
                     const loginEmail = document.getElementById("login-email");
                     if (loginEmail) loginEmail.value = email;
-                    showAuthErrorMsg("Account already exists! Switched to Log In tab. Please enter your password.");
-                }, 1000);
+                }, 1200);
             }
         }
     } catch (err) {
+        console.error("[AUTH CLIENT] Signup network error:", err);
         showAuthErrorMsg("Unable to connect to server. Please check your connection.");
         window.generateCaptcha("signup");
     }
