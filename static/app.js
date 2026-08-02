@@ -85,12 +85,85 @@ window.mapFirebaseError = function (code, defaultMsg) {
     }
 };
 
+// Top-Level Global Auth Controller & View Manager
+window.loginUser = function(user) {
+    if (!user) return;
+    console.log("[AUTH TRACE] (c) Executing window.loginUser for email:", user.email);
+    window.currentUser = user;
+    try {
+        localStorage.setItem("docpilot-user", JSON.stringify(user));
+        localStorage.setItem("prepz_user", JSON.stringify(user));
+    } catch(e) {}
+
+    const landingPageView = document.getElementById("landing-page-view");
+    const chatbotAppView = document.getElementById("chatbot-app-view");
+    const userAvatar = document.getElementById("user-avatar");
+    const userName = document.getElementById("user-name");
+    const userEmail = document.getElementById("user-email");
+    const navPinnedLibrary = document.getElementById("nav-pinned-library");
+
+    if (userAvatar) {
+        const avatarUrl = user.avatar_url || user.picture || `https://api.dicebear.com/7.x/bottts/svg?seed=${encodeURIComponent(user.email || 'Om')}`;
+        userAvatar.style.backgroundImage = `url('${avatarUrl}')`;
+        userAvatar.innerHTML = "";
+    }
+    if (userName) userName.textContent = user.name || "Student User";
+    if (userEmail) userEmail.textContent = user.email || "student@college.edu";
+
+    if (navPinnedLibrary) navPinnedLibrary.style.display = "flex";
+
+    // EXPLICIT VIEW SWITCH TO WORKSPACE DASHBOARD
+    if (landingPageView) {
+        landingPageView.classList.add("hidden");
+        landingPageView.setAttribute("style", "display: none !important;");
+    }
+    if (chatbotAppView) {
+        chatbotAppView.classList.remove("hidden");
+        chatbotAppView.setAttribute("style", "display: flex !important;");
+    }
+
+    if (typeof fetchThreads === "function") fetchThreads();
+    if (typeof fetchIndexedFiles === "function") fetchIndexedFiles();
+    if (typeof fetchUserStats === "function") fetchUserStats();
+};
+
+window.showLoginScreen = function() {
+    console.log("[AUTH TRACE] (c) Executing window.showLoginScreen");
+    window.currentUser = null;
+    const landingPageView = document.getElementById("landing-page-view");
+    const chatbotAppView = document.getElementById("chatbot-app-view");
+    const navPinnedLibrary = document.getElementById("nav-pinned-library");
+
+    if (navPinnedLibrary) navPinnedLibrary.style.display = "none";
+    if (landingPageView) {
+        landingPageView.classList.remove("hidden");
+        landingPageView.setAttribute("style", "display: flex !important;");
+    }
+    if (chatbotAppView) {
+        chatbotAppView.classList.add("hidden");
+        chatbotAppView.setAttribute("style", "display: none !important;");
+    }
+};
+
+window.logoutUser = function() {
+    console.log("[AUTH TRACE] (c) Executing window.logoutUser");
+    if (typeof firebaseAuth !== "undefined" && firebaseAuth && firebaseAuth.currentUser) {
+        firebaseAuth.signOut().catch(err => console.error("Firebase signOut error:", err));
+    }
+    window.currentUser = null;
+    localStorage.removeItem("docpilot-user");
+    localStorage.removeItem("prepz_user");
+    localStorage.removeItem("currentThreadId");
+    sessionStorage.clear();
+    if (typeof window.showLoginScreen === "function") window.showLoginScreen();
+};
+
 // Listen for Firebase Auth redirect results and state changes
 if (firebaseAuth) {
-    // Process redirect result after returning from Google Sign-In redirect
+    console.log("[AUTH TRACE] (a) Invoking firebaseAuth.getRedirectResult()...");
     firebaseAuth.getRedirectResult().then(async (result) => {
+        console.log("[AUTH TRACE] (a) getRedirectResult() resolved, result:", result ? (result.user ? result.user.email : "No user in result") : "Null result");
         if (result && result.user) {
-            console.log("[FIREBASE CLIENT] getRedirectResult SUCCESS:", result.user.email);
             const user = result.user;
             const userData = {
                 uid: user.uid,
@@ -99,6 +172,7 @@ if (firebaseAuth) {
                 provider: "google",
                 avatar_url: user.photoURL || `https://api.dicebear.com/7.x/bottts/svg?seed=${encodeURIComponent(user.email)}`
             };
+            console.log("[AUTH TRACE] (a) Syncing redirect user to backend:", userData.email);
             try {
                 const syncRes = await fetch("/api/firebase-sync", {
                     method: "POST",
@@ -107,22 +181,23 @@ if (firebaseAuth) {
                 });
                 const syncData = await syncRes.json();
                 if (syncRes.ok && syncData.user) {
+                    console.log("[AUTH TRACE] (a) Backend sync successful, activating workspace for:", syncData.user.email);
                     window.loginUser(syncData.user);
                     return;
                 }
             } catch (err) {
-                console.error("[FIREBASE CLIENT] Error syncing redirect user:", err);
+                console.error("[AUTH TRACE] Error syncing redirect user:", err);
             }
             window.loginUser(userData);
         }
     }).catch((error) => {
-        console.error("[FIREBASE CLIENT] getRedirectResult error:", error);
+        console.error("[AUTH TRACE] (a) getRedirectResult() error:", error);
         showAuthErrorMsg(window.mapFirebaseError(error.code, error.message));
     });
 
     firebaseAuth.onAuthStateChanged(async (user) => {
+        console.log("[AUTH TRACE] (b) onAuthStateChanged fired, user:", user ? user.email : "Logged Out");
         if (user) {
-            console.log("[FIREBASE CLIENT] Auth state changed: user logged in ->", user.email, "emailVerified:", user.emailVerified);
             const providerId = (user.providerData && user.providerData[0]) ? user.providerData[0].providerId : "firebase";
 
             if (!user.emailVerified && providerId === "password") {
@@ -144,6 +219,7 @@ if (firebaseAuth) {
                 });
                 const syncData = await syncRes.json();
                 if (syncRes.ok && syncData.user) {
+                    console.log("[AUTH TRACE] (b) onAuthStateChanged sync successful, activating workspace for:", syncData.user.email);
                     window.loginUser(syncData.user);
                 } else {
                     window.loginUser({
@@ -155,7 +231,7 @@ if (firebaseAuth) {
                     });
                 }
             } catch (err) {
-                console.error("[FIREBASE CLIENT] Error syncing user to backend:", err);
+                console.error("[AUTH TRACE] Error syncing user onAuthStateChanged:", err);
                 window.loginUser({
                     id: user.uid,
                     name: user.displayName || user.email.split("@")[0],
@@ -164,8 +240,6 @@ if (firebaseAuth) {
                     avatar_url: user.photoURL || `https://api.dicebear.com/7.x/bottts/svg?seed=${encodeURIComponent(user.email)}`
                 });
             }
-        } else {
-            console.log("[FIREBASE CLIENT] Auth state changed: user is logged out");
         }
     });
 }
