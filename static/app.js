@@ -437,9 +437,21 @@ window.openForgotPasswordModal = function(e) {
     const modal = document.getElementById("forgot-password-modal");
     const errEl = document.getElementById("forgot-error-msg");
     if (errEl) { errEl.textContent = ""; errEl.classList.add("hidden"); errEl.style.display = "none"; }
+
+    const gmailModalEmail = document.getElementById("gmail-modal-email-input");
+    const loginEmail = document.getElementById("login-email");
+    const forgotEmail = document.getElementById("forgot-email-input");
+
+    const prefilledEmail = (gmailModalEmail && gmailModalEmail.value.trim()) || (loginEmail && loginEmail.value.trim()) || "";
+    if (forgotEmail && prefilledEmail) {
+        forgotEmail.value = prefilledEmail;
+    }
+
     if (modal) {
         modal.classList.remove("hidden");
         modal.style.display = "flex";
+        const captchaAns = document.getElementById("forgot-captcha-answer");
+        if (captchaAns) setTimeout(() => captchaAns.focus(), 100);
     }
 };
 
@@ -462,6 +474,9 @@ window.handleForgotPasswordSubmit = async function(e) {
             errEl.textContent = "Incorrect Security Challenge answer. Please try again.";
             errEl.classList.remove("hidden");
             errEl.style.display = "block";
+            errEl.style.color = "";
+            errEl.style.background = "";
+            errEl.style.border = "";
         }
         window.generateCaptcha("forgot");
         return;
@@ -480,13 +495,16 @@ window.handleForgotPasswordSubmit = async function(e) {
         const data = await res.json();
         if (res.ok) {
             window.closeForgotPasswordModal();
-            window.openResetPasswordModal(email);
+            window.openResetPasswordModal(email, data.otp_code || "", data.message || "");
         } else {
             const err = data.detail || "Failed to send reset OTP.";
             if (errEl) {
                 errEl.textContent = err;
                 errEl.classList.remove("hidden");
                 errEl.style.display = "block";
+                errEl.style.color = "";
+                errEl.style.background = "";
+                errEl.style.border = "";
             }
         }
     } catch (err) {
@@ -494,17 +512,34 @@ window.handleForgotPasswordSubmit = async function(e) {
             errEl.textContent = "Network error. Please try again.";
             errEl.classList.remove("hidden");
             errEl.style.display = "block";
+            errEl.style.color = "";
+            errEl.style.background = "";
+            errEl.style.border = "";
         }
     }
 };
 
-window.openResetPasswordModal = function(email, prefilledOtp = "") {
+window.openResetPasswordModal = function(email, prefilledOtp = "", message = "") {
     currentPendingOtpEmail = email;
     const modal = document.getElementById("reset-password-modal");
     const otpInput = document.getElementById("reset-otp-input");
     const errEl = document.getElementById("reset-error-msg");
 
-    if (errEl) { errEl.textContent = ""; errEl.classList.add("hidden"); errEl.style.display = "none"; }
+    if (errEl) {
+        if (message || prefilledOtp) {
+            errEl.textContent = message ? `${message} Code: ${prefilledOtp}` : `Password reset OTP code: ${prefilledOtp}`;
+            errEl.classList.remove("hidden");
+            errEl.style.display = "block";
+            errEl.style.color = "#818cf8";
+            errEl.style.background = "rgba(99, 102, 241, 0.15)";
+            errEl.style.border = "1px solid rgba(99, 102, 241, 0.3)";
+        } else {
+            errEl.textContent = "";
+            errEl.classList.add("hidden");
+            errEl.style.display = "none";
+        }
+    }
+
     if (otpInput && prefilledOtp) otpInput.value = prefilledOtp;
 
     if (modal) {
