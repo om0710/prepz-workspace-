@@ -56,10 +56,6 @@ def read_style():
 def read_app_js():
     return FileResponse("static/app.js")
 
-@app.get("/login_popup.html")
-def read_login_popup():
-    return FileResponse("static/login_popup.html")
-
 @app.get("/favicon.ico")
 def read_favicon_ico():
     return FileResponse("static/favicon.ico")
@@ -294,11 +290,6 @@ class ResetPasswordRequest(BaseModel):
     email: str
     otp_code: str
     new_password: str
-
-class GoogleLoginRequest(BaseModel):
-    name: str
-    email: str
-    picture: Optional[str] = None
 
 class CompleteOnboardingRequest(BaseModel):
     email: str
@@ -568,44 +559,6 @@ def forgot_password_reset(req: ResetPasswordRequest):
     return {
         "status": "success",
         "message": "Password updated successfully! You can now log in with your new password."
-    }
-
-@app.post("/api/google-login")
-def google_login(req: GoogleLoginRequest):
-    email = req.email.strip().lower() if req.email else ""
-    name = req.name.strip() if req.name else ""
-
-    print(f"[AUTH SERVER] Google Sign-In request received for name='{name}', email='{email}'")
-
-    if not email or not name:
-        print("[AUTH SERVER] Google Sign-In failed: missing name or email")
-        raise HTTPException(status_code=400, detail="Name and email are required.")
-
-    if not is_valid_email(email):
-        print(f"[AUTH SERVER] Google Sign-In failed: invalid email format '{email}'")
-        raise HTTPException(status_code=400, detail="Please enter a valid Gmail address.")
-
-    user = get_user_by_email(email)
-    if not user:
-        user = create_user(name=name, email=email, password=None, provider="google", avatar_url=req.picture, is_verified=True)
-        print(f"[AUTH SERVER] Google Sign-In: created new Google user in DB id={user['id']}, email='{email}'")
-    else:
-        print(f"[AUTH SERVER] Google Sign-In: existing user found in DB id={user['id']}, email='{email}'")
-    
-    user = update_user_activity(email) or user
-    print(f"[AUTH SERVER] Google Sign-In SUCCESS for '{email}' (id={user['id']})")
-    return {
-        "status": "success",
-        "user": {
-            "id": user["id"],
-            "name": user["name"],
-            "email": user["email"],
-            "provider": user["provider"],
-            "avatar_url": user["avatar_url"],
-            "contribution_score": user.get("contribution_score", 0),
-            "current_streak": user.get("current_streak", 1),
-            "has_seen_onboarding": user.get("has_seen_onboarding", False)
-        }
     }
 
 @app.get("/api/user/stats")
