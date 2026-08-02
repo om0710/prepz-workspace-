@@ -825,21 +825,29 @@ function initializeDocPilotApp() {
             });
         }
 
-        // Check if session user details are already saved
-        const savedUser = localStorage.getItem("docpilot-user");
-        if (savedUser) {
-            try {
-                loginUser(JSON.parse(savedUser));
-            } catch(e) {
+        // Check URL parameters for explicit logout request
+        const urlParams = new URLSearchParams(window.location.search);
+        if (urlParams.get("logout") === "true" || urlParams.get("switch") === "true") {
+            logoutUser();
+        } else {
+            // Check if session user details are already saved
+            const savedUser = localStorage.getItem("docpilot-user") || localStorage.getItem("prepz_user");
+            if (savedUser) {
+                try {
+                    loginUser(JSON.parse(savedUser));
+                } catch(e) {
+                    showLoginScreen();
+                }
+            } else {
                 showLoginScreen();
             }
-        } else {
-            showLoginScreen();
         }
     }
 
     function showLoginScreen() {
         currentUser = null;
+        localStorage.removeItem("docpilot-user");
+        localStorage.removeItem("prepz_user");
         if (navPinnedLibrary) navPinnedLibrary.style.display = "none";
         if (landingPageView) {
             landingPageView.classList.remove("hidden");
@@ -853,6 +861,9 @@ function initializeDocPilotApp() {
 
     function logoutUser() {
         localStorage.removeItem("docpilot-user");
+        localStorage.removeItem("prepz_user");
+        sessionStorage.clear();
+        currentUser = null;
         showLoginScreen();
     }
 
