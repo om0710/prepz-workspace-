@@ -303,6 +303,47 @@ class GoogleLoginRequest(BaseModel):
 class CompleteOnboardingRequest(BaseModel):
     email: str
 
+class FirebaseSyncRequest(BaseModel):
+    uid: str
+    email: str
+    name: Optional[str] = None
+    provider: Optional[str] = "firebase"
+    avatar_url: Optional[str] = None
+
+@app.post("/api/firebase-sync")
+def firebase_sync(req: FirebaseSyncRequest):
+    email = req.email.strip().lower() if req.email else ""
+    if not email:
+        raise HTTPException(status_code=400, detail="Email is required.")
+
+    name = req.name.strip() if (req.name and req.name.strip()) else email.split("@")[0].title()
+    provider = req.provider or "firebase"
+    avatar_url = req.avatar_url or f"https://api.dicebear.com/7.x/bottts/svg?seed={email}"
+
+    print(f"[FIREBASE SERVER] Syncing user email='{email}', uid='{req.uid}', provider='{provider}'")
+
+    user = get_user_by_email(email)
+    if not user:
+        user = create_user(name=name, email=email, password=None, provider=provider, avatar_url=avatar_url, is_verified=True)
+        print(f"[FIREBASE SERVER] Created new user in SQLite DB: id={user['id']}, email='{email}'")
+    else:
+        print(f"[FIREBASE SERVER] Existing user synchronized: id={user['id']}, email='{email}'")
+
+    user = update_user_activity(email) or user
+    return {
+        "status": "success",
+        "user": {
+            "id": user["id"],
+            "name": user["name"],
+            "email": user["email"],
+            "provider": user["provider"],
+            "avatar_url": user["avatar_url"],
+            "contribution_score": user.get("contribution_score", 0),
+            "current_streak": user.get("current_streak", 1),
+            "has_seen_onboarding": user.get("has_seen_onboarding", False)
+        }
+    }
+
 @app.post("/api/signup")
 def signup(req: SignupRequest):
     email = req.email.strip().lower() if req.email else ""

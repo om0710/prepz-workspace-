@@ -24,6 +24,115 @@ window.fetch = function (url, options = {}) {
 };
 
 // Global Fail-Proof Auth Handlers
+const defaultFirebaseConfig = {
+    apiKey: "AIzaSyB-PrepzPlaceholderApiKeyForFirebase123",
+    authDomain: "prepz-workspace.firebaseapp.com",
+    projectId: "prepz-workspace",
+    storageBucket: "prepz-workspace.appspot.com",
+    messagingSenderId: "10987654321",
+    appId: "1:10987654321:web:abcdef123456789"
+};
+
+const firebaseConfig = (typeof window.FIREBASE_CONFIG === "object" && window.FIREBASE_CONFIG) ? window.FIREBASE_CONFIG : defaultFirebaseConfig;
+
+let firebaseApp = null;
+let firebaseAuth = null;
+
+try {
+    if (typeof firebase !== "undefined") {
+        if (!firebase.apps.length) {
+            firebaseApp = firebase.initializeApp(firebaseConfig);
+        } else {
+            firebaseApp = firebase.app();
+        }
+        firebaseAuth = firebase.auth();
+        console.log("[FIREBASE CLIENT] SDK Initialized Successfully!");
+    } else {
+        console.warn("[FIREBASE CLIENT] Firebase CDN scripts not loaded yet.");
+    }
+} catch (e) {
+    console.error("[FIREBASE CLIENT] Firebase initialization error:", e);
+}
+
+window.mapFirebaseError = function (code, defaultMsg) {
+    switch (code) {
+        case "auth/email-already-in-use":
+            return "An account with this email address already exists. Please switch to the Log In tab.";
+        case "auth/invalid-email":
+            return "Please enter a valid email address.";
+        case "auth/weak-password":
+            return "Password is too weak. Please use at least 6 characters containing letters and numbers.";
+        case "auth/user-not-found":
+        case "auth/wrong-password":
+        case "auth/invalid-credential":
+            return "Invalid email or password. Please check your credentials and try again.";
+        case "auth/too-many-requests":
+            return "Too many failed attempts. Please wait a few minutes before trying again.";
+        case "auth/network-request-failed":
+            return "Network connection error. Please check your internet connection.";
+        case "auth/user-disabled":
+            return "This user account has been disabled. Please contact support.";
+        case "auth/popup-closed-by-user":
+            return "Google Sign-In popup was closed before completing authentication.";
+        case "auth/cancelled-popup-request":
+            return "Google Sign-In popup request was cancelled.";
+        default:
+            return defaultMsg || "Authentication failed. Please check credentials and try again.";
+    }
+};
+
+// Listen for Firebase Auth state changes
+if (firebaseAuth) {
+    firebaseAuth.onAuthStateChanged(async (user) => {
+        if (user) {
+            console.log("[FIREBASE CLIENT] Auth state changed: user logged in ->", user.email, "emailVerified:", user.emailVerified);
+            const providerId = (user.providerData && user.providerData[0]) ? user.providerData[0].providerId : "firebase";
+
+            if (!user.emailVerified && providerId === "password") {
+                showAuthErrorMsg("Please verify your email address before accessing your workspace. Check your inbox for the link!");
+                return;
+            }
+
+            try {
+                const syncRes = await fetch("/api/firebase-sync", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        uid: user.uid,
+                        email: user.email,
+                        name: user.displayName || user.email.split("@")[0].replace(/[._-]/g, " "),
+                        provider: providerId.includes("google") ? "google" : "local",
+                        avatar_url: user.photoURL || `https://api.dicebear.com/7.x/bottts/svg?seed=${encodeURIComponent(user.email)}`
+                    })
+                });
+                const syncData = await syncRes.json();
+                if (syncRes.ok && syncData.user) {
+                    window.loginUser(syncData.user);
+                } else {
+                    window.loginUser({
+                        id: user.uid,
+                        name: user.displayName || user.email.split("@")[0],
+                        email: user.email,
+                        provider: providerId,
+                        avatar_url: user.photoURL || `https://api.dicebear.com/7.x/bottts/svg?seed=${encodeURIComponent(user.email)}`
+                    });
+                }
+            } catch (err) {
+                console.error("[FIREBASE CLIENT] Error syncing user to backend:", err);
+                window.loginUser({
+                    id: user.uid,
+                    name: user.displayName || user.email.split("@")[0],
+                    email: user.email,
+                    provider: providerId,
+                    avatar_url: user.photoURL || `https://api.dicebear.com/7.x/bottts/svg?seed=${encodeURIComponent(user.email)}`
+                });
+            }
+        } else {
+            console.log("[FIREBASE CLIENT] Auth state changed: user is logged out");
+        }
+    });
+}
+
 window.switchAuthTab = function (tab) {
     const tabLogin = document.getElementById("tab-login");
     const tabSignup = document.getElementById("tab-signup");
@@ -207,16 +316,41 @@ window.handleGmailModalSubmit = async function(e) {
     }
 };
 
-window.handleGoogleLogin = function () {
-    window.openGmailInputModal();
+window.handleGoogleLogin = async function () {
+    if (!firebaseAuth) {
+        showAuthErrorMsg("Firebase SDK not ready. Please refresh the page.");
+        return;
+    }
+    const provider = new firebase.auth.GoogleAuthProvider();
+    provider.setCustomParameters({ prompt: 'select_account' });
+
+    try {
+        console.log("[FIREBASE CLIENT] Initiating Google Sign-In with prompt='select_account'...");
+        const result = await firebaseAuth.signInWithPopup(provider);
+        console.log("[FIREBASE CLIENT] Google Sign-In SUCCESS:", result.user.email);
+    } catch (error) {
+        console.error("[FIREBASE CLIENT] Google Sign-In error:", error);
+        if (error.code !== "auth/popup-closed-by-user" && error.code !== "auth/cancelled-popup-request") {
+            showAuthErrorMsg(window.mapFirebaseError(error.code, error.message));
+        }
+    }
 };
 
-function showAuthErrorMsg(msg) {
+function showAuthErrorMsg(msg, type = "error") {
     const authErrorMsg = document.getElementById("auth-error-msg");
     if (authErrorMsg) {
         authErrorMsg.textContent = msg;
         authErrorMsg.classList.remove("hidden");
         authErrorMsg.style.display = "block";
+        if (type === "success") {
+            authErrorMsg.style.backgroundColor = "rgba(34, 197, 94, 0.15)";
+            authErrorMsg.style.color = "#4ade80";
+            authErrorMsg.style.borderColor = "rgba(34, 197, 94, 0.3)";
+        } else {
+            authErrorMsg.style.backgroundColor = "";
+            authErrorMsg.style.color = "";
+            authErrorMsg.style.borderColor = "";
+        }
     }
 }
 
@@ -255,7 +389,7 @@ window.handleLoginSubmit = async function (e) {
     const email = emailInput ? emailInput.value.trim().toLowerCase() : "";
     const password = pwdInput ? pwdInput.value : "";
 
-    console.log(`[AUTH CLIENT] Login form submitted for email='${email}'`);
+    console.log(`[FIREBASE CLIENT] Login submitted for email='${email}'`);
 
     if (!email || !password) {
         showAuthErrorMsg("Please enter both email and password.");
@@ -267,26 +401,23 @@ window.handleLoginSubmit = async function (e) {
         return;
     }
 
-    try {
-        const res = await fetch("/api/login", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ email, password })
-        });
-        const data = await res.json();
-        console.log("[AUTH CLIENT] /api/login response:", res.status, data);
+    if (!firebaseAuth) {
+        showAuthErrorMsg("Firebase SDK not ready. Please refresh the page.");
+        return;
+    }
 
-        if (res.ok && data.user) {
-            window.loginUser(data.user);
-        } else if (data.status === "otp_required") {
-            window.openOtpModal(data.email, "signup");
-        } else {
-            const errorText = data && data.detail ? data.detail : "Invalid email or password.";
-            showAuthErrorMsg(errorText);
+    try {
+        const userCred = await firebaseAuth.signInWithEmailAndPassword(email, password);
+        const user = userCred.user;
+
+        if (!user.emailVerified) {
+            showAuthErrorMsg("Your email is not verified yet. We have dispatched a verification link to your inbox. Please verify before logging in!", "warning");
+            try { await user.sendEmailVerification(); } catch (err) {}
+            return;
         }
-    } catch (err) {
-        console.error("[AUTH CLIENT] Login network error:", err);
-        showAuthErrorMsg("Unable to connect to server. Please check your connection.");
+    } catch (error) {
+        console.error("[FIREBASE CLIENT] Login error:", error);
+        showAuthErrorMsg(window.mapFirebaseError(error.code, error.message));
     }
 };
 
@@ -308,7 +439,7 @@ window.handleSignupSubmit = async function (e) {
     const password = pwdInput ? pwdInput.value : "";
     const captchaAns = captchaInput ? captchaInput.value.trim() : "";
 
-    console.log(`[AUTH CLIENT] Signup form submitted for name='${name}', email='${email}'`);
+    console.log(`[FIREBASE CLIENT] Signup submitted for name='${name}', email='${email}'`);
 
     if (!name || !email || !password) {
         showAuthErrorMsg("All fields are required for sign up.");
@@ -320,8 +451,8 @@ window.handleSignupSubmit = async function (e) {
         return;
     }
 
-    if (password.length < 8 || !/[A-Za-z]/.test(password) || !/\d/.test(password)) {
-        showAuthErrorMsg("Password must be at least 8 characters long and contain both letters and numbers.");
+    if (password.length < 6) {
+        showAuthErrorMsg("Password must be at least 6 characters long.");
         return;
     }
 
@@ -335,43 +466,26 @@ window.handleSignupSubmit = async function (e) {
         return;
     }
 
-    const expectedCaptchaStr = (currentCaptchaState.signup && currentCaptchaState.signup.ans !== undefined) ? currentCaptchaState.signup.ans.toString() : captchaAns;
+    if (!firebaseAuth) {
+        showAuthErrorMsg("Firebase SDK not ready. Please refresh the page.");
+        return;
+    }
 
     try {
-        const res = await fetch("/api/signup", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-                name,
-                email,
-                password,
-                captcha_answer: captchaAns,
-                captcha_expected: expectedCaptchaStr
-            })
-        });
-        const data = await res.json();
-        console.log("[AUTH CLIENT] /api/signup response:", res.status, data);
+        const userCred = await firebaseAuth.createUserWithEmailAndPassword(email, password);
+        const user = userCred.user;
+        await user.updateProfile({ displayName: name });
+        await user.sendEmailVerification();
 
-        if (res.ok && data.status === "otp_required") {
-            window.openOtpModal(data.email, "signup");
-        } else if (res.ok && data.user) {
-            window.loginUser(data.user);
-        } else {
-            const errorText = data && data.detail ? data.detail : "Sign up failed. Please try again.";
-            showAuthErrorMsg(errorText);
-            window.generateCaptcha("signup");
-            
-            if (errorText.toLowerCase().includes("already exists")) {
-                setTimeout(() => {
-                    window.switchAuthTab("login");
-                    const loginEmail = document.getElementById("login-email");
-                    if (loginEmail) loginEmail.value = email;
-                }, 1200);
-            }
-        }
-    } catch (err) {
-        console.error("[AUTH CLIENT] Signup error:", err);
-        showAuthErrorMsg("Signup error: " + (err && err.message ? err.message : "Please check your network connection."));
+        showAuthErrorMsg("Account created successfully! A verification link has been sent to " + email + ". Please verify your email before logging in.", "success");
+        setTimeout(() => {
+            window.switchAuthTab("login");
+            const loginEmail = document.getElementById("login-email");
+            if (loginEmail) loginEmail.value = email;
+        }, 2000);
+    } catch (error) {
+        console.error("[FIREBASE CLIENT] Signup error:", error);
+        showAuthErrorMsg(window.mapFirebaseError(error.code, error.message));
         window.generateCaptcha("signup");
     }
 };
@@ -491,55 +605,47 @@ window.handleForgotPasswordSubmit = async function(e) {
     const captchaInput = document.getElementById("forgot-captcha-answer");
     const errEl = document.getElementById("forgot-error-msg");
 
-    const email = emailInput ? emailInput.value.trim() : "";
+    const email = emailInput ? emailInput.value.trim().toLowerCase() : "";
     const answer = captchaInput ? captchaInput.value.trim() : "";
+
+    if (!email || !window.isValidEmail(email)) {
+        if (errEl) {
+            errEl.textContent = "Please enter a valid email address.";
+            errEl.classList.remove("hidden");
+            errEl.style.display = "block";
+        }
+        return;
+    }
 
     if (parseInt(answer, 10) !== currentCaptchaState.forgot.ans) {
         if (errEl) {
             errEl.textContent = "Incorrect Security Challenge answer. Please try again.";
             errEl.classList.remove("hidden");
             errEl.style.display = "block";
-            errEl.style.color = "";
-            errEl.style.background = "";
-            errEl.style.border = "";
         }
         window.generateCaptcha("forgot");
         return;
     }
 
-    try {
-        const res = await fetch("/api/forgot-password/request-otp", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-                email,
-                captcha_answer: answer,
-                captcha_expected: currentCaptchaState.forgot.ans.toString()
-            })
-        });
-        const data = await res.json();
-        if (res.ok) {
-            window.closeForgotPasswordModal();
-            window.openResetPasswordModal(email, data.otp_code || "", data.message || "");
-        } else {
-            const err = data.detail || "Failed to send reset OTP.";
-            if (errEl) {
-                errEl.textContent = err;
-                errEl.classList.remove("hidden");
-                errEl.style.display = "block";
-                errEl.style.color = "";
-                errEl.style.background = "";
-                errEl.style.border = "";
-            }
-        }
-    } catch (err) {
+    if (!firebaseAuth) {
         if (errEl) {
-            errEl.textContent = "Network error. Please try again.";
+            errEl.textContent = "Firebase SDK not ready. Please refresh the page.";
             errEl.classList.remove("hidden");
             errEl.style.display = "block";
-            errEl.style.color = "";
-            errEl.style.background = "";
-            errEl.style.border = "";
+        }
+        return;
+    }
+
+    try {
+        await firebaseAuth.sendPasswordResetEmail(email);
+        window.closeForgotPasswordModal();
+        showAuthErrorMsg("Password reset email sent to " + email + ". Please check your inbox for the link!", "success");
+    } catch (error) {
+        console.error("[FIREBASE FORGOT PASSWORD ERROR]", error);
+        if (errEl) {
+            errEl.textContent = window.mapFirebaseError(error.code, error.message);
+            errEl.classList.remove("hidden");
+            errEl.style.display = "block";
         }
     }
 };
@@ -987,12 +1093,17 @@ function initializeDocPilotApp() {
     window.loginUser = loginUser;
 
     function logoutUser() {
+        if (typeof firebaseAuth !== "undefined" && firebaseAuth && firebaseAuth.currentUser) {
+            firebaseAuth.signOut().catch(err => console.error("Firebase signOut error:", err));
+        }
         currentUser = null;
         if (navPinnedLibrary) navPinnedLibrary.style.display = "none";
         localStorage.removeItem("docpilot-user");
+        localStorage.removeItem("prepz_user");
         localStorage.removeItem("currentThreadId");
+        sessionStorage.clear();
         currentThreadId = null;
-        chatMessages.innerHTML = "";
+        if (chatMessages) chatMessages.innerHTML = "";
         showLoginScreen();
     }
 
