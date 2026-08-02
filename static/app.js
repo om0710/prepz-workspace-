@@ -319,6 +319,20 @@ window.handleGoogleLogin = function (e) {
         })
         .catch((error) => {
             console.error('[GOOGLE SIGNIN] Error:', error);
+            
+            // IF POPUP IS BLOCKED BY BROWSER -> SEAMLESS AUTOMATIC REDIRECT FALLBACK (NO RED ERROR BANNER!)
+            if (
+                error.code === "auth/popup-blocked" || 
+                error.code === "auth/unauthorized-domain" ||
+                (error.message && (error.message.includes("popup") || error.message.includes("blocked")))
+            ) {
+                console.log("[GOOGLE SIGNIN] Popup blocked by browser -> redirecting seamlessly with signInWithRedirect...");
+                firebaseAuth.signInWithRedirect(provider).catch((err) => {
+                    showAuthErrorMsg(window.mapFirebaseError(err.code, err.message));
+                });
+                return;
+            }
+
             if (error.code !== "auth/popup-closed-by-user" && error.code !== "auth/cancelled-popup-request") {
                 showAuthErrorMsg(window.mapFirebaseError(error.code, error.message));
             }
