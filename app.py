@@ -41,6 +41,7 @@ def serialize_message(msg):
 
 # Serve static frontend folder
 os.makedirs("static", exist_ok=True)
+app.mount("/static", StaticFiles(directory="static"), name="static")
 
 @app.get("/")
 @app.get("/index.html")
@@ -58,6 +59,19 @@ def read_app_js():
 @app.get("/login_popup.html")
 def read_login_popup():
     return FileResponse("static/login_popup.html")
+
+@app.get("/favicon.ico")
+def read_favicon_ico():
+    return FileResponse("static/favicon.ico")
+
+@app.get("/favicon.png")
+@app.get("/favicon-32x32.png")
+def read_favicon_png():
+    return FileResponse("static/favicon.png")
+
+@app.get("/favicon.svg")
+def read_favicon_svg():
+    return FileResponse("static/favicon.svg")
 
 class PinRequest(BaseModel):
     is_pinned: bool
