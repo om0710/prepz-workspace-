@@ -27,23 +27,19 @@ window.fetch = function (url, options = {}) {
 };
 
 // Global Fail-Proof Auth Handlers
-// CRITICAL FIX: authDomain must match the hosted domain so Firebase popup
-// can communicate results back via window.opener postMessage (same-origin).
-// Using firebaseapp.com when hosted on hf.space causes cross-origin block.
-const hostedDomain = window.location.hostname;
+// NOTE: authDomain MUST be firebaseapp.com (Firebase's own domain) because
+// Firebase Popup flow loads /__/auth/handler from authDomain. Custom domains
+// only work with Firebase Hosting which serves that endpoint automatically.
+// To allow popup from hf.space, add hf.space to Firebase Console -> Auth -> Authorized Domains.
 const defaultFirebaseConfig = {
     apiKey: "AIzaSyAFe1P9Jss-J9EwfwLUOfnxv5BaVyuoGew",
-    authDomain: (hostedDomain && hostedDomain !== "localhost" && !hostedDomain.includes("127.0.0"))
-        ? hostedDomain
-        : "prepz-workspace.firebaseapp.com",
+    authDomain: "prepz-workspace.firebaseapp.com",
     projectId: "prepz-workspace",
     storageBucket: "prepz-workspace.firebasestorage.app",
     messagingSenderId: "585299422541",
     appId: "1:585299422541:web:a3734d501021c5bc581b04",
     measurementId: "G-MMM66H0FWG"
 };
-
-console.log("[FIREBASE CLIENT] authDomain set to:", defaultFirebaseConfig.authDomain);
 
 const firebaseConfig = (typeof window.FIREBASE_CONFIG === "object" && window.FIREBASE_CONFIG) ? window.FIREBASE_CONFIG : defaultFirebaseConfig;
 
