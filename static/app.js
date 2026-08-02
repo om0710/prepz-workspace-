@@ -61,43 +61,6 @@ window.switchAuthTab = function (tab) {
     }
 };
 
-window.loginUser = function (user) {
-    if (!user) user = { name: "Student User", email: "student@college.edu", provider: "local" };
-    localStorage.setItem("docpilot-user", JSON.stringify(user));
-
-    if (user.email && typeof saveGoogleAccountToHistory === "function") {
-        saveGoogleAccountToHistory({
-            name: user.name || "Student User",
-            email: user.email,
-            avatar_url: user.avatar_url || `https://api.dicebear.com/7.x/bottts/svg?seed=${user.email}`
-        });
-    }
-
-    const landingPageView = document.getElementById("landing-page-view");
-    const chatbotAppView = document.getElementById("chatbot-app-view");
-
-    if (landingPageView) {
-        landingPageView.classList.add("hidden");
-        landingPageView.style.setProperty("display", "none", "important");
-    }
-    if (chatbotAppView) {
-        chatbotAppView.classList.remove("hidden");
-        chatbotAppView.style.setProperty("display", "flex", "important");
-    }
-
-    const userAvatar = document.querySelector(".sidebar-user-avatar");
-    const userName = document.querySelector(".sidebar-user-name");
-    const userEmail = document.querySelector(".sidebar-user-email");
-
-    if (userName) userName.textContent = user.name || "Student User";
-    if (userEmail) userEmail.textContent = user.email || "student@college.edu";
-    if (userAvatar) {
-        const avatarUrl = user.avatar_url || `https://api.dicebear.com/7.x/bottts/svg?seed=${user.email || 'user'}`;
-        userAvatar.style.backgroundImage = `url('${avatarUrl}')`;
-        userAvatar.innerHTML = "";
-    }
-};
-
 // Google Accounts History Store (Device local only)
 function getGoogleAccountsHistory() {
     try {
@@ -156,69 +119,51 @@ window.selectGoogleAccount = async function(name, email, avatar_url) {
     }
 };
 
-window.handleGoogleLogin = function () {
-    let accounts = getGoogleAccountsHistory();
+window.openGmailInputModal = function() {
+    const modal = document.getElementById("gmail-input-modal");
+    const errEl = document.getElementById("gmail-modal-error-msg");
+    const inputEl = document.getElementById("gmail-modal-email-input");
+    if (errEl) { errEl.textContent = ""; errEl.classList.add("hidden"); errEl.style.display = "none"; }
+    if (inputEl) inputEl.value = "";
+    if (modal) {
+        modal.classList.remove("hidden");
+        modal.style.display = "flex";
+        if (inputEl) setTimeout(() => inputEl.focus(), 100);
+    }
+};
 
-    const modal = document.getElementById("google-account-modal");
-    const accountsListContainer = document.getElementById("google-accounts-list");
+window.closeGmailInputModal = function() {
+    const modal = document.getElementById("gmail-input-modal");
+    if (modal) {
+        modal.classList.add("hidden");
+        modal.style.display = "none";
+    }
+};
 
-    // If no previous Google accounts saved on this device, prompt directly for user's own email
-    if (!accounts || accounts.length === 0) {
-        const inputEmail = prompt("Enter your Gmail address to Continue with Google:", "");
-        if (inputEmail && inputEmail.trim()) {
-            const rawEmail = inputEmail.trim().toLowerCase();
-            if (!window.isValidEmail(rawEmail)) {
-                showAuthErrorMsg("Please enter a valid Gmail address (e.g. user@gmail.com).");
-                return;
-            }
-            const rawName = rawEmail.split("@")[0].replace(/[._-]/g, " ");
-            const formattedName = rawName.charAt(0).toUpperCase() + rawName.slice(1);
-            window.selectGoogleAccount(formattedName, rawEmail, `https://api.dicebear.com/7.x/bottts/svg?seed=${encodeURIComponent(rawEmail)}`);
+window.handleGmailModalSubmit = async function(e) {
+    if (e) e.preventDefault();
+    const inputEl = document.getElementById("gmail-modal-email-input");
+    const errEl = document.getElementById("gmail-modal-error-msg");
+    const rawEmail = inputEl ? inputEl.value.trim().toLowerCase() : "";
+
+    if (!rawEmail || !window.isValidEmail(rawEmail)) {
+        if (errEl) {
+            errEl.textContent = "Please enter a valid Gmail address (e.g. user@gmail.com).";
+            errEl.classList.remove("hidden");
+            errEl.style.display = "block";
         }
         return;
     }
 
-    accountsListContainer.innerHTML = "";
-    accounts.forEach(acc => {
-        const btn = document.createElement("button");
-        btn.type = "button";
-        btn.className = "btn-google-account-item";
-        btn.onclick = function() {
-            window.selectGoogleAccount(acc.name, acc.email, acc.avatar_url);
-        };
+    const rawName = rawEmail.split("@")[0].replace(/[._-]/g, " ");
+    const formattedName = rawName.charAt(0).toUpperCase() + rawName.slice(1);
+    
+    window.closeGmailInputModal();
+    window.selectGoogleAccount(formattedName, rawEmail, `https://api.dicebear.com/7.x/bottts/svg?seed=${encodeURIComponent(rawEmail)}`);
+};
 
-        const avatarSrc = acc.avatar_url || `https://api.dicebear.com/7.x/bottts/svg?seed=${acc.email}`;
-        btn.innerHTML = `
-            <div class="account-avatar-img" style="background-image: url('${avatarSrc}');"></div>
-            <div class="account-text-info">
-                <span class="account-name">${acc.name}</span>
-                <span class="account-email">${acc.email}</span>
-            </div>
-            <span class="account-select-badge">Log in →</span>
-        `;
-        accountsListContainer.appendChild(btn);
-    });
-
-    const addBtn = document.getElementById("btn-use-another-account");
-    if (addBtn) {
-        addBtn.onclick = function() {
-            window.closeGoogleAccountModal();
-            const inputEmail = prompt("Enter another Gmail address:", "");
-            if (inputEmail && inputEmail.trim()) {
-                const rawEmail = inputEmail.trim().toLowerCase();
-                if (!window.isValidEmail(rawEmail)) {
-                    showAuthErrorMsg("Please enter a valid Gmail address (e.g. user@gmail.com).");
-                    return;
-                }
-                const rawName = rawEmail.split("@")[0].replace(/[._-]/g, " ");
-                const formattedName = rawName.charAt(0).toUpperCase() + rawName.slice(1);
-                window.selectGoogleAccount(formattedName, rawEmail, `https://api.dicebear.com/7.x/bottts/svg?seed=${rawEmail}`);
-            }
-        };
-    }
-
-    modal.classList.remove("hidden");
-    modal.style.display = "flex";
+window.handleGoogleLogin = function () {
+    window.openGmailInputModal();
 };
 
 function showAuthErrorMsg(msg) {
