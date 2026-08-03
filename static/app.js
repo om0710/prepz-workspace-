@@ -94,12 +94,18 @@ window.mapFirebaseError = function (code, defaultMsg) {
 
 // Top-Level Global Auth Controller & View Manager
 window.loginUser = function(user) {
-    if (!user) return;
-    console.log("[AUTH TRACE] (c) Executing window.loginUser for email:", user.email);
+    if (!user || !user.email) return;
+    console.log("[AUTH] loginUser() called for:", user.email);
     window.currentUser = user;
+
+    // Always overwrite — never merge with stale cached data
+    const userData = JSON.stringify(user);
     try {
-        localStorage.setItem("docpilot-user", JSON.stringify(user));
-        localStorage.setItem("prepz_user", JSON.stringify(user));
+        localStorage.setItem("docpilot-user", userData);
+        localStorage.setItem("prepz_user", userData);
+        // Remove any old fake login flow keys if still present
+        localStorage.removeItem("prepz_google_accounts");
+        localStorage.removeItem("google-login-success-event");
     } catch(e) {}
 
     const landingPageView = document.getElementById("landing-page-view");
@@ -135,7 +141,7 @@ window.loginUser = function(user) {
 };
 
 window.showLoginScreen = function() {
-    console.log("[AUTH TRACE] (c) Executing window.showLoginScreen");
+    console.log("[AUTH] showLoginScreen() called");
     window.currentUser = null;
     const landingPageView = document.getElementById("landing-page-view");
     const chatbotAppView = document.getElementById("chatbot-app-view");
@@ -153,14 +159,14 @@ window.showLoginScreen = function() {
 };
 
 window.logoutUser = function() {
-    console.log("[AUTH TRACE] (c) Executing window.logoutUser");
-    if (typeof firebaseAuth !== "undefined" && firebaseAuth && firebaseAuth.currentUser) {
+    console.log("[AUTH] logoutUser() called");
+    if (typeof firebaseAuth !== "undefined" && firebaseAuth) {
         firebaseAuth.signOut().catch(err => console.error("Firebase signOut error:", err));
     }
     window.currentUser = null;
-    localStorage.removeItem("docpilot-user");
-    localStorage.removeItem("prepz_user");
-    localStorage.removeItem("currentThreadId");
+    // Clear ALL user-related localStorage keys — including old fake-flow keys
+    ["docpilot-user", "prepz_user", "currentThreadId",
+     "prepz_google_accounts", "google-login-success-event"].forEach(k => localStorage.removeItem(k));
     sessionStorage.clear();
     if (typeof window.showLoginScreen === "function") window.showLoginScreen();
 };
@@ -1051,34 +1057,57 @@ function initializeDocPilotApp() {
             });
         }
 
-        // Check URL parameters for explicit logout request
+        // -------------------------------------------------------
+        // PAGE LOAD SESSION RESTORE
+        // Validate localStorage against Firebase currentUser.
+        // If mismatch → clear stale cache and use Firebase user.
+        // -------------------------------------------------------
         const urlParams = new URLSearchParams(window.location.search);
         if (urlParams.get("logout") === "true" || urlParams.get("switch") === "true") {
             logoutUser();
         } else {
-            // Check if session user details are already saved
-            const savedUser = localStorage.getItem("docpilot-user") || localStorage.getItem("prepz_user");
-            if (savedUser) {
-                try {
-                    loginUser(JSON.parse(savedUser));
-                } catch(e) {
-                    showLoginScreen();
-                }
+            const cachedRaw = localStorage.getItem("docpilot-user") || localStorage.getItem("prepz_user");
+            let cachedUser = null;
+            try { cachedUser = cachedRaw ? JSON.parse(cachedRaw) : null; } catch(e) {}
+
+            const firebaseCurrentUser = (typeof firebaseAuth !== "undefined" && firebaseAuth)
+                ? firebaseAuth.currentUser
+                : null;
+
+            const firebaseEmail = firebaseCurrentUser ? firebaseCurrentUser.email : null;
+            const cachedEmail = cachedUser ? cachedUser.email : null;
+
+            // Always log mismatch info for debugging
+            console.log("[AUTH PAGE LOAD] Firebase currentUser email:", firebaseEmail || "(none)");
+            console.log("[AUTH PAGE LOAD] localStorage docpilot-user email:", cachedEmail || "(none)");
+
+            if (firebaseEmail && cachedEmail && firebaseEmail !== cachedEmail) {
+                // Mismatch: Firebase says different user — clear stale cache
+                console.warn("[AUTH PAGE LOAD] MISMATCH DETECTED — clearing stale localStorage and re-syncing from Firebase");
+                ["docpilot-user", "prepz_user", "prepz_google_accounts", "google-login-success-event"].forEach(k => localStorage.removeItem(k));
+                // Re-sync from Firebase
+                allowAuthStateLogin = true;
+            } else if (cachedUser && cachedUser.email) {
+                // Cache matches (or Firebase has no session) — use cached user
+                console.log("[AUTH PAGE LOAD] Using validated cached user:", cachedEmail);
+                loginUser(cachedUser);
             } else {
-                window.showLoginScreen();
+                // No cache, no Firebase session
+                console.log("[AUTH PAGE LOAD] No session found — showing login screen");
+                showLoginScreen();
             }
         }
     }
 
     function logoutUser() {
-        if (typeof firebaseAuth !== "undefined" && firebaseAuth && firebaseAuth.currentUser) {
+        if (typeof firebaseAuth !== "undefined" && firebaseAuth) {
             firebaseAuth.signOut().catch(err => console.error("Firebase signOut error:", err));
         }
         currentUser = null;
         if (navPinnedLibrary) navPinnedLibrary.style.display = "none";
-        localStorage.removeItem("docpilot-user");
-        localStorage.removeItem("prepz_user");
-        localStorage.removeItem("currentThreadId");
+        // Clear ALL user-related localStorage keys — including old fake-flow keys
+        ["docpilot-user", "prepz_user", "currentThreadId",
+         "prepz_google_accounts", "google-login-success-event"].forEach(k => localStorage.removeItem(k));
         sessionStorage.clear();
         currentThreadId = null;
         if (chatMessages) chatMessages.innerHTML = "";
