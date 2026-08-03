@@ -171,36 +171,29 @@ window.logoutUser = function() {
     if (typeof window.showLoginScreen === "function") window.showLoginScreen();
 };
 
-// Flag: only auto-login via onAuthStateChanged when the user explicitly
-// triggered an auth action (Google popup or email login). On cold page load,
-// we restore session from localStorage instead, so Firebase cached session
-// doesn't silently switch accounts.
+// =====================================================================
+// FIREBASE AUTH STATE - Single source of truth for Google Sign-In
+// allowAuthStateLogin flag: only trust onAuthStateChanged when the user
+// explicitly clicked the Google Sign-In button. This prevents the cached
+// Firebase session from silently logging in a stale/wrong account.
+// =====================================================================
 let allowAuthStateLogin = false;
 
 if (firebaseAuth) {
-    // Handle redirect result silently
-    firebaseAuth.getRedirectResult().then((result) => {
-        if (result && result.user) {
-            console.log("[AUTH TRACE] getRedirectResult() got user:", result.user.email);
-            allowAuthStateLogin = true;
-        }
-    }).catch((error) => {
-        console.warn("[AUTH TRACE] getRedirectResult() error (ignoring):", error.code);
-    });
-
     firebaseAuth.onAuthStateChanged(async (user) => {
-        console.log("[AUTH TRACE] onAuthStateChanged fired, user:", user ? user.email : "Logged Out", "| allowLogin:", allowAuthStateLogin);
+        console.log("[AUTH] onAuthStateChanged:", user ? user.email : "signed out", "| gate open:", allowAuthStateLogin);
         if (user && allowAuthStateLogin) {
-            allowAuthStateLogin = false; // reset
-            const providerId = (user.providerData && user.providerData[0]) ? user.providerData[0].providerId : "firebase";
+            allowAuthStateLogin = false;
+            const providerId = (user.providerData && user.providerData[0])
+                ? user.providerData[0].providerId : "firebase";
 
             if (!user.emailVerified && providerId === "password") {
-                showAuthErrorMsg("Please verify your email address before accessing your workspace. Check your inbox for the link!");
+                showAuthErrorMsg("Please verify your email before logging in. Check your inbox!");
                 return;
             }
 
             try {
-                const syncRes = await fetch("/api/firebase-sync", {
+                const res = await fetch("/api/firebase-sync", {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({
@@ -211,20 +204,16 @@ if (firebaseAuth) {
                         avatar_url: user.photoURL || `https://api.dicebear.com/7.x/bottts/svg?seed=${encodeURIComponent(user.email)}`
                     })
                 });
-                const syncData = await syncRes.json();
-                if (syncRes.ok && syncData.user) {
-                    window.loginUser(syncData.user);
-                } else {
-                    window.loginUser({
-                        id: user.uid,
-                        name: user.displayName || user.email.split("@")[0],
-                        email: user.email,
-                        provider: providerId,
-                        avatar_url: user.photoURL || `https://api.dicebear.com/7.x/bottts/svg?seed=${encodeURIComponent(user.email)}`
-                    });
-                }
+                const data = await res.json();
+                window.loginUser(res.ok && data.user ? data.user : {
+                    id: user.uid,
+                    name: user.displayName || user.email.split("@")[0],
+                    email: user.email,
+                    provider: providerId,
+                    avatar_url: user.photoURL || `https://api.dicebear.com/7.x/bottts/svg?seed=${encodeURIComponent(user.email)}`
+                });
             } catch (err) {
-                console.error("[AUTH TRACE] Error syncing user:", err);
+                console.error("[AUTH] firebase-sync error:", err);
                 window.loginUser({
                     id: user.uid,
                     name: user.displayName || user.email.split("@")[0],
@@ -277,32 +266,10 @@ window.switchAuthTab = function (tab) {
     }
 };
 
-// Google Sign-In: pure synchronous signInWithPopup
-// onAuthStateChanged above handles everything after popup succeeds.
-// No redirect fallback needed because authDomain now matches hosted domain.
-window.handleGoogleLogin = function (e) {
-    if (e) e.preventDefault();
-    if (!firebaseAuth) {
-        showAuthErrorMsg("Firebase SDK not ready. Please refresh the page.");
-        return;
-    }
-    const provider = new firebase.auth.GoogleAuthProvider();
-    provider.setCustomParameters({ prompt: 'select_account' });
-    
-    // SYNCHRONOUS - first line executed, no async before this
-    firebaseAuth.signInWithPopup(provider)
-        .then((result) => {
-            console.log("[GOOGLE SIGNIN] Popup succeeded for:", result.user ? result.user.email : "unknown");
-            // onAuthStateChanged will fire automatically and handle loginUser()
-        })
-        .catch((error) => {
-            console.error('[GOOGLE SIGNIN] Error code:', error.code);
-            // Only show error for real errors, not user-dismissed popup
-            if (error.code !== "auth/popup-closed-by-user" && error.code !== "auth/cancelled-popup-request") {
-                showAuthErrorMsg(window.mapFirebaseError(error.code, error.message));
-            }
-        });
-};
+// NOTE: window.handleGoogleLogin is intentionally not used.
+// The ONLY Google Sign-In entry point is the loginBtn click handler
+// inside initializeDocPilotApp() below, which calls signInWithPopup
+// synchronously as the very first action in the click event.
 
 function showAuthErrorMsg(msg, type = "error") {
     const authErrorMsg = document.getElementById("auth-error-msg");
@@ -369,10 +336,12 @@ window.handleLoginSubmit = async function (e) {
         return;
     }
 
-    // Attempt Firebase Login First
+    // Firebase email/password login
     if (typeof firebaseAuth !== "undefined" && firebaseAuth) {
         try {
-            allowAuthStateLogin = true;
+            // Email login manages its own session via signInWithEmailAndPassword result.
+            // We do NOT set allowAuthStateLogin here — email login calls window.loginUser
+            // directly from the result, bypassing onAuthStateChanged.
             const userCred = await firebaseAuth.signInWithEmailAndPassword(email, password);
             const user = userCred.user;
 
@@ -383,7 +352,6 @@ window.handleLoginSubmit = async function (e) {
             }
 
             if (user) {
-                // Sync to backend and login
                 try {
                     const syncRes = await fetch("/api/firebase-sync", {
                         method: "POST",
@@ -411,7 +379,7 @@ window.handleLoginSubmit = async function (e) {
                 return;
             }
         } catch (error) {
-            console.warn("[AUTH CLIENT] Firebase login error, attempting backend API fallback:", error.code);
+            console.warn("[AUTH] Firebase login error:", error.code);
             if (error.code === "auth/wrong-password" || error.code === "auth/user-not-found" || error.code === "auth/invalid-credential") {
                 showAuthErrorMsg("Invalid email or password. Please check your credentials.");
                 return;
@@ -1059,8 +1027,14 @@ function initializeDocPilotApp() {
 
         // -------------------------------------------------------
         // PAGE LOAD SESSION RESTORE
-        // Validate localStorage against Firebase currentUser.
-        // If mismatch → clear stale cache and use Firebase user.
+        // Strategy:
+        //   1. Read cached user from localStorage.
+        //   2. Wait for Firebase to resolve its auth state (onAuthStateChanged).
+        //   3. If Firebase has a session AND it matches cache → use cache (fast path).
+        //   4. If Firebase has a session AND it mismatches cache → re-sync from Firebase.
+        //   5. If Firebase has no session → use cache if available, else show login.
+        // firebaseAuth.currentUser is NULL at DOMContentLoaded time, so we MUST
+        // wait for onAuthStateChanged to fire once to get the real Firebase state.
         // -------------------------------------------------------
         const urlParams = new URLSearchParams(window.location.search);
         if (urlParams.get("logout") === "true" || urlParams.get("switch") === "true") {
@@ -1069,32 +1043,90 @@ function initializeDocPilotApp() {
             const cachedRaw = localStorage.getItem("docpilot-user") || localStorage.getItem("prepz_user");
             let cachedUser = null;
             try { cachedUser = cachedRaw ? JSON.parse(cachedRaw) : null; } catch(e) {}
-
-            const firebaseCurrentUser = (typeof firebaseAuth !== "undefined" && firebaseAuth)
-                ? firebaseAuth.currentUser
-                : null;
-
-            const firebaseEmail = firebaseCurrentUser ? firebaseCurrentUser.email : null;
             const cachedEmail = cachedUser ? cachedUser.email : null;
 
-            // Always log mismatch info for debugging
-            console.log("[AUTH PAGE LOAD] Firebase currentUser email:", firebaseEmail || "(none)");
-            console.log("[AUTH PAGE LOAD] localStorage docpilot-user email:", cachedEmail || "(none)");
+            console.log("[AUTH PAGE LOAD] localStorage email:", cachedEmail || "(none)");
 
-            if (firebaseEmail && cachedEmail && firebaseEmail !== cachedEmail) {
-                // Mismatch: Firebase says different user — clear stale cache
-                console.warn("[AUTH PAGE LOAD] MISMATCH DETECTED — clearing stale localStorage and re-syncing from Firebase");
-                ["docpilot-user", "prepz_user", "prepz_google_accounts", "google-login-success-event"].forEach(k => localStorage.removeItem(k));
-                // Re-sync from Firebase
-                allowAuthStateLogin = true;
-            } else if (cachedUser && cachedUser.email) {
-                // Cache matches (or Firebase has no session) — use cached user
-                console.log("[AUTH PAGE LOAD] Using validated cached user:", cachedEmail);
-                loginUser(cachedUser);
+            if (typeof firebaseAuth !== "undefined" && firebaseAuth) {
+                // Wait for Firebase to resolve - fires once immediately with current state
+                const unsubscribe = firebaseAuth.onAuthStateChanged(async (firebaseUser) => {
+                    unsubscribe(); // Only run once on page load
+                    const firebaseEmail = firebaseUser ? firebaseUser.email : null;
+                    console.log("[AUTH PAGE LOAD] Firebase resolved email:", firebaseEmail || "(none)");
+
+                    if (firebaseUser && cachedEmail && firebaseEmail !== cachedEmail) {
+                        // MISMATCH: Firebase says different user — clear stale cache, re-sync
+                        console.warn("[AUTH PAGE LOAD] MISMATCH — Firebase:", firebaseEmail, "vs cache:", cachedEmail, "— clearing stale cache");
+                        ["docpilot-user", "prepz_user", "prepz_google_accounts", "google-login-success-event"].forEach(k => localStorage.removeItem(k));
+                        // Re-sync from Firebase directly
+                        const providerId = (firebaseUser.providerData && firebaseUser.providerData[0])
+                            ? firebaseUser.providerData[0].providerId : "firebase";
+                        try {
+                            const res = await fetch("/api/firebase-sync", {
+                                method: "POST",
+                                headers: { "Content-Type": "application/json" },
+                                body: JSON.stringify({
+                                    uid: firebaseUser.uid,
+                                    email: firebaseUser.email,
+                                    name: firebaseUser.displayName || firebaseUser.email.split("@")[0],
+                                    provider: providerId.includes("google") ? "google" : "local",
+                                    avatar_url: firebaseUser.photoURL || `https://api.dicebear.com/7.x/bottts/svg?seed=${encodeURIComponent(firebaseUser.email)}`
+                                })
+                            });
+                            const data = await res.json();
+                            loginUser(res.ok && data.user ? data.user : {
+                                id: firebaseUser.uid,
+                                email: firebaseUser.email,
+                                name: firebaseUser.displayName || firebaseUser.email.split("@")[0],
+                                provider: providerId,
+                                avatar_url: firebaseUser.photoURL || `https://api.dicebear.com/7.x/bottts/svg?seed=${encodeURIComponent(firebaseUser.email)}`
+                            });
+                        } catch(err) {
+                            showLoginScreen();
+                        }
+                    } else if (cachedUser && cachedEmail) {
+                        // Cache exists and either matches Firebase or Firebase has no session
+                        console.log("[AUTH PAGE LOAD] Using cached user:", cachedEmail);
+                        loginUser(cachedUser);
+                    } else if (firebaseUser) {
+                        // Firebase has session but no cache — re-sync
+                        const providerId = (firebaseUser.providerData && firebaseUser.providerData[0])
+                            ? firebaseUser.providerData[0].providerId : "firebase";
+                        try {
+                            const res = await fetch("/api/firebase-sync", {
+                                method: "POST",
+                                headers: { "Content-Type": "application/json" },
+                                body: JSON.stringify({
+                                    uid: firebaseUser.uid,
+                                    email: firebaseUser.email,
+                                    name: firebaseUser.displayName || firebaseUser.email.split("@")[0],
+                                    provider: providerId.includes("google") ? "google" : "local",
+                                    avatar_url: firebaseUser.photoURL || `https://api.dicebear.com/7.x/bottts/svg?seed=${encodeURIComponent(firebaseUser.email)}`
+                                })
+                            });
+                            const data = await res.json();
+                            loginUser(res.ok && data.user ? data.user : {
+                                id: firebaseUser.uid,
+                                email: firebaseUser.email,
+                                name: firebaseUser.displayName || firebaseUser.email.split("@")[0],
+                                provider: providerId
+                            });
+                        } catch(err) {
+                            showLoginScreen();
+                        }
+                    } else {
+                        // No Firebase session, no cache
+                        console.log("[AUTH PAGE LOAD] No session — showing login");
+                        showLoginScreen();
+                    }
+                });
             } else {
-                // No cache, no Firebase session
-                console.log("[AUTH PAGE LOAD] No session found — showing login screen");
-                showLoginScreen();
+                // Firebase not available — use cache only
+                if (cachedUser && cachedEmail) {
+                    loginUser(cachedUser);
+                } else {
+                    showLoginScreen();
+                }
             }
         }
     }
