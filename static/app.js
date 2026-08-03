@@ -996,25 +996,42 @@ function initializeDocPilotApp() {
                 e.stopImmediatePropagation();
                 clearAuthError();
                 if (!firebaseAuth) {
-                    showAuthError("Firebase SDK not ready. Please refresh the page.");
+                    showAuthError("❌ Firebase SDK not ready. Please refresh the page.");
                     return;
                 }
                 const provider = new firebase.auth.GoogleAuthProvider();
                 provider.setCustomParameters({ prompt: 'select_account' });
-                // Allow onAuthStateChanged to login when it fires after this popup
                 allowAuthStateLogin = true;
                 // signInWithPopup MUST be synchronous — first line after user click
                 firebaseAuth.signInWithPopup(provider)
                     .then((result) => {
-                        console.log('[GOOGLE SIGNIN] Popup success:', result.user.email);
+                        console.log('[GOOGLE SIGNIN] ✅ Popup success:', result.user.email);
                         // onAuthStateChanged fires automatically and calls loginUser()
                     })
                     .catch((error) => {
                         allowAuthStateLogin = false;
-                        console.error('[GOOGLE SIGNIN] Error:', error.code);
-                        if (error.code !== 'auth/popup-closed-by-user' && error.code !== 'auth/cancelled-popup-request') {
-                            showAuthError(window.mapFirebaseError(error.code, error.message));
+                        // Show EXACT error code on screen for diagnosis
+                        const errCode = error.code || "unknown";
+                        const errMsg = error.message || "";
+                        console.error('[GOOGLE SIGNIN] ❌ Error code:', errCode, '| message:', errMsg);
+                        
+                        // Map to user-friendly message WITH error code shown
+                        let displayMsg = "";
+                        if (errCode === "auth/unauthorized-domain") {
+                            displayMsg = `❌ Domain not authorized in Firebase Console.\nFix: Add "om123bansal-prepz-workspace.hf.space" to Firebase Console → Authentication → Settings → Authorized domains.\n[Error: ${errCode}]`;
+                        } else if (errCode === "auth/operation-not-allowed") {
+                            displayMsg = `❌ Google Sign-In not enabled in Firebase Console.\nFix: Enable Google under Firebase Console → Authentication → Sign-in method.\n[Error: ${errCode}]`;
+                        } else if (errCode === "auth/popup-blocked") {
+                            displayMsg = `❌ Popup blocked by browser. Please allow popups for this site.\n[Error: ${errCode}]`;
+                        } else if (errCode === "auth/api-key-not-valid" || errCode === "auth/invalid-api-key") {
+                            displayMsg = `❌ Firebase API key is invalid or restricted.\nFix: Check Google Cloud Console → APIs & Services → Credentials → your API key → HTTP referrers — add hf.space to allowed list.\n[Error: ${errCode}]`;
+                        } else if (errCode === "auth/network-request-failed") {
+                            displayMsg = `❌ Network error. Check internet connection.\n[Error: ${errCode}]`;
+                        } else if (errCode !== "auth/popup-closed-by-user" && errCode !== "auth/cancelled-popup-request") {
+                            displayMsg = `❌ Google Sign-In failed.\n[Error: ${errCode}]\n${errMsg.substring(0, 120)}`;
                         }
+                        
+                        if (displayMsg) showAuthError(displayMsg);
                     });
             });
         }
