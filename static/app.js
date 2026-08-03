@@ -165,27 +165,27 @@ window.logoutUser = function() {
     if (typeof window.showLoginScreen === "function") window.showLoginScreen();
 };
 
-// Listen for Firebase Auth state changes
-// onAuthStateChanged is the single source of truth - handles both popup and
-// persisted sessions. When popup succeeds, Firebase sets currentUser, which
-// fires this listener automatically. We just sync to backend and loginUser.
+// Flag: only auto-login via onAuthStateChanged when the user explicitly
+// triggered an auth action (Google popup or email login). On cold page load,
+// we restore session from localStorage instead, so Firebase cached session
+// doesn't silently switch accounts.
+let allowAuthStateLogin = false;
+
 if (firebaseAuth) {
-    // Handle redirect result (for browsers that fell back to redirect flow)
-    firebaseAuth.getRedirectResult().then(async (result) => {
+    // Handle redirect result silently
+    firebaseAuth.getRedirectResult().then((result) => {
         if (result && result.user) {
             console.log("[AUTH TRACE] getRedirectResult() got user:", result.user.email);
-            // onAuthStateChanged will also fire - it handles the login, so nothing extra needed here
-        } else {
-            console.log("[AUTH TRACE] getRedirectResult() - no pending redirect user");
+            allowAuthStateLogin = true;
         }
     }).catch((error) => {
-        // Silently ignore cross-domain storage errors - onAuthStateChanged handles real sessions
-        console.warn("[AUTH TRACE] getRedirectResult() error (expected on cross-domain, ignoring):", error.code);
+        console.warn("[AUTH TRACE] getRedirectResult() error (ignoring):", error.code);
     });
 
     firebaseAuth.onAuthStateChanged(async (user) => {
-        console.log("[AUTH TRACE] onAuthStateChanged fired, user:", user ? user.email : "Logged Out");
-        if (user) {
+        console.log("[AUTH TRACE] onAuthStateChanged fired, user:", user ? user.email : "Logged Out", "| allowLogin:", allowAuthStateLogin);
+        if (user && allowAuthStateLogin) {
+            allowAuthStateLogin = false; // reset
             const providerId = (user.providerData && user.providerData[0]) ? user.providerData[0].providerId : "firebase";
 
             if (!user.emailVerified && providerId === "password") {
@@ -207,7 +207,6 @@ if (firebaseAuth) {
                 });
                 const syncData = await syncRes.json();
                 if (syncRes.ok && syncData.user) {
-                    console.log("[AUTH TRACE] onAuthStateChanged sync successful, logging in:", syncData.user.email);
                     window.loginUser(syncData.user);
                 } else {
                     window.loginUser({
@@ -367,6 +366,7 @@ window.handleLoginSubmit = async function (e) {
     // Attempt Firebase Login First
     if (typeof firebaseAuth !== "undefined" && firebaseAuth) {
         try {
+            allowAuthStateLogin = true;
             const userCred = await firebaseAuth.signInWithEmailAndPassword(email, password);
             const user = userCred.user;
 
@@ -1027,22 +1027,21 @@ function initializeDocPilotApp() {
                 }
                 const provider = new firebase.auth.GoogleAuthProvider();
                 provider.setCustomParameters({ prompt: 'select_account' });
-                
-                // Sign out first so cached session doesn't auto-select wrong account
-                firebaseAuth.signOut().finally(() => {
-                    // signInWithPopup MUST be called in this user-gesture context
-                    firebaseAuth.signInWithPopup(provider)
-                        .then((result) => {
-                            console.log('[GOOGLE SIGNIN] Popup success:', result.user.email);
-                            // onAuthStateChanged handles loginUser() automatically
-                        })
-                        .catch((error) => {
-                            console.error('[GOOGLE SIGNIN] Error:', error.code);
-                            if (error.code !== 'auth/popup-closed-by-user' && error.code !== 'auth/cancelled-popup-request') {
-                                showAuthError(window.mapFirebaseError(error.code, error.message));
-                            }
-                        });
-                });
+                // Allow onAuthStateChanged to login when it fires after this popup
+                allowAuthStateLogin = true;
+                // signInWithPopup MUST be synchronous — first line after user click
+                firebaseAuth.signInWithPopup(provider)
+                    .then((result) => {
+                        console.log('[GOOGLE SIGNIN] Popup success:', result.user.email);
+                        // onAuthStateChanged fires automatically and calls loginUser()
+                    })
+                    .catch((error) => {
+                        allowAuthStateLogin = false;
+                        console.error('[GOOGLE SIGNIN] Error:', error.code);
+                        if (error.code !== 'auth/popup-closed-by-user' && error.code !== 'auth/cancelled-popup-request') {
+                            showAuthError(window.mapFirebaseError(error.code, error.message));
+                        }
+                    });
             });
         }
 
