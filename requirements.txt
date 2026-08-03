@@ -3,6 +3,7 @@ langgraph
 langchain
 langchain-core
 langchain-community
+langchain-huggingface
 langchain-groq
 langchain-text-splitters
 langchain-chroma
