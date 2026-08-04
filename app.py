@@ -895,7 +895,7 @@ def download_file_route(filename: str, disposition: Optional[str] = "inline"):
     )
 
 @app.get("/files")
-def list_files():
+def list_files(user_email: Optional[str] = None):
     try:
         from backend_rag import get_uploaded_files
         raw_filenames = get_uploaded_files()
@@ -904,9 +904,16 @@ def list_files():
         files_with_meta = []
         for filename in raw_filenames:
             meta = metadata_map.get(filename, {})
+            f_email = meta.get("user_email", "anonymous@college.edu")
+            is_priv = meta.get("is_private", 0)
+
+            # Privacy Filter: If private document, show ONLY to its owner
+            if is_priv == 1 and user_email and f_email.lower() != user_email.lower():
+                continue
+
             files_with_meta.append({
                 "filename": filename,
-                "user_email": meta.get("user_email", "anonymous@college.edu"),
+                "user_email": f_email,
                 "user_name": meta.get("user_name", "Anonymous Student"),
                 "uploaded_at": meta.get("uploaded_at", None),
                 "size_bytes": meta.get("size_bytes", 0),
@@ -914,7 +921,7 @@ def list_files():
                 "semester": meta.get("semester", "Semester 1"),
                 "file_type": meta.get("file_type", "Notes"),
                 "exam_type": meta.get("exam_type", "Other"),
-                "is_private": meta.get("is_private", 0)
+                "is_private": is_priv
             })
         return {"files": files_with_meta}
     except Exception as e:
