@@ -17,3 +17,5 @@ langgraph-checkpoint-sqlite
 pypdf==5.9.0
 rank-bm25
 python-docx
+gradio==4.36.1
+spaces
