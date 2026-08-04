@@ -88,8 +88,97 @@ window.mapFirebaseError = function (code, defaultMsg) {
         case "auth/user-disabled":
             return "This user account has been disabled. Please contact support.";
         default:
-            return defaultMsg || "Authentication failed. Please check credentials and try again.";
+            return defaultMsg || "An error occurred during authentication. Please try again.";
     }
+};
+
+window.handleGoogleSignIn = function(e) {
+    if (e) {
+        e.preventDefault();
+        e.stopPropagation();
+    }
+    console.log("[GOOGLE SIGNIN] Direct button click triggered");
+    
+    const authErrBox = document.getElementById("auth-error-msg");
+    function showErr(msg) {
+        if (authErrBox) {
+            authErrBox.innerHTML = msg;
+            authErrBox.classList.remove("hidden");
+        }
+    }
+    function clearErr() {
+        if (authErrBox) {
+            authErrBox.textContent = "";
+            authErrBox.classList.add("hidden");
+        }
+    }
+    clearErr();
+
+    if (typeof firebase === "undefined" || (!firebaseAuth && !firebase.auth)) {
+        showErr("⏳ Loading Google Auth service... Please click again in 1 second.");
+        return;
+    }
+
+    const auth = firebaseAuth || firebase.auth();
+    const provider = new firebase.auth.GoogleAuthProvider();
+    provider.setCustomParameters({ prompt: 'select_account' });
+
+    auth.signInWithPopup(provider)
+        .then(async (result) => {
+            console.log('[GOOGLE SIGNIN] ✅ Popup success:', result.user.email);
+            const user = result.user;
+            const providerId = (user.providerData && user.providerData[0])
+                ? user.providerData[0].providerId : "google";
+            try {
+                const res = await fetch("/api/firebase-sync", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        uid: user.uid,
+                        email: user.email,
+                        name: user.displayName || user.email.split("@")[0].replace(/[._-]/g, " "),
+                        provider: providerId.includes("google") ? "google" : "local",
+                        avatar_url: user.photoURL || `https://api.dicebear.com/7.x/bottts/svg?seed=${encodeURIComponent(user.email)}`
+                    })
+                });
+                const data = await res.json();
+                window.loginUser(res.ok && data.user ? data.user : {
+                    id: user.uid,
+                    email: user.email,
+                    name: user.displayName || user.email.split("@")[0],
+                    provider: providerId,
+                    avatar_url: user.photoURL || `https://api.dicebear.com/7.x/bottts/svg?seed=${encodeURIComponent(user.email)}`
+                });
+            } catch(err) {
+                window.loginUser({
+                    id: user.uid,
+                    email: user.email,
+                    name: user.displayName || user.email.split("@")[0],
+                    provider: "google",
+                    avatar_url: user.photoURL || `https://api.dicebear.com/7.x/bottts/svg?seed=${encodeURIComponent(user.email)}`
+                });
+            }
+        })
+        .catch((error) => {
+            const errCode = error.code || "unknown";
+            const errMsg = error.message || "";
+            console.error('[GOOGLE SIGNIN] ❌ Error:', errCode, errMsg);
+
+            if (errCode === "auth/popup-blocked") {
+                console.warn('[GOOGLE SIGNIN] Popup blocked — attempting signInWithRedirect fallback');
+                try {
+                    auth.signInWithRedirect(provider);
+                    return;
+                } catch(rErr) {
+                    showErr(`❌ Popup blocked by browser. Please use Email/Password sign in below or click <a href="https://om123bansal-prepz-app.hf.space" target="_blank" style="color: #818cf8;">Open Direct Link ↗</a>`);
+                }
+            } else if (errCode === "auth/unauthorized-domain") {
+                const curDomain = window.location.hostname || "om123bansal-prepz-app.hf.space";
+                showErr(`❌ Domain not authorized in Firebase Console.<br>Fix: Add <b>"${curDomain}"</b> and <b>"huggingface.co"</b> to Firebase Console → Authentication → Settings → Authorized domains.<br>[Error: ${errCode}]`);
+            } else if (errCode !== "auth/popup-closed-by-user" && errCode !== "auth/cancelled-popup-request") {
+                showErr(`❌ Google Sign-In failed: [${errCode}] ${errMsg.substring(0, 100)}`);
+            }
+        });
 };
 
 // Top-Level Global Auth Controller & View Manager
