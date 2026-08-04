@@ -1020,7 +1020,8 @@ function initializeDocPilotApp() {
                         // Map to user-friendly message WITH error code shown
                         let displayMsg = "";
                         if (errCode === "auth/unauthorized-domain") {
-                            displayMsg = `❌ Domain not authorized in Firebase Console.\nFix: Add "om123bansal-prepz-workspace.hf.space" to Firebase Console → Authentication → Settings → Authorized domains.\n[Error: ${errCode}]`;
+                            const curDomain = window.location.hostname || "om123bansal-prepz-app.hf.space";
+                            displayMsg = `❌ Domain not authorized in Firebase Console.<br>Fix: Add <b>"${curDomain}"</b> and <b>"huggingface.co"</b> to Firebase Console → Authentication → Settings → Authorized domains.<br>[Error: ${errCode}]`;
                         } else if (errCode === "auth/operation-not-allowed") {
                             displayMsg = `❌ Google Sign-In not enabled in Firebase Console.\nFix: Enable Google under Firebase Console → Authentication → Sign-in method.\n[Error: ${errCode}]`;
                         } else if (errCode === "auth/popup-blocked") {
