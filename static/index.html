@@ -157,7 +157,7 @@
                     <span>Or continue with</span>
                 </div>
 
-                <div class="social-auth-buttons">
+                <div class="social-auth-buttons" style="flex-direction: column; gap: 10px;">
                     <button id="btn-google-login" type="button" class="btn-social-circle google-single" title="Sign in with Google" onclick="handleGoogleSignIn(event)">
                         <svg class="btn-google-icon" viewBox="0 0 24 24" width="22" height="22">
                             <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
@@ -166,6 +166,9 @@
                             <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.85c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
                         </svg>
                         <span>Google Sign-In</span>
+                    </button>
+                    <button id="btn-instant-demo" type="button" onclick="handleGuestLogin(event)" style="width: 100%; padding: 12px; background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%); border: none; border-radius: 12px; color: #ffffff; font-weight: 700; font-size: 14px; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; box-shadow: 0 4px 14px rgba(99, 102, 241, 0.35); transition: all 0.2s ease;">
+                        <span>⚡ Instant Demo Access (1-Click Workspace)</span>
                     </button>
                 </div>
             </div>

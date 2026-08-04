@@ -224,6 +224,19 @@ window.handleGoogleSignIn = function(e) {
         });
 };
 
+window.handleGuestLogin = function(e) {
+    if (e) e.preventDefault();
+    console.log("[AUTH] Guest Instant Demo Login triggered");
+    const demoUser = {
+        id: "demo-student-001",
+        name: "Demo Student",
+        email: "student@prepz.edu",
+        provider: "demo",
+        avatar_url: "https://api.dicebear.com/7.x/bottts/svg?seed=DemoStudent"
+    };
+    window.loginUser(demoUser);
+};
+
 // Top-Level Global Auth Controller & View Manager
 window.loginUser = function(user) {
     if (!user || !user.email) return;
