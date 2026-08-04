@@ -102,19 +102,7 @@ window.handleGoogleSignIn = function(e) {
     const googleBtn = document.getElementById("btn-google-login");
     const originalBtnHtml = googleBtn ? googleBtn.innerHTML : "";
 
-    if (googleBtn) {
-        googleBtn.disabled = true;
-        googleBtn.style.opacity = "0.75";
-        googleBtn.innerHTML = `<span>⏳ Connecting to Google...</span>`;
-    }
-
-    function restoreBtn() {
-        if (googleBtn) {
-            googleBtn.disabled = false;
-            googleBtn.style.opacity = "1";
-            googleBtn.innerHTML = originalBtnHtml;
-        }
-    }
+    function restoreBtn() {}
 
     const authErrBox = document.getElementById("auth-error-msg");
     function showErr(msg) {
