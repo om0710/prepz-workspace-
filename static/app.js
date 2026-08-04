@@ -516,11 +516,8 @@ window.handleLoginSubmit = async function (e) {
                 return;
             }
         } catch (error) {
-            console.warn("[AUTH] Firebase login error:", error.code);
-            if (error.code === "auth/wrong-password" || error.code === "auth/user-not-found" || error.code === "auth/invalid-credential") {
-                showAuthErrorMsg("Invalid email or password. Please check your credentials.");
-                return;
-            }
+            console.warn("[AUTH] Firebase login failed — executing local API login fallback:", error.code);
+            // Do NOT return here — allow fallback to /api/login!
         }
     }
 
