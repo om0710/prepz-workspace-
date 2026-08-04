@@ -57,6 +57,49 @@ try {
         firebaseAuth.setPersistence(firebase.auth.Auth.Persistence.LOCAL)
             .then(() => console.log("[FIREBASE CLIENT] Persistence set to LOCAL"))
             .catch(err => console.warn("[FIREBASE CLIENT] Error setting persistence:", err));
+        
+        // Handle Google Sign-In Redirect Result on Page Load
+        firebaseAuth.getRedirectResult().then(async (result) => {
+            if (result && result.user) {
+                console.log('[FIREBASE REDIRECT SUCCESS]', result.user.email);
+                const user = result.user;
+                const providerId = (user.providerData && user.providerData[0]) ? user.providerData[0].providerId : "google";
+                try {
+                    const res = await fetch("/api/firebase-sync", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({
+                            uid: user.uid,
+                            email: user.email,
+                            name: user.displayName || user.email.split("@")[0].replace(/[._-]/g, " "),
+                            provider: providerId.includes("google") ? "google" : "local",
+                            avatar_url: user.photoURL || `https://api.dicebear.com/7.x/bottts/svg?seed=${encodeURIComponent(user.email)}`
+                        })
+                    });
+                    const data = await res.json();
+                    if (typeof window.loginUser === "function") {
+                        window.loginUser(res.ok && data.user ? data.user : {
+                            id: user.uid,
+                            email: user.email,
+                            name: user.displayName || user.email.split("@")[0],
+                            provider: providerId
+                        });
+                    }
+                } catch(e) {
+                    if (typeof window.loginUser === "function") {
+                        window.loginUser({
+                            id: user.uid,
+                            email: user.email,
+                            name: user.displayName || user.email.split("@")[0],
+                            provider: providerId
+                        });
+                    }
+                }
+            }
+        }).catch((err) => {
+            console.error('[FIREBASE REDIRECT ERROR]', err);
+        });
+
         console.log("[FIREBASE CLIENT] SDK Initialized Successfully!");
     } else {
         console.warn("[FIREBASE CLIENT] Firebase CDN scripts not loaded yet.");
