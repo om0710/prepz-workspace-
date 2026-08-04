@@ -1758,11 +1758,19 @@ function initializeDocPilotApp() {
     }
 
     function isFileUploadedByCurrentUser(fileObj) {
-        if (!currentUser || !currentUser.email) return false;
+        const activeUser = currentUser || window.currentUser;
+        if (!activeUser) return false;
+        
         const fileUserEmail = (typeof fileObj === 'object' && fileObj.user_email) ? fileObj.user_email.toLowerCase().trim() : "";
-        const currentEmail = currentUser.email.toLowerCase().trim();
+        const fileUserName = (typeof fileObj === 'object' && fileObj.user_name) ? fileObj.user_name.toLowerCase().trim() : "";
+
+        const currentEmail = (activeUser.email || "").toLowerCase().trim();
+        const currentName = (activeUser.name || "").toLowerCase().trim();
 
         if (currentEmail && fileUserEmail && currentEmail === fileUserEmail) return true;
+        if (currentName && fileUserName && currentName === fileUserName) return true;
+        if (currentEmail && fileUserEmail && (fileUserEmail.includes(currentEmail.split("@")[0]) || currentEmail.includes(fileUserEmail.split("@")[0]))) return true;
+        
         return false;
     }
 
@@ -3026,9 +3034,9 @@ function initializeDocPilotApp() {
                 return;
             }
 
+            const activeUser = currentUser || window.currentUser;
             const myUploadedFiles = allCachedFiles.filter(fileObj => {
-                const isPrivate = typeof fileObj === 'object' && (fileObj.is_private === 1 || fileObj.is_private === "1" || fileObj.is_private === true);
-                return isPrivate;
+                return isFileUploadedByCurrentUser(fileObj);
             });
 
             if (myUploadedFiles.length === 0) {
