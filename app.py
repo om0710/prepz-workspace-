@@ -376,33 +376,26 @@ def signup(req: SignupRequest):
         raise HTTPException(status_code=400, detail="An account with this email already exists. Please log in.")
     
     if not existing:
-        user = create_user(name=name, email=email, password=password, provider="local", is_verified=False)
-        print(f"[AUTH SERVER] New unverified user created in DB: id={user['id']}, email='{email}'")
+        user = create_user(name=name, email=email, password=password, provider="local", is_verified=True)
+        print(f"[AUTH SERVER] New verified user created in DB: id={user['id']}, email='{email}'")
     else:
         user = existing
-        print(f"[AUTH SERVER] Existing unverified user retrieved from DB: id={user['id']}, email='{email}'")
+        print(f"[AUTH SERVER] Existing user retrieved from DB: id={user['id']}, email='{email}'")
 
-    # Create OTP for signup verification
-    otp_code = create_otp(email, otp_type="signup", expiry_minutes=10)
-    record_rate_limit_attempt(email, "signup_otp")
-    print(f"[AUTH SERVER] Signup OTP generated for '{email}': OTP={otp_code}")
-
-    email_html = f"""
-    <div style="font-family: Arial, sans-serif; padding: 20px; background-color: #f4f4f5; color: #18181b;">
-        <h2 style="color: #6366f1;">Prepz Workspace - Email Verification</h2>
-        <p>Hello <strong>{user['name']}</strong>,</p>
-        <p>Your 6-digit OTP code to verify your Prepz account is:</p>
-        <div style="font-size: 28px; font-weight: bold; letter-spacing: 4px; color: #4f46e5; margin: 16px 0;">{otp_code}</div>
-        <p>This OTP will expire in 10 minutes. Please do not share this code with anyone.</p>
-    </div>
-    """
-    send_otp_email(email, otp_code, "Verify your Prepz Workspace Account", email_html)
-
+    user = update_user_activity(email) or user
     return {
-        "status": "otp_required",
-        "email": email,
-        "otp_code": otp_code,
-        "message": f"Verification OTP sent to {email}. Please enter the 6-digit code to activate your account."
+        "status": "success",
+        "message": "Account created successfully!",
+        "user": {
+            "id": user["id"],
+            "name": user["name"],
+            "email": user["email"],
+            "provider": user["provider"],
+            "avatar_url": user["avatar_url"],
+            "contribution_score": user.get("contribution_score", 0),
+            "current_streak": user.get("current_streak", 1),
+            "has_seen_onboarding": user.get("has_seen_onboarding", False)
+        }
     }
 
 @app.post("/api/verify-otp")
@@ -477,16 +470,6 @@ def login(req: LoginRequest):
         record_rate_limit_attempt(email, "login_fail")
         print(f"[AUTH SERVER] Login failed: password mismatch for '{email}'")
         raise HTTPException(status_code=400, detail="Invalid email or password.")
-
-    if not user.get("is_verified", True):
-        otp_code = create_otp(email, otp_type="signup", expiry_minutes=10)
-        print(f"[AUTH SERVER] Login unverified user '{email}': dispatched fresh signup OTP={otp_code}")
-        return {
-            "status": "otp_required",
-            "email": email,
-            "otp_code": otp_code,
-            "message": "Your account is not verified yet. Please enter the 6-digit OTP code sent to your email."
-        }
 
     user = update_user_activity(email) or user
     print(f"[AUTH SERVER] Login SUCCESS for '{email}' (id={user['id']})")

@@ -345,12 +345,6 @@ window.handleLoginSubmit = async function (e) {
             const userCred = await firebaseAuth.signInWithEmailAndPassword(email, password);
             const user = userCred.user;
 
-            if (user && !user.emailVerified) {
-                showAuthErrorMsg("Your email is not verified yet. A verification link has been sent to your inbox. Please check and verify!", "warning");
-                try { await user.sendEmailVerification(); } catch (err) {}
-                return;
-            }
-
             if (user) {
                 try {
                     const syncRes = await fetch("/api/firebase-sync", {
@@ -456,25 +450,33 @@ window.handleSignupSubmit = async function (e) {
             const userCred = await firebaseAuth.createUserWithEmailAndPassword(email, password);
             const user = userCred.user;
             await user.updateProfile({ displayName: name });
-            await user.sendEmailVerification();
+            try { await user.sendEmailVerification(); } catch(e) {}
 
-            fetch("/api/firebase-sync", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                    uid: user.uid,
-                    email: email,
-                    name: name,
-                    provider: "password"
-                })
-            }).catch(e => {});
+            let syncedUser = {
+                id: user.uid,
+                name: name,
+                email: email,
+                provider: "password"
+            };
 
-            showAuthErrorMsg("Account created! A verification link has been sent to " + email + ". Please verify before logging in.", "success");
-            setTimeout(() => {
-                window.switchAuthTab("login");
-                const loginEmail = document.getElementById("login-email");
-                if (loginEmail) loginEmail.value = email;
-            }, 2000);
+            try {
+                const syncRes = await fetch("/api/firebase-sync", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        uid: user.uid,
+                        email: email,
+                        name: name,
+                        provider: "password"
+                    })
+                });
+                const syncData = await syncRes.json();
+                if (syncRes.ok && syncData.user) {
+                    syncedUser = syncData.user;
+                }
+            } catch(e) {}
+
+            window.loginUser(syncedUser);
             return;
         } catch (error) {
             console.warn("[AUTH CLIENT] Firebase signup error, attempting backend API fallback:", error.code);
