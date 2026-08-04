@@ -6,23 +6,23 @@ try:
     import gradio as gr
 
     @spaces.GPU
-    def gpu_function(text: str) -> str:
-        """ZeroGPU bound function to satisfy HuggingFace startup requirement"""
-        return text
+    def gpu_zero_init(query: str = "") -> str:
+        return query
 
     with gr.Blocks() as demo:
-        gr.Markdown("### Prepz AI Workspace Backend")
-        txt_in = gr.Textbox(visible=False)
-        txt_out = gr.Textbox(visible=False)
-        dummy_btn = gr.Button("Initialize", visible=False)
-        dummy_btn.click(gpu_function, inputs=txt_in, outputs=txt_out)
+        gr.Markdown("# Prepz Workspace ZeroGPU Engine")
+        t_in = gr.Textbox(visible=False)
+        t_out = gr.Textbox(visible=False)
+        btn = gr.Button("Init", visible=False)
+        btn.click(fn=gpu_zero_init, inputs=t_in, outputs=t_out)
 
     from app import app as fastapi_app
-    app = gr.mount_gradio_app(fastapi_app, demo, path="/_gradio")
+    app = gr.mount_gradio_app(fastapi_app, demo, path="/gradio")
 
 except Exception as e:
-    print(f"[NOTICE] Running without Gradio ZeroGPU wrapper: {e}")
-    from app import app
+    print(f"[INFO] Local or fallback execution notice: {e}")
+    from app import app as fastapi_app
+    app = fastapi_app
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 7860))
