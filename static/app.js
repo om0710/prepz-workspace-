@@ -162,10 +162,10 @@ window.handleGoogleSignIn = function(e) {
     const provider = new firebase.auth.GoogleAuthProvider();
     provider.setCustomParameters({ prompt: 'select_account' });
 
-    console.log("[GOOGLE SIGNIN] Calling signInWithPopup...");
+    console.log('[GOOGLE BTN CLICKED]', 'About to call signInWithPopup');
     auth.signInWithPopup(provider)
         .then(async (result) => {
-            console.log('[GOOGLE SIGNIN] ✅ Popup success:', result.user.email);
+            console.log('[GOOGLE SIGNIN SUCCESS]', result.user.email);
             const user = result.user;
             const providerId = (user.providerData && user.providerData[0])
                 ? user.providerData[0].providerId : "google";
@@ -205,10 +205,10 @@ window.handleGoogleSignIn = function(e) {
             restoreBtn();
             const errCode = error.code || "unknown";
             const errMsg = error.message || "";
-            console.error('[GOOGLE SIGNIN] ❌ Error:', errCode, errMsg);
+            console.error('[GOOGLE SIGNIN ERROR]', errCode, errMsg, error);
 
             if (errCode === "auth/popup-blocked") {
-                console.warn('[GOOGLE SIGNIN] Popup blocked — attempting signInWithRedirect fallback');
+                console.warn('[GOOGLE SIGNIN ERROR] Popup blocked — attempting signInWithRedirect fallback');
                 try {
                     auth.signInWithRedirect(provider);
                     return;
@@ -219,7 +219,7 @@ window.handleGoogleSignIn = function(e) {
                 const curDomain = window.location.hostname || "om123bansal-prepz-app.hf.space";
                 showErr(`❌ Domain not authorized in Firebase Console.<br>Fix: Add <b>"${curDomain}"</b> and <b>"huggingface.co"</b> to Firebase Console → Authentication → Settings → Authorized domains.<br>[Error: ${errCode}]`);
             } else if (errCode !== "auth/popup-closed-by-user" && errCode !== "auth/cancelled-popup-request") {
-                showErr(`❌ Google Sign-In failed: [${errCode}] ${errMsg.substring(0, 100)}`);
+                showErr(`❌ [GOOGLE SIGNIN ERROR]<br>Code: <b>${errCode}</b><br>Message: ${errMsg}`);
             }
         });
 };
