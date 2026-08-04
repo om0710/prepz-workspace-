@@ -1,37 +1,24 @@
 import os
 import uvicorn
-
-# 1. Import spaces directly for HF ZeroGPU initialization
-try:
-    import spaces
-except Exception:
-    class _MockSpaces:
-        def GPU(self, fn=None, duration=None, **kwargs):
-            if fn is None:
-                return lambda f: f
-            return fn
-    spaces = _MockSpaces()
-
+import spaces
 import torch
 
-# 2. Top-level @spaces.GPU decorated function required by HF ZeroGPU scanner
 @spaces.GPU
-def initialize_gpu(x: float = 1.0) -> float:
+def initialize_gpu():
     try:
         if torch.cuda.is_available():
-            tensor = torch.ones(1, device="cuda")
-            return float(tensor.cpu().item())
+            x = torch.ones(1, device="cuda")
+            return float(x.cpu().item())
     except Exception:
         pass
-    return float(x)
+    return 1.0
 
-# 3. Trigger GPU execution at startup so ZeroGPU detector marks initialization success
+# Call GPU function at startup so ZeroGPU detector finds active execution
 try:
     initialize_gpu()
-except Exception as err:
-    print(f"[ZeroGPU] Startup notice: {err}")
+except Exception as e:
+    print(f"ZeroGPU init notice: {e}")
 
-# 4. Import main FastAPI app
 from app import app
 
 if __name__ == "__main__":
