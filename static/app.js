@@ -1021,9 +1021,40 @@ function initializeDocPilotApp() {
                 allowAuthStateLogin = true;
                 // signInWithPopup MUST be synchronous — first line after user click
                 firebaseAuth.signInWithPopup(provider)
-                    .then((result) => {
+                    .then(async (result) => {
                         console.log('[GOOGLE SIGNIN] ✅ Popup success:', result.user.email);
-                        // onAuthStateChanged fires automatically and calls loginUser()
+                        const user = result.user;
+                        const providerId = (user.providerData && user.providerData[0])
+                            ? user.providerData[0].providerId : "google";
+                        try {
+                            const res = await fetch("/api/firebase-sync", {
+                                method: "POST",
+                                headers: { "Content-Type": "application/json" },
+                                body: JSON.stringify({
+                                    uid: user.uid,
+                                    email: user.email,
+                                    name: user.displayName || user.email.split("@")[0].replace(/[._-]/g, " "),
+                                    provider: providerId.includes("google") ? "google" : "local",
+                                    avatar_url: user.photoURL || `https://api.dicebear.com/7.x/bottts/svg?seed=${encodeURIComponent(user.email)}`
+                                })
+                            });
+                            const data = await res.json();
+                            window.loginUser(res.ok && data.user ? data.user : {
+                                id: user.uid,
+                                email: user.email,
+                                name: user.displayName || user.email.split("@")[0],
+                                provider: providerId,
+                                avatar_url: user.photoURL || `https://api.dicebear.com/7.x/bottts/svg?seed=${encodeURIComponent(user.email)}`
+                            });
+                        } catch(err) {
+                            window.loginUser({
+                                id: user.uid,
+                                email: user.email,
+                                name: user.displayName || user.email.split("@")[0],
+                                provider: "google",
+                                avatar_url: user.photoURL || `https://api.dicebear.com/7.x/bottts/svg?seed=${encodeURIComponent(user.email)}`
+                            });
+                        }
                     })
                     .catch((error) => {
                         allowAuthStateLogin = false;
