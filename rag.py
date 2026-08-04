@@ -8,13 +8,15 @@ from langchain_huggingface import HuggingFaceEmbeddings
 from langchain_chroma import Chroma
 from langchain_core.tools import tool
 
-load_dotenv()
+groq_key = os.environ.get("GROQ_API_KEY") or "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"
+os.environ["GROQ_API_KEY"] = groq_key
 
 # ---------------- LLM ---------------- #
 
 llm = ChatGroq(
     model="llama-3.3-70b-versatile",
-    temperature=0
+    temperature=0,
+    groq_api_key=groq_key
 )
 
 # ---------------- Text Splitter ---------------- #

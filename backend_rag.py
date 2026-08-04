@@ -24,6 +24,9 @@ from tools import calculator, wikipedia_search, get_current_time, get_stock_pric
 
 load_dotenv()
 
+groq_key = os.environ.get("GROQ_API_KEY") or "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"
+os.environ["GROQ_API_KEY"] = groq_key
+
 # Active streams registry for mapping thread_id -> CallbackHandler
 active_streams = {}
 
@@ -32,12 +35,14 @@ active_streams = {}
 llm_primary = ChatGroq(
     model="llama-3.3-70b-versatile",
     temperature=0,
-    streaming=True
+    streaming=True,
+    groq_api_key=groq_key
 )
 llm_fallback = ChatGroq(
     model="qwen/qwen3-32b",
     temperature=0,
-    streaming=True
+    streaming=True,
+    groq_api_key=groq_key
 )
 llm = llm_primary.with_fallbacks([llm_fallback])
 
