@@ -110,18 +110,27 @@ window.loginUser = function(user) {
 
     const landingPageView = document.getElementById("landing-page-view");
     const chatbotAppView = document.getElementById("chatbot-app-view");
-    const userAvatar = document.getElementById("user-avatar");
-    const userName = document.getElementById("user-name");
-    const userEmail = document.getElementById("user-email");
     const navPinnedLibrary = document.getElementById("nav-pinned-library");
 
-    if (userAvatar) {
-        const avatarUrl = user.avatar_url || user.picture || `https://api.dicebear.com/7.x/bottts/svg?seed=${encodeURIComponent(user.email || 'Om')}`;
-        userAvatar.style.backgroundImage = `url('${avatarUrl}')`;
-        userAvatar.innerHTML = "";
-    }
-    if (userName) userName.textContent = user.name || "Student User";
-    if (userEmail) userEmail.textContent = user.email || "student@college.edu";
+    const avatarUrl = user.avatar_url || user.picture || `https://api.dicebear.com/7.x/bottts/svg?seed=${encodeURIComponent(user.email || 'Student')}`;
+    const displayName = user.name || (user.email ? user.email.split("@")[0].replace(/[._-]/g, ' ').replace(/\b\w/g, c => c.toUpperCase()) : "Student User");
+    const displayEmail = user.email || "student@college.edu";
+
+    const userAvatarEls = document.querySelectorAll("#sidebar-user-avatar, .sidebar-user-avatar, #user-avatar");
+    const userNameEls = document.querySelectorAll("#sidebar-user-name, .sidebar-user-name, #user-name");
+    const userEmailEls = document.querySelectorAll("#sidebar-user-email, .sidebar-user-email, #user-email");
+
+    userAvatarEls.forEach(el => {
+        if (el.tagName === "IMG") {
+            el.src = avatarUrl;
+        } else {
+            el.style.backgroundImage = `url('${avatarUrl}')`;
+            el.innerHTML = "";
+        }
+    });
+
+    userNameEls.forEach(el => { el.textContent = displayName; });
+    userEmailEls.forEach(el => { el.textContent = displayEmail; });
 
     if (navPinnedLibrary) navPinnedLibrary.style.display = "flex";
 
