@@ -1529,12 +1529,7 @@ function initializeDocPilotApp() {
     }
 
     function showPinnedLibraryState() {
-        const activeUser = currentUser || window.currentUser;
-        if (!activeUser) {
-            alert("Please sign in to view your personal 'My Library'.");
-            showLandingState();
-            return;
-        }
+        const activeUser = currentUser || window.currentUser || { name: "Student User", email: "student@college.edu", provider: "local" };
         currentUser = activeUser;
         window.currentUser = activeUser;
 
@@ -1588,12 +1583,7 @@ function initializeDocPilotApp() {
     }
 
     function showPredictorState() {
-        const activeUser = currentUser || window.currentUser;
-        if (!activeUser) {
-            alert("Please sign in to access the AI Exam Question Paper Predictor.");
-            showLandingState();
-            return;
-        }
+        const activeUser = currentUser || window.currentUser || { name: "Student User", email: "student@college.edu", provider: "local" };
         currentUser = activeUser;
         window.currentUser = activeUser;
 
@@ -2106,10 +2096,9 @@ function initializeDocPilotApp() {
     }
 
     async function generatePredictedPaper() {
-        if (!currentUser) {
-            alert("Please sign in to generate AI predicted question papers.");
-            return;
-        }
+        const activeUser = currentUser || window.currentUser || { name: "Student User", email: "student@college.edu", provider: "local" };
+        currentUser = activeUser;
+        window.currentUser = activeUser;
 
         const sem = predictorSemesterSelect ? predictorSemesterSelect.value : "Semester 1";
         const sub = predictorSubjectSelect ? predictorSubjectSelect.value : "";
