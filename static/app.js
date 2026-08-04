@@ -1759,19 +1759,13 @@ function initializeDocPilotApp() {
 
     function isFileUploadedByCurrentUser(fileObj) {
         const activeUser = currentUser || window.currentUser;
-        if (!activeUser) return false;
+        if (!activeUser || !activeUser.email) return false;
         
         const fileUserEmail = (typeof fileObj === 'object' && fileObj.user_email) ? fileObj.user_email.toLowerCase().trim() : "";
-        const fileUserName = (typeof fileObj === 'object' && fileObj.user_name) ? fileObj.user_name.toLowerCase().trim() : "";
+        const currentEmail = activeUser.email.toLowerCase().trim();
 
-        const currentEmail = (activeUser.email || "").toLowerCase().trim();
-        const currentName = (activeUser.name || "").toLowerCase().trim();
-
-        if (currentEmail && fileUserEmail && currentEmail === fileUserEmail) return true;
-        if (currentName && fileUserName && currentName === fileUserName) return true;
-        if (currentEmail && fileUserEmail && (fileUserEmail.includes(currentEmail.split("@")[0]) || currentEmail.includes(fileUserEmail.split("@")[0]))) return true;
-        
-        return false;
+        // STRICT EXACT EMAIL MATCH ONLY — ZERO FUZZY OR SURNAME MATCHING
+        return Boolean(currentEmail && fileUserEmail && currentEmail === fileUserEmail);
     }
 
     // ----------------------------------------------------
