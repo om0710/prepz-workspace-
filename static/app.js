@@ -95,8 +95,10 @@ window.mapFirebaseError = function (code, defaultMsg) {
 // Top-Level Global Auth Controller & View Manager
 window.loginUser = function(user) {
     if (!user || !user.email) return;
-    console.log("[AUTH] loginUser() called for:", user.email);
     window.currentUser = user;
+    if (typeof window.syncAppCurrentUser === "function") {
+        window.syncAppCurrentUser(user);
+    }
 
     // Always overwrite — never merge with stale cached data
     const userData = JSON.stringify(user);
@@ -877,7 +879,11 @@ function initializeDocPilotApp() {
     let isCurrentArchived = false;
 
     // Global User State
-    let currentUser = null;
+    let currentUser = window.currentUser || null;
+    window.syncAppCurrentUser = function(user) {
+        currentUser = user;
+        window.currentUser = user;
+    };
 
     // ----------------------------------------------------
     // Authentication Manager
@@ -1523,11 +1529,14 @@ function initializeDocPilotApp() {
     }
 
     function showPinnedLibraryState() {
-        if (!currentUser) {
+        const activeUser = currentUser || window.currentUser;
+        if (!activeUser) {
             alert("Please sign in to view your personal 'My Library'.");
             showLandingState();
             return;
         }
+        currentUser = activeUser;
+        window.currentUser = activeUser;
 
         resetViewModes();
         updateHeaderTitle("Personal Collection", "📚");
@@ -1579,11 +1588,14 @@ function initializeDocPilotApp() {
     }
 
     function showPredictorState() {
-        if (!currentUser) {
+        const activeUser = currentUser || window.currentUser;
+        if (!activeUser) {
             alert("Please sign in to access the AI Exam Question Paper Predictor.");
             showLandingState();
             return;
         }
+        currentUser = activeUser;
+        window.currentUser = activeUser;
 
         resetViewModes();
         updateHeaderTitle("Exam Predictor", "🎯");
