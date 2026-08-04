@@ -18,3 +18,4 @@ pypdf==5.9.0
 rank-bm25
 huggingface_hub>=0.27.0
 python-docx
+spaces
