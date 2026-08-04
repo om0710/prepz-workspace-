@@ -232,14 +232,11 @@ window.loginUser = function(user) {
         window.syncAppCurrentUser(user);
     }
 
-    // Always overwrite — never merge with stale cached data
+    // Always overwrite — single key docpilot-user
     const userData = JSON.stringify(user);
     try {
+        localStorage.clear();
         localStorage.setItem("docpilot-user", userData);
-        localStorage.setItem("prepz_user", userData);
-        // Remove any old fake login flow keys if still present
-        localStorage.removeItem("prepz_google_accounts");
-        localStorage.removeItem("google-login-success-event");
     } catch(e) {}
 
     const landingPageView = document.getElementById("landing-page-view");
@@ -301,16 +298,19 @@ window.showLoginScreen = function() {
     }
 };
 
-window.logoutUser = function() {
+window.logoutUser = async function() {
     console.log("[AUTH] logoutUser() called");
-    if (typeof firebaseAuth !== "undefined" && firebaseAuth) {
-        firebaseAuth.signOut().catch(err => console.error("Firebase signOut error:", err));
-    }
+    try {
+        if (typeof firebaseAuth !== "undefined" && firebaseAuth) {
+            await firebaseAuth.signOut();
+        }
+    } catch(e) {}
     window.currentUser = null;
-    // Clear ALL user-related localStorage keys — including old fake-flow keys
-    ["docpilot-user", "prepz_user", "currentThreadId",
-     "prepz_google_accounts", "google-login-success-event"].forEach(k => localStorage.removeItem(k));
-    sessionStorage.clear();
+    try {
+        localStorage.removeItem("docpilot-user");
+        localStorage.clear();
+        sessionStorage.clear();
+    } catch(e) {}
     if (typeof window.showLoginScreen === "function") window.showLoginScreen();
 };
 

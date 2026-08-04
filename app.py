@@ -45,6 +45,12 @@ def serialize_message(msg):
             return {"role": "assistant", "content": msg.content}
     return None
 
+@app.middleware("http")
+async def add_security_headers(request, call_next):
+    response = await call_next(request)
+    response.headers["Cross-Origin-Opener-Policy"] = "same-origin-allow-popups"
+    return response
+
 # Serve static frontend folder
 os.makedirs("static", exist_ok=True)
 app.mount("/static", StaticFiles(directory="static"), name="static")

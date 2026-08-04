@@ -4,7 +4,7 @@ emoji: "📚"
 colorFrom: "indigo"
 colorTo: "blue"
 sdk: "gradio"
-app_file: "app_hf.py"
+app_file: "app.py"
 header: "mini"
 pinned: false
 ---
