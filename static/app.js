@@ -97,16 +97,12 @@ window.handleGoogleSignIn = function(e) {
         e.preventDefault();
         e.stopPropagation();
     }
-    console.log("[GOOGLE SIGNIN] Direct button click triggered");
+    console.log('[CLICK]', 'Google button clicked!');
     
     const googleBtn = document.getElementById("btn-google-login");
-    const originalBtnHtml = googleBtn ? googleBtn.innerHTML : "";
-
-    function restoreBtn() {}
 
     const authErrBox = document.getElementById("auth-error-msg");
     function showErr(msg) {
-        restoreBtn();
         if (authErrBox) {
             authErrBox.innerHTML = msg;
             authErrBox.classList.remove("hidden");
@@ -121,15 +117,17 @@ window.handleGoogleSignIn = function(e) {
     clearErr();
 
     if (typeof firebase === "undefined") {
+        console.error('[ERROR]', 'Firebase SDK not loaded on window');
         showErr("⏳ Loading Google Auth SDK... Please wait 1 second and click again.");
         return;
     }
 
     if (!firebase.apps || !firebase.apps.length) {
         try {
+            console.log('[FIREBASE CALL STARTING]', 'Initializing defaultFirebaseConfig...');
             firebase.initializeApp(defaultFirebaseConfig);
         } catch(err) {
-            console.error("[GOOGLE SIGNIN] Init error:", err);
+            console.error('[ERROR]', 'Firebase initializeApp error:', err);
         }
     }
 
@@ -138,22 +136,23 @@ window.handleGoogleSignIn = function(e) {
         try {
             auth = firebase.auth();
         } catch(err) {
-            console.error("[GOOGLE SIGNIN] Auth fetch error:", err);
+            console.error('[ERROR]', 'Firebase auth fetch error:', err);
         }
     }
 
     if (!auth) {
-        showErr("❌ Firebase Authentication service is initializing. Please click again.");
+        console.error('[ERROR]', 'firebase.auth() is null');
+        showErr("❌ Firebase Authentication service initializing. Please click again.");
         return;
     }
 
     const provider = new firebase.auth.GoogleAuthProvider();
     provider.setCustomParameters({ prompt: 'select_account' });
 
-    console.log('[GOOGLE BTN CLICKED]', 'About to call signInWithPopup');
+    console.log('[FIREBASE CALL STARTING]', 'Calling signInWithPopup...');
     auth.signInWithPopup(provider)
         .then(async (result) => {
-            console.log('[GOOGLE SIGNIN SUCCESS]', result.user.email);
+            console.log('[FIREBASE SUCCESS]', result.user.email);
             const user = result.user;
             const providerId = (user.providerData && user.providerData[0])
                 ? user.providerData[0].providerId : "google";
@@ -170,7 +169,6 @@ window.handleGoogleSignIn = function(e) {
                     })
                 });
                 const data = await res.json();
-                restoreBtn();
                 window.loginUser(res.ok && data.user ? data.user : {
                     id: user.uid,
                     email: user.email,
@@ -179,24 +177,22 @@ window.handleGoogleSignIn = function(e) {
                     avatar_url: user.photoURL || `https://api.dicebear.com/7.x/bottts/svg?seed=${encodeURIComponent(user.email)}`
                 });
             } catch(err) {
-                restoreBtn();
+                console.error('[ERROR]', 'firebase-sync API error:', err);
                 window.loginUser({
                     id: user.uid,
                     email: user.email,
                     name: user.displayName || user.email.split("@")[0],
-                    provider: "google",
-                    avatar_url: user.photoURL || `https://api.dicebear.com/7.x/bottts/svg?seed=${encodeURIComponent(user.email)}`
+                    provider: providerId
                 });
             }
         })
         .catch((error) => {
-            restoreBtn();
             const errCode = error.code || "unknown";
             const errMsg = error.message || "";
-            console.error('[GOOGLE SIGNIN ERROR]', errCode, errMsg, error);
+            console.error('[ERROR]', '[GOOGLE SIGNIN ERROR]', errCode, errMsg, error);
 
             if (errCode === "auth/popup-blocked") {
-                console.warn('[GOOGLE SIGNIN ERROR] Popup blocked — attempting signInWithRedirect fallback');
+                console.warn('[ERROR]', 'Popup blocked — attempting signInWithRedirect fallback');
                 try {
                     auth.signInWithRedirect(provider);
                     return;
@@ -429,50 +425,11 @@ window.handleLoginSubmit = async function (e) {
         return;
     }
 
-    // Firebase email/password login
-    if (typeof firebaseAuth !== "undefined" && firebaseAuth) {
-        try {
-            // Email login manages its own session via signInWithEmailAndPassword result.
-            // We do NOT set allowAuthStateLogin here — email login calls window.loginUser
-            // directly from the result, bypassing onAuthStateChanged.
-            const userCred = await firebaseAuth.signInWithEmailAndPassword(email, password);
-            const user = userCred.user;
+    console.log('[LOGIN CLICK]', 'Login button submitted for email:', email);
 
-            if (user) {
-                try {
-                    const syncRes = await fetch("/api/firebase-sync", {
-                        method: "POST",
-                        headers: { "Content-Type": "application/json" },
-                        body: JSON.stringify({
-                            uid: user.uid,
-                            email: user.email,
-                            name: user.displayName || email.split("@")[0],
-                            provider: "password"
-                        })
-                    });
-                    const syncData = await syncRes.json();
-                    if (syncRes.ok && syncData.user) {
-                        window.loginUser(syncData.user);
-                        return;
-                    }
-                } catch(e) {}
-
-                window.loginUser({
-                    id: user.uid,
-                    name: user.displayName || email.split("@")[0],
-                    email: user.email,
-                    provider: "password"
-                });
-                return;
-            }
-        } catch (error) {
-            console.warn("[AUTH] Firebase login failed — executing local API login fallback:", error.code);
-            // Do NOT return here — allow fallback to /api/login!
-        }
-    }
-
-    // Direct Backend API Fallback
+    // Direct Backend API Login
     try {
+        console.log('[LOGIN API CALL STARTING]', 'Calling /api/login...');
         const res = await fetch("/api/login", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
@@ -480,11 +437,14 @@ window.handleLoginSubmit = async function (e) {
         });
         const data = await res.json();
         if (res.ok && data.user) {
+            console.log('[LOGIN SUCCESS]', data.user.email);
             window.loginUser(data.user);
         } else {
+            console.error('[ERROR]', 'Login API failed:', data.detail);
             showAuthErrorMsg(data.detail || "Invalid email or password. Please check your credentials.");
         }
     } catch (err) {
+        console.error('[ERROR]', 'Login connection error:', err);
         showAuthErrorMsg("Connection error. Please check your network connection.");
     }
 };
