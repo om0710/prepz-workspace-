@@ -99,8 +99,26 @@ window.handleGoogleSignIn = function(e) {
     }
     console.log("[GOOGLE SIGNIN] Direct button click triggered");
     
+    const googleBtn = document.getElementById("btn-google-login");
+    const originalBtnHtml = googleBtn ? googleBtn.innerHTML : "";
+
+    if (googleBtn) {
+        googleBtn.disabled = true;
+        googleBtn.style.opacity = "0.75";
+        googleBtn.innerHTML = `<span>⏳ Connecting to Google...</span>`;
+    }
+
+    function restoreBtn() {
+        if (googleBtn) {
+            googleBtn.disabled = false;
+            googleBtn.style.opacity = "1";
+            googleBtn.innerHTML = originalBtnHtml;
+        }
+    }
+
     const authErrBox = document.getElementById("auth-error-msg");
     function showErr(msg) {
+        restoreBtn();
         if (authErrBox) {
             authErrBox.innerHTML = msg;
             authErrBox.classList.remove("hidden");
@@ -164,6 +182,7 @@ window.handleGoogleSignIn = function(e) {
                     })
                 });
                 const data = await res.json();
+                restoreBtn();
                 window.loginUser(res.ok && data.user ? data.user : {
                     id: user.uid,
                     email: user.email,
@@ -172,6 +191,7 @@ window.handleGoogleSignIn = function(e) {
                     avatar_url: user.photoURL || `https://api.dicebear.com/7.x/bottts/svg?seed=${encodeURIComponent(user.email)}`
                 });
             } catch(err) {
+                restoreBtn();
                 window.loginUser({
                     id: user.uid,
                     email: user.email,
@@ -182,6 +202,7 @@ window.handleGoogleSignIn = function(e) {
             }
         })
         .catch((error) => {
+            restoreBtn();
             const errCode = error.code || "unknown";
             const errMsg = error.message || "";
             console.error('[GOOGLE SIGNIN] ❌ Error:', errCode, errMsg);
