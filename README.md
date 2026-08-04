@@ -1,11 +1,10 @@
 ---
-title: Prepz AI Workspace
-emoji: 📚
-colorFrom: indigo
-colorTo: blue
-sdk: gradio
-sdk_version: 4.36.1
-app_file: app_hf.py
+title: "Prepz AI Workspace"
+emoji: "📚"
+colorFrom: "indigo"
+colorTo: "blue"
+sdk: "gradio"
+app_file: "app_hf.py"
 pinned: false
 ---
 
