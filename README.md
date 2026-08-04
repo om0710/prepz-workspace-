@@ -3,8 +3,9 @@ title: "Prepz AI Workspace"
 emoji: "📚"
 colorFrom: "indigo"
 colorTo: "blue"
-sdk: "docker"
-app_port: 7860
+sdk: "gradio"
+sdk_version: "4.36.1"
+app_file: "app_hf.py"
 pinned: false
 ---
 
