@@ -2758,10 +2758,12 @@ function initializeDocPilotApp() {
             formData.append("is_private", isPrivateVal);
             formData.append("confirm_overwrite", "true");
 
-            if (currentUser) {
-                formData.append("user_email", currentUser.email || "anonymous@college.edu");
-                formData.append("user_name", currentUser.name || "Anonymous Student");
-            }
+            const activeUser = currentUser || window.currentUser;
+            const activeEmail = activeUser ? (activeUser.email || "anonymous@college.edu") : "anonymous@college.edu";
+            const activeName = activeUser ? (activeUser.name || "Anonymous Student") : "Anonymous Student";
+
+            formData.append("user_email", activeEmail);
+            formData.append("user_name", activeName);
 
             // Disable submit button and set animated loading state
             if (btnSubmitUpload) {
@@ -3025,7 +3027,8 @@ function initializeDocPilotApp() {
         // 2. Render "My Library" (PERSONAL TO CURRENT LOGGED-IN USER ONLY)
         // --------------------------------------------------------
         if (libraryGrid) {
-            if (!currentUser) {
+            const activeUser = currentUser || window.currentUser;
+            if (!activeUser) {
                 libraryGrid.innerHTML = `
                     <div class="empty-docs-placeholder" style="grid-column: 1 / -1; padding: 40px 20px; text-align: center;">
                         🔒 Please sign in to access your personal "My Library" and manage your uploaded documents.
