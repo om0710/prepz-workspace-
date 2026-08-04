@@ -1,6 +1,7 @@
 from typing import TypedDict, Annotated
 
 from dotenv import load_dotenv
+import os
 
 from langgraph.graph import StateGraph, START
 from langgraph.graph.message import add_messages
