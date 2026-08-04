@@ -315,59 +315,8 @@ window.logoutUser = async function() {
     if (typeof window.showLoginScreen === "function") window.showLoginScreen();
 };
 
-// =====================================================================
-// FIREBASE AUTH STATE - Single source of truth for Google Sign-In
-// allowAuthStateLogin flag: only trust onAuthStateChanged when the user
-// explicitly clicked the Google Sign-In button. This prevents the cached
-// Firebase session from silently logging in a stale/wrong account.
-// =====================================================================
-let allowAuthStateLogin = false;
-
-if (firebaseAuth) {
-    firebaseAuth.onAuthStateChanged(async (user) => {
-        console.log("[AUTH] onAuthStateChanged:", user ? user.email : "signed out", "| gate open:", allowAuthStateLogin);
-        if (user && allowAuthStateLogin) {
-            allowAuthStateLogin = false;
-            const providerId = (user.providerData && user.providerData[0])
-                ? user.providerData[0].providerId : "firebase";
-
-            if (!user.emailVerified && providerId === "password") {
-                showAuthErrorMsg("Please verify your email before logging in. Check your inbox!");
-                return;
-            }
-
-            try {
-                const res = await fetch("/api/firebase-sync", {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({
-                        uid: user.uid,
-                        email: user.email,
-                        name: user.displayName || user.email.split("@")[0].replace(/[._-]/g, " "),
-                        provider: providerId.includes("google") ? "google" : "local",
-                        avatar_url: user.photoURL || `https://api.dicebear.com/7.x/bottts/svg?seed=${encodeURIComponent(user.email)}`
-                    })
-                });
-                const data = await res.json();
-                window.loginUser(res.ok && data.user ? data.user : {
-                    id: user.uid,
-                    name: user.displayName || user.email.split("@")[0],
-                    email: user.email,
-                    provider: providerId,
-                    avatar_url: user.photoURL || `https://api.dicebear.com/7.x/bottts/svg?seed=${encodeURIComponent(user.email)}`
-                });
-            } catch (err) {
-                console.error("[AUTH] firebase-sync error:", err);
-                window.loginUser({
-                    id: user.uid,
-                    name: user.displayName || user.email.split("@")[0],
-                    email: user.email,
-                    provider: providerId,
-                    avatar_url: user.photoURL || `https://api.dicebear.com/7.x/bottts/svg?seed=${encodeURIComponent(user.email)}`
-                });
-            }
-        }
-    });
+// Global User State
+window.currentUser = null;
 }
 
 window.switchAuthTab = function (tab) {
@@ -1251,18 +1200,18 @@ function initializeDocPilotApp() {
 
             console.log("[AUTH PAGE LOAD] localStorage email:", cachedEmail || "(none)");
 
-            if (typeof firebaseAuth !== "undefined" && firebaseAuth) {
-                // Wait for Firebase to resolve - fires once immediately with current state
-                const unsubscribe = firebaseAuth.onAuthStateChanged(async (firebaseUser) => {
-                    unsubscribe(); // Only run once on page load
-                    const firebaseEmail = firebaseUser ? firebaseUser.email : null;
-                    console.log("[AUTH PAGE LOAD] Firebase resolved email:", firebaseEmail || "(none)");
+            if (cachedUser && cachedEmail) {
+                console.log("[AUTH PAGE LOAD] Restoring active user session:", cachedEmail);
+                loginUser(cachedUser);
+            }
 
-                    if (firebaseUser && cachedEmail && firebaseEmail !== cachedEmail) {
-                        // MISMATCH: Firebase says different user — clear stale cache, re-sync
-                        console.warn("[AUTH PAGE LOAD] MISMATCH — Firebase:", firebaseEmail, "vs cache:", cachedEmail, "— clearing stale cache");
-                        ["docpilot-user", "prepz_user", "prepz_google_accounts", "google-login-success-event"].forEach(k => localStorage.removeItem(k));
-                        // Re-sync from Firebase directly
+            if (typeof firebaseAuth !== "undefined" && firebaseAuth) {
+                firebaseAuth.onAuthStateChanged(async (firebaseUser) => {
+                    if (window.currentUser) {
+                        console.log("[AUTH PAGE LOAD] Local active session present — ignoring background auth reset");
+                        return;
+                    }
+                    if (firebaseUser) {
                         const providerId = (firebaseUser.providerData && firebaseUser.providerData[0])
                             ? firebaseUser.providerData[0].providerId : "firebase";
                         try {
@@ -1286,51 +1235,14 @@ function initializeDocPilotApp() {
                                 avatar_url: firebaseUser.photoURL || `https://api.dicebear.com/7.x/bottts/svg?seed=${encodeURIComponent(firebaseUser.email)}`
                             });
                         } catch(err) {
-                            showLoginScreen();
+                            if (!window.currentUser) showLoginScreen();
                         }
-                    } else if (cachedUser && cachedEmail) {
-                        // Cache exists and either matches Firebase or Firebase has no session
-                        console.log("[AUTH PAGE LOAD] Using cached user:", cachedEmail);
-                        loginUser(cachedUser);
-                    } else if (firebaseUser) {
-                        // Firebase has session but no cache — re-sync
-                        const providerId = (firebaseUser.providerData && firebaseUser.providerData[0])
-                            ? firebaseUser.providerData[0].providerId : "firebase";
-                        try {
-                            const res = await fetch("/api/firebase-sync", {
-                                method: "POST",
-                                headers: { "Content-Type": "application/json" },
-                                body: JSON.stringify({
-                                    uid: firebaseUser.uid,
-                                    email: firebaseUser.email,
-                                    name: firebaseUser.displayName || firebaseUser.email.split("@")[0],
-                                    provider: providerId.includes("google") ? "google" : "local",
-                                    avatar_url: firebaseUser.photoURL || `https://api.dicebear.com/7.x/bottts/svg?seed=${encodeURIComponent(firebaseUser.email)}`
-                                })
-                            });
-                            const data = await res.json();
-                            loginUser(res.ok && data.user ? data.user : {
-                                id: firebaseUser.uid,
-                                email: firebaseUser.email,
-                                name: firebaseUser.displayName || firebaseUser.email.split("@")[0],
-                                provider: providerId
-                            });
-                        } catch(err) {
-                            showLoginScreen();
-                        }
-                    } else {
-                        // No Firebase session, no cache
-                        console.log("[AUTH PAGE LOAD] No session — showing login");
+                    } else if (!window.currentUser && !cachedUser) {
                         showLoginScreen();
                     }
                 });
-            } else {
-                // Firebase not available — use cache only
-                if (cachedUser && cachedEmail) {
-                    loginUser(cachedUser);
-                } else {
-                    showLoginScreen();
-                }
+            } else if (!window.currentUser && !cachedUser) {
+                showLoginScreen();
             }
         }
     }
