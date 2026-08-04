@@ -883,7 +883,7 @@ function initializeDocPilotApp() {
 
         function showAuthError(msg) {
             if (authErrorMsg) {
-                authErrorMsg.textContent = msg;
+                authErrorMsg.innerHTML = msg;
                 authErrorMsg.classList.remove("hidden");
             }
         }
@@ -1024,7 +1024,15 @@ function initializeDocPilotApp() {
                         } else if (errCode === "auth/operation-not-allowed") {
                             displayMsg = `❌ Google Sign-In not enabled in Firebase Console.\nFix: Enable Google under Firebase Console → Authentication → Sign-in method.\n[Error: ${errCode}]`;
                         } else if (errCode === "auth/popup-blocked") {
-                            displayMsg = `❌ Popup blocked by browser. Please allow popups for this site.\n[Error: ${errCode}]`;
+                            console.warn('[GOOGLE SIGNIN] Popup blocked by browser iframe — attempting signInWithRedirect fallback');
+                            try {
+                                allowAuthStateLogin = true;
+                                firebaseAuth.signInWithRedirect(provider);
+                                return;
+                            } catch (rErr) {
+                                allowAuthStateLogin = false;
+                                displayMsg = `❌ Browser blocked popup inside preview. Please use Email & Password Sign In below, or open app directly: <a href="https://om123bansal-prepz-app.hf.space" target="_blank" style="color: #818cf8; underline: true;">Open Direct Link ↗</a>`;
+                            }
                         } else if (errCode === "auth/api-key-not-valid" || errCode === "auth/invalid-api-key") {
                             displayMsg = `❌ Firebase API key is invalid or restricted.\nFix: Check Google Cloud Console → APIs & Services → Credentials → your API key → HTTP referrers — add hf.space to allowed list.\n[Error: ${errCode}]`;
                         } else if (errCode === "auth/network-request-failed") {
