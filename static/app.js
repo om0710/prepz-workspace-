@@ -114,15 +114,37 @@ window.handleGoogleSignIn = function(e) {
     }
     clearErr();
 
-    if (typeof firebase === "undefined" || (!firebaseAuth && !firebase.auth)) {
-        showErr("⏳ Loading Google Auth service... Please click again in 1 second.");
+    if (typeof firebase === "undefined") {
+        showErr("⏳ Loading Google Auth SDK... Please wait 1 second and click again.");
         return;
     }
 
-    const auth = firebaseAuth || firebase.auth();
+    if (!firebase.apps || !firebase.apps.length) {
+        try {
+            firebase.initializeApp(defaultFirebaseConfig);
+        } catch(err) {
+            console.error("[GOOGLE SIGNIN] Init error:", err);
+        }
+    }
+
+    let auth = firebaseAuth;
+    if (!auth && typeof firebase.auth === "function") {
+        try {
+            auth = firebase.auth();
+        } catch(err) {
+            console.error("[GOOGLE SIGNIN] Auth fetch error:", err);
+        }
+    }
+
+    if (!auth) {
+        showErr("❌ Firebase Authentication service is initializing. Please click again.");
+        return;
+    }
+
     const provider = new firebase.auth.GoogleAuthProvider();
     provider.setCustomParameters({ prompt: 'select_account' });
 
+    console.log("[GOOGLE SIGNIN] Calling signInWithPopup...");
     auth.signInWithPopup(provider)
         .then(async (result) => {
             console.log('[GOOGLE SIGNIN] ✅ Popup success:', result.user.email);
