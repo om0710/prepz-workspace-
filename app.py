@@ -72,6 +72,10 @@ def read_app_js():
 def read_om_avatar():
     return FileResponse("static/om_avatar.png")
 
+@app.get("/om_face_avatar.png")
+def read_om_face_avatar():
+    return FileResponse("static/om_face_avatar.png")
+
 @app.get("/favicon.ico")
 def read_favicon_ico():
     return FileResponse("static/favicon.ico")
