@@ -3314,9 +3314,10 @@ function initializeDocPilotApp() {
             sidebarBackdrop.addEventListener("click", () => setSidebarState(true));
         }
 
-        // DEFAULT TO OFF / COLLAPSED unless user explicitly opened it
+        // DEFAULT TO OFF / COLLAPSED on mobile screens (<= 768px) or unless explicitly opened
+        const isMobileScreen = window.innerWidth <= 768;
         const savedState = localStorage.getItem("sidebar-collapsed");
-        const isCollapsed = savedState !== "false";
+        const isCollapsed = isMobileScreen || savedState !== "false";
         setSidebarState(isCollapsed);
 
         // Auto-close sidebar on mobile when clicking any sidebar navigation link or button
