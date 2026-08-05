@@ -1321,6 +1321,11 @@ function initializeDocPilotApp() {
             landingContainer.classList.remove("hidden");
             landingContainer.style.display = "flex";
         }
+        const devFooter = document.querySelector(".landing-footer-nexa");
+        if (devFooter) {
+            devFooter.classList.remove("hidden");
+            devFooter.style.display = "flex";
+        }
         if (inputPanelWrapper) {
             inputPanelWrapper.classList.add("hidden");
             inputPanelWrapper.style.display = "none";
@@ -1409,6 +1414,9 @@ function initializeDocPilotApp() {
         if (browseContainer) { browseContainer.classList.add("hidden"); browseContainer.style.display = "none"; }
         if (predictorContainer) { predictorContainer.classList.add("hidden"); predictorContainer.style.display = "none"; }
         if (leaderboardContainer) { leaderboardContainer.classList.add("hidden"); leaderboardContainer.style.display = "none"; }
+
+        const devFooter = document.querySelector(".landing-footer-nexa");
+        if (devFooter) { devFooter.classList.add("hidden"); devFooter.style.display = "none !important"; }
 
         if (navNewChat) navNewChat.classList.remove("active");
         if (navPinnedLibrary) navPinnedLibrary.classList.remove("active");
