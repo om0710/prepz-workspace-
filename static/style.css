@@ -6593,11 +6593,13 @@ html, body, #chatbot-app-view, .app-wrapper, .main-panel, .main-container, .cont
    ---------------------------------------------------- */
 .landing-footer-nexa {
     margin-top: auto !important;
-    padding: 24px 0 10px 0 !important;
+    padding: 32px 0 24px 0 !important;
     width: 100% !important;
     display: flex !important;
+    flex-direction: column !important;
     justify-content: center !important;
     align-items: center !important;
+    gap: 28px !important;
 }
 
 #home-profile-card,
@@ -6606,35 +6608,32 @@ html, body, #chatbot-app-view, .app-wrapper, .main-panel, .main-container, .cont
     flex-direction: row !important;
     align-items: center !important;
     justify-content: flex-start !important;
-    gap: 16px !important;
-    background: rgba(18, 18, 20, 0.7) !important;
-    backdrop-filter: blur(12px) !important;
-    -webkit-backdrop-filter: blur(12px) !important;
-    border: 1px solid rgba(255, 255, 255, 0.18) !important;
+    gap: 20px !important;
+    background: #08080a !important;
+    border: 1.5px solid #ffffff !important;
     border-radius: 20px !important;
-    padding: 16px 28px 16px 20px !important;
+    padding: 20px 26px !important;
     max-width: 520px !important;
     width: 100% !important;
-    margin: 20px auto 10px auto !important;
-    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4) !important;
-    transition: all 0.3s ease !important;
+    margin: 0 auto !important;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.7) !important;
+    transition: all 0.25s ease !important;
 }
 
 #home-profile-card:hover,
 .developer-profile-card:hover {
-    border-color: rgba(192, 132, 252, 0.4) !important;
-    box-shadow: 0 10px 36px rgba(139, 92, 246, 0.15) !important;
-    transform: translateY(-2px) !important;
+    border-color: #ffffff !important;
+    box-shadow: 0 12px 48px rgba(255, 255, 255, 0.15) !important;
 }
 
 .dev-avatar-wrapper {
-    width: 58px !important;
-    height: 58px !important;
+    width: 62px !important;
+    height: 62px !important;
     border-radius: 50% !important;
     overflow: hidden !important;
     flex-shrink: 0 !important;
-    border: 2px solid rgba(255, 255, 255, 0.2) !important;
-    background: linear-gradient(135deg, #1e1b4b, #311b92) !important;
+    border: 1px solid rgba(255, 255, 255, 0.3) !important;
+    background: #18181b !important;
 }
 
 .profile-image,
@@ -6642,7 +6641,14 @@ html, body, #chatbot-app-view, .app-wrapper, .main-panel, .main-container, .cont
 #home-profile-card img {
     width: 100% !important;
     height: 100% !important;
+    border-radius: 50% !important;
     object-fit: cover !important;
+}
+
+.footer-divider-line {
+    width: 100% !important;
+    height: 1px !important;
+    background: rgba(255, 255, 255, 0.35) !important;
 }
 
 .profile-info,
