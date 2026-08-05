@@ -6596,8 +6596,10 @@ html, body, #chatbot-app-view, .app-wrapper, .main-panel, .main-container, .cont
     padding: 32px 0 24px 0 !important;
     width: 100% !important;
     display: flex !important;
+    flex-direction: column !important;
     justify-content: center !important;
     align-items: center !important;
+    gap: 28px !important;
 }
 
 .developer-profile-card {
@@ -6605,34 +6607,31 @@ html, body, #chatbot-app-view, .app-wrapper, .main-panel, .main-container, .cont
     flex-direction: row !important;
     align-items: center !important;
     justify-content: flex-start !important;
-    gap: 16px !important;
-    background: rgba(18, 18, 20, 0.8) !important;
-    backdrop-filter: blur(16px) !important;
-    -webkit-backdrop-filter: blur(16px) !important;
-    border: 1px solid rgba(255, 255, 255, 0.14) !important;
-    border-radius: 18px !important;
-    padding: 16px 24px !important;
-    max-width: 440px !important;
+    gap: 20px !important;
+    background: #0e0e11 !important;
+    border: 1px solid rgba(255, 255, 255, 0.4) !important;
+    border-radius: 16px !important;
+    padding: 20px 24px !important;
+    max-width: 680px !important;
     width: 100% !important;
     margin: 0 auto !important;
-    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4) !important;
-    transition: all 0.3s ease !important;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5) !important;
+    transition: all 0.25s ease !important;
 }
 
 .developer-profile-card:hover {
-    border-color: rgba(192, 132, 252, 0.4) !important;
-    box-shadow: 0 10px 36px rgba(139, 92, 246, 0.2) !important;
-    transform: translateY(-2px) !important;
+    border-color: rgba(255, 255, 255, 0.6) !important;
+    box-shadow: 0 12px 36px rgba(0, 0, 0, 0.65) !important;
 }
 
 .dev-avatar-wrapper {
-    width: 54px !important;
-    height: 54px !important;
+    width: 62px !important;
+    height: 62px !important;
     border-radius: 50% !important;
     overflow: hidden !important;
     flex-shrink: 0 !important;
-    border: 2px solid rgba(255, 255, 255, 0.2) !important;
-    background: linear-gradient(135deg, #1e1b4b, #311b92) !important;
+    border: 1px solid rgba(255, 255, 255, 0.2) !important;
+    background: #18181b !important;
 }
 
 .dev-avatar-img {
@@ -6651,23 +6650,23 @@ html, body, #chatbot-app-view, .app-wrapper, .main-panel, .main-container, .cont
 }
 
 .dev-name {
-    font-size: 16px !important;
+    font-size: 18px !important;
     font-weight: 700 !important;
     color: #ffffff !important;
     margin: 0 !important;
     padding: 0 !important;
-    line-height: 1.2 !important;
+    line-height: 1.25 !important;
     letter-spacing: -0.2px !important;
     text-align: left !important;
 }
 
 .dev-role {
-    font-size: 13px !important;
-    font-weight: 500 !important;
-    color: #a1a1aa !important;
-    margin: 2px 0 6px 0 !important;
+    font-size: 14px !important;
+    font-weight: 400 !important;
+    color: #d4d4d8 !important;
+    margin: 2px 0 8px 0 !important;
     padding: 0 !important;
-    line-height: 1.2 !important;
+    line-height: 1.25 !important;
     text-align: left !important;
 }
 
@@ -6675,13 +6674,13 @@ html, body, #chatbot-app-view, .app-wrapper, .main-panel, .main-container, .cont
     display: flex !important;
     align-items: center !important;
     justify-content: flex-start !important;
-    gap: 12px !important;
+    gap: 14px !important;
     margin: 0 !important;
     padding: 0 !important;
 }
 
 .dev-social-icon {
-    color: #d4d4d8 !important;
+    color: #ffffff !important;
     display: inline-flex !important;
     align-items: center !important;
     justify-content: center !important;
@@ -6690,7 +6689,13 @@ html, body, #chatbot-app-view, .app-wrapper, .main-panel, .main-container, .cont
 
 .dev-social-icon:hover {
     color: #c084fc !important;
-    transform: scale(1.15) !important;
+    transform: scale(1.12) !important;
+}
+
+.footer-divider-line {
+    width: 100% !important;
+    height: 1px !important;
+    background: rgba(255, 255, 255, 0.3) !important;
 }
 
 /* ----------------------------------------------------
