@@ -334,6 +334,43 @@
                         <span>Fullscreen</span>
                     </button>
 
+                    <!-- Header User Profile Dropdown -->
+                    <div class="header-profile-container">
+                        <button id="btn-header-profile-dropdown" class="btn-header-action profile-dropdown-trigger" title="User Account Profile">
+                            <img id="header-user-avatar" src="https://api.dicebear.com/7.x/bottts/svg?seed=Student" alt="User Avatar" class="header-user-avatar" style="width: 24px; height: 24px; border-radius: 50%; object-fit: cover;">
+                            <span id="header-user-name" class="header-user-name" style="font-weight: 600; font-size: 13px;">Student</span>
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M6 9l6 6 6-6"/></svg>
+                        </button>
+
+                        <div id="header-profile-dropdown" class="header-profile-dropdown hidden">
+                            <div class="profile-dropdown-user-info">
+                                <img id="dropdown-user-avatar" src="https://api.dicebear.com/7.x/bottts/svg?seed=Student" alt="User Avatar" class="header-user-avatar">
+                                <div class="profile-dropdown-details">
+                                    <h4 id="dropdown-user-name" class="header-user-name">Student</h4>
+                                    <p id="dropdown-user-email" class="header-user-email">student@college.edu</p>
+                                </div>
+                            </div>
+                            <div class="profile-dropdown-links">
+                                <button id="dropdown-link-home" class="dropdown-item-btn">
+                                    <span>🏠 Home Dashboard</span>
+                                </button>
+                                <button id="dropdown-link-library" class="dropdown-item-btn">
+                                    <span>📚 My Private Library</span>
+                                </button>
+                                <button id="dropdown-link-shared" class="dropdown-item-btn">
+                                    <span>🌐 Shared Library</span>
+                                </button>
+                                <button id="dropdown-link-profile" class="dropdown-item-btn">
+                                    <span>👤 Account Profile & Stats</span>
+                                </button>
+                                <div class="dropdown-divider"></div>
+                                <button id="dropdown-link-logout" class="dropdown-item-btn text-danger">
+                                    <span>🚪 Log Out</span>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
                     <div class="settings-container">
                         <button id="btn-header-settings" class="btn-header-action" title="Settings">
                             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
@@ -1079,6 +1116,6 @@
     </div>
 
     <!-- Main JavaScript Link -->
-    <script src="app.js?v=25000.0"></script>
+    <script src="app.js?v=26000.0"></script>
 </body>
 </html>
