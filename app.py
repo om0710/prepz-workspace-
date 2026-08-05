@@ -531,14 +531,14 @@ def forgot_password_request_otp(req: ForgotPasswordRequest):
 
     email_html = f"""
     <div style="font-family: Arial, sans-serif; padding: 20px; background-color: #f4f4f5; color: #18181b;">
-        <h2 style="color: #6366f1;">Buprepz Workspace - Password Reset OTP</h2>
+        <h2 style="color: #6366f1;">BU Prepz Workspace - Password Reset OTP</h2>
         <p>Hello <strong>{user['name']}</strong>,</p>
         <p>You requested a password reset. Your 6-digit OTP code is:</p>
         <div style="font-size: 28px; font-weight: bold; letter-spacing: 4px; color: #4f46e5; margin: 16px 0;">{otp_code}</div>
         <p>This code expires in 10 minutes. If you did not request a password reset, please ignore this email.</p>
     </div>
     """
-    send_otp_email(req.email, otp_code, "Buprepz Workspace - Reset Password OTP", email_html)
+    send_otp_email(req.email, otp_code, "BU Prepz Workspace - Reset Password OTP", email_html)
 
     return {
         "status": "success",
@@ -753,7 +753,7 @@ def render_docx_viewer_html(filename: str, meta: dict, text_docs: list) -> HTMLR
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Buprepz Reader - {html.escape(title)}</title>
+    <title>BU Prepz Reader - {html.escape(title)}</title>
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <style>
         * {{ box-sizing: border-box; margin: 0; padding: 0; }}
@@ -1276,7 +1276,7 @@ INSTRUCTIONS & EXAM PAPER CREATION RULES:
 
 ---
 
-# BUBUPREPZ ACADEMIC EXAMINATION
+# BUBU PREPZ ACADEMIC EXAMINATION
 - Header: Subject: {subject} | {semester}
 - Exam Info: Time Allowed: 3 Hours | Maximum Marks: 70 Marks | Course Code: {course_code}
 - Instructions to Candidates (4 bullet points)

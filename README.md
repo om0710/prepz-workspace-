@@ -1,5 +1,5 @@
 ---
-title: "Buprepz AI Workspace"
+title: "BU Prepz AI Workspace"
 emoji: "📚"
 colorFrom: "indigo"
 colorTo: "blue"
@@ -11,7 +11,7 @@ pinned: false
 
 <div align="center">
 
-# 📚 Buprepz AI Workspace
+# 📚 BU Prepz AI Workspace
 ### *Next-Gen Engineering Study Assistant & Document Intelligence Platform*
 
 [![FastAPI](https://img.shields.io/badge/FastAPI-005571?style=for-the-badge&logo=fastapi)](https://fastapi.tiangolo.com/)
@@ -27,7 +27,7 @@ pinned: false
 
 ## 🌟 Overview
 
-**Buprepz AI Workspace** is an intelligent, high-performance study platform designed specifically for engineering students. Built with **FastAPI**, **LangGraph**, and **ChromaDB**, Buprepz enables instant multi-format document search, automated Past Year Question (PYQ) exam paper generation, in-browser Word document previews, and personal private study compartmentalization.
+**BU Prepz AI Workspace** is an intelligent, high-performance study platform designed specifically for engineering students. Built with **FastAPI**, **LangGraph**, and **ChromaDB**, BU Prepz enables instant multi-format document search, automated Past Year Question (PYQ) exam paper generation, in-browser Word document previews, and personal private study compartmentalization.
 
 ---
 
@@ -64,7 +64,7 @@ pinned: false
 
 ```mermaid
 graph TD
-    User([🎓 Engineering Student]) -->|Interacts with UI| Frontend[🌐 Buprepz Frontend Interface]
+    User([🎓 Engineering Student]) -->|Interacts with UI| Frontend[🌐 BU Prepz Frontend Interface]
     Frontend -->|API Requests| FastAPI[⚡ FastAPI Server app.py]
     
     FastAPI -->|Document Uploads| RAG[📄 Multi-Format Parser rag.py]
