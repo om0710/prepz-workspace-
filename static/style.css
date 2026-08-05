@@ -6555,18 +6555,37 @@ html, body, #chatbot-app-view, .app-wrapper, .main-panel, .main-container, .cont
         white-space: nowrap !important;
     }
 
-    /* Modals & Popups */
-    .google-chooser-card,
+    /* Modals & Popups (Mobile Bottom Sheet / Centered Overlay) */
+    .modal-card,
     .upload-modal-card,
+    .google-chooser-card,
     .onboarding-card,
     .profile-modal {
-        width: 94% !important;
-        max-width: 420px !important;
+        width: 100% !important;
+        max-width: 440px !important;
         padding: 20px 16px !important;
         max-height: 88vh !important;
+        border-radius: 16px !important;
         overflow-y: auto !important;
         -webkit-overflow-scrolling: touch;
         margin: auto !important;
+    }
+
+    /* Touch Targets & Mobile Interactive Elements */
+    button, input[type="button"], input[type="submit"], .btn-auth-primary, .auth-tab-btn, .sidebar-link {
+        min-height: 44px !important;
+        font-size: 15px !important;
+        touch-action: manipulation;
+    }
+
+    /* Form Fields Auto-Zoom Prevention on iOS Safari */
+    input[type="text"],
+    input[type="email"],
+    input[type="password"],
+    textarea,
+    select {
+        font-size: 16px !important;
+        width: 100% !important;
     }
 
     /* Developer Profile Card Footer */
