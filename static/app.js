@@ -1326,6 +1326,10 @@ function initializeDocPilotApp() {
             devFooter.classList.remove("hidden");
             devFooter.style.display = "flex";
         }
+        const profileCard = document.getElementById("home-profile-card") || document.querySelector(".developer-profile-card");
+        if (profileCard) {
+            profileCard.style.display = "flex";
+        }
         if (inputPanelWrapper) {
             inputPanelWrapper.classList.add("hidden");
             inputPanelWrapper.style.display = "none";
@@ -1417,6 +1421,8 @@ function initializeDocPilotApp() {
 
         const devFooter = document.querySelector(".landing-footer-nexa");
         if (devFooter) { devFooter.classList.add("hidden"); devFooter.style.display = "none !important"; }
+        const profileCard = document.getElementById("home-profile-card") || document.querySelector(".developer-profile-card");
+        if (profileCard) { profileCard.style.display = "none"; }
 
         if (navNewChat) navNewChat.classList.remove("active");
         if (navPinnedLibrary) navPinnedLibrary.classList.remove("active");

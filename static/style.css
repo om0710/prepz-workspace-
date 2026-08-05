@@ -6602,41 +6602,40 @@ html, body, #chatbot-app-view, .app-wrapper, .main-panel, .main-container, .cont
     gap: 28px !important;
 }
 
+#home-profile-card,
 .developer-profile-card {
     display: flex !important;
     flex-direction: row !important;
     align-items: center !important;
     justify-content: flex-start !important;
     gap: 20px !important;
-    background: #0e0e11 !important;
-    border: 1px solid rgba(255, 255, 255, 0.4) !important;
-    border-radius: 16px !important;
-    padding: 20px 24px !important;
-    max-width: 680px !important;
+    padding: 24px !important;
+    border: 1px solid #444 !important;
+    border-radius: 12px !important;
+    background: rgba(255, 255, 255, 0.05) !important;
+    max-width: 600px !important;
     width: 100% !important;
-    margin: 0 auto !important;
-    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5) !important;
-    transition: all 0.25s ease !important;
+    margin: 40px auto 0 !important;
+    transition: all 0.3s ease !important;
 }
 
-.developer-profile-card:hover {
-    border-color: rgba(255, 255, 255, 0.6) !important;
-    box-shadow: 0 12px 36px rgba(0, 0, 0, 0.65) !important;
-}
-
+#home-profile-card .dev-avatar-wrapper,
 .dev-avatar-wrapper {
-    width: 62px !important;
-    height: 62px !important;
+    width: 80px !important;
+    height: 80px !important;
     border-radius: 50% !important;
     overflow: hidden !important;
     flex-shrink: 0 !important;
-    border: 1px solid rgba(255, 255, 255, 0.2) !important;
+    border: 2px solid #6366f1 !important;
     background: #18181b !important;
 }
 
+#home-profile-card img,
 .dev-avatar-img {
-    width: 100% !important;
-    height: 100% !important;
+    width: 80px !important;
+    height: 80px !important;
+    border-radius: 50% !important;
+    flex-shrink: 0 !important;
     object-fit: cover !important;
     object-position: center 20% !important;
 }
@@ -6650,47 +6649,65 @@ html, body, #chatbot-app-view, .app-wrapper, .main-panel, .main-container, .cont
     gap: 2px !important;
 }
 
+#home-profile-card h3,
 .dev-name {
-    font-size: 18px !important;
-    font-weight: 700 !important;
-    color: #ffffff !important;
     margin: 0 !important;
-    padding: 0 !important;
-    line-height: 1.25 !important;
-    letter-spacing: -0.2px !important;
-    text-align: left !important;
+    font-size: 20px !important;
+    color: white !important;
+    font-weight: 700 !important;
 }
 
+#home-profile-card p,
 .dev-role {
+    margin: 4px 0 12px 0 !important;
+    color: #aaa !important;
     font-size: 14px !important;
-    font-weight: 400 !important;
-    color: #d4d4d8 !important;
-    margin: 2px 0 8px 0 !important;
-    padding: 0 !important;
-    line-height: 1.25 !important;
-    text-align: left !important;
 }
 
+.social-links,
 .dev-social-links {
     display: flex !important;
-    align-items: center !important;
-    justify-content: flex-start !important;
-    gap: 14px !important;
+    gap: 12px !important;
     margin: 0 !important;
-    padding: 0 !important;
 }
 
+.social-links a,
 .dev-social-icon {
-    color: #ffffff !important;
-    display: inline-flex !important;
+    width: 32px !important;
+    height: 32px !important;
+    display: flex !important;
     align-items: center !important;
     justify-content: center !important;
-    transition: all 0.2s ease !important;
+    color: white !important;
+    font-size: 18px !important;
+    text-decoration: none !important;
+    opacity: 0.7 !important;
+    transition: opacity 0.3s !important;
 }
 
+.social-links a:hover,
 .dev-social-icon:hover {
-    color: #c084fc !important;
-    transform: scale(1.12) !important;
+    opacity: 1 !important;
+}
+
+/* Mobile: stack vertically if needed */
+@media (max-width: 640px) {
+    #home-profile-card,
+    .developer-profile-card {
+        flex-direction: column !important;
+        text-align: center !important;
+        gap: 16px !important;
+    }
+    
+    .dev-info-box {
+        align-items: center !important;
+        text-align: center !important;
+    }
+
+    .social-links,
+    .dev-social-links {
+        justify-content: center !important;
+    }
 }
 
 .footer-divider-line {
