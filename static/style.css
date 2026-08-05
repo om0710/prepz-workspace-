@@ -6593,13 +6593,11 @@ html, body, #chatbot-app-view, .app-wrapper, .main-panel, .main-container, .cont
    ---------------------------------------------------- */
 .landing-footer-nexa {
     margin-top: auto !important;
-    padding: 32px 0 24px 0 !important;
+    padding: 24px 0 10px 0 !important;
     width: 100% !important;
     display: flex !important;
-    flex-direction: column !important;
     justify-content: center !important;
     align-items: center !important;
-    gap: 28px !important;
 }
 
 #home-profile-card,
@@ -6609,15 +6607,24 @@ html, body, #chatbot-app-view, .app-wrapper, .main-panel, .main-container, .cont
     align-items: center !important;
     justify-content: flex-start !important;
     gap: 16px !important;
-    padding: 16px 22px !important;
-    border: 1.5px solid rgba(255, 255, 255, 0.85) !important;
-    border-radius: 18px !important;
-    background: #0d0d10 !important;
-    max-width: 430px !important;
+    background: rgba(18, 18, 20, 0.7) !important;
+    backdrop-filter: blur(12px) !important;
+    -webkit-backdrop-filter: blur(12px) !important;
+    border: 1px solid rgba(255, 255, 255, 0.18) !important;
+    border-radius: 20px !important;
+    padding: 16px 28px 16px 20px !important;
+    max-width: 520px !important;
     width: 100% !important;
-    margin: 0 auto !important;
-    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.6) !important;
-    transition: all 0.25s ease !important;
+    margin: 20px auto 10px auto !important;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4) !important;
+    transition: all 0.3s ease !important;
+}
+
+#home-profile-card:hover,
+.developer-profile-card:hover {
+    border-color: rgba(192, 132, 252, 0.4) !important;
+    box-shadow: 0 10px 36px rgba(139, 92, 246, 0.15) !important;
+    transform: translateY(-2px) !important;
 }
 
 .dev-avatar-wrapper {
@@ -6626,8 +6633,8 @@ html, body, #chatbot-app-view, .app-wrapper, .main-panel, .main-container, .cont
     border-radius: 50% !important;
     overflow: hidden !important;
     flex-shrink: 0 !important;
-    border: 1px solid rgba(255, 255, 255, 0.3) !important;
-    background: #18181b !important;
+    border: 2px solid rgba(255, 255, 255, 0.2) !important;
+    background: linear-gradient(135deg, #1e1b4b, #311b92) !important;
 }
 
 .profile-image,
@@ -6635,10 +6642,7 @@ html, body, #chatbot-app-view, .app-wrapper, .main-panel, .main-container, .cont
 #home-profile-card img {
     width: 100% !important;
     height: 100% !important;
-    border-radius: 50% !important;
     object-fit: cover !important;
-    object-position: center 15% !important;
-    flex-shrink: 0 !important;
 }
 
 .profile-info,
