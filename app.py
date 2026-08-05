@@ -3,7 +3,7 @@ import json
 import uuid
 import shutil
 from typing import Optional
-from fastapi import FastAPI, UploadFile, File, HTTPException
+from fastapi import FastAPI, UploadFile, File, HTTPException, Request
 from fastapi.responses import StreamingResponse, FileResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
@@ -227,7 +227,10 @@ from database import (
     update_user_activity, add_contribution_points, get_top_contributors,
     mark_onboarding_completed, validate_password_strength, create_otp,
     verify_otp_code, update_user_password, mark_user_verified,
-    check_rate_limit, record_rate_limit_attempt
+    check_rate_limit, record_rate_limit_attempt,
+    create_document, get_document_by_id, get_user_documents,
+    get_shared_documents, update_document_record, delete_document_record,
+    toggle_document_share_record
 )
 from fastapi import Form
 from typing import Optional
@@ -945,6 +948,108 @@ def delete_file(filename: str, user_email: Optional[str] = None, user_name: Opti
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+# ----------------------------------------------------
+# Private & Shared Document Library API Endpoints
+# ----------------------------------------------------
+
+class DocumentCreateRequest(BaseModel):
+    title: str
+    content: Optional[str] = ""
+    is_shared: Optional[bool] = False
+
+class DocumentUpdateRequest(BaseModel):
+    title: Optional[str] = None
+    content: Optional[str] = None
+    is_shared: Optional[bool] = None
+
+class DocumentShareRequest(BaseModel):
+    is_shared: bool
+
+def get_current_user_from_req(request: Request) -> dict:
+    user_email = request.headers.get("X-User-Email") or request.query_params.get("user_email")
+    if not user_email:
+        auth_hdr = request.headers.get("Authorization")
+        if auth_hdr and auth_hdr.startswith("Bearer "):
+            user_email = auth_hdr.replace("Bearer ", "").strip()
+    if not user_email:
+        raise HTTPException(status_code=401, detail="Authentication required. Please log in.")
+    user = get_user_by_email(user_email)
+    if not user:
+        user = create_user(name=user_email.split("@")[0].title(), email=user_email, provider="local")
+    return user
+
+@app.get("/api/my-library")
+def get_my_library_endpoint(request: Request):
+    user = get_current_user_from_req(request)
+    docs = get_user_documents(user["email"])
+    return {"documents": docs}
+
+@app.get("/api/shared-library")
+def get_shared_library_endpoint(owner_id: Optional[int] = None, category: Optional[str] = None):
+    docs = get_shared_documents()
+    if owner_id:
+        docs = [d for d in docs if d.get("user_id") == owner_id]
+    return {"documents": docs}
+
+@app.post("/api/documents")
+def create_document_endpoint(req: DocumentCreateRequest, request: Request):
+    user = get_current_user_from_req(request)
+    doc = create_document(user_id=user["id"], user_email=user["email"], title=req.title, content=req.content, is_shared=bool(req.is_shared))
+    return {"status": "success", "document": doc}
+
+@app.get("/api/documents/{doc_id}")
+def get_document_endpoint(doc_id: int, request: Request):
+    doc = get_document_by_id(doc_id)
+    if not doc:
+        raise HTTPException(status_code=404, detail="Document not found.")
+    if doc["is_shared"]:
+        return {"document": doc}
+    # Private doc: verify ownership
+    user_email = request.headers.get("X-User-Email") or request.query_params.get("user_email")
+    if not user_email or user_email.lower() != doc["user_email"].lower():
+        raise HTTPException(status_code=403, detail="You do not have permission to view this document.")
+    return {"document": doc}
+
+@app.put("/api/documents/{doc_id}")
+def update_document_endpoint(doc_id: int, req: DocumentUpdateRequest, request: Request):
+    user = get_current_user_from_req(request)
+    existing = get_document_by_id(doc_id)
+    if not existing:
+        raise HTTPException(status_code=404, detail="Document not found.")
+    if existing["user_email"].lower() != user["email"].lower():
+        raise HTTPException(status_code=403, detail="You don't have permission to edit this document.")
+    
+    title = req.title if req.title is not None else existing["title"]
+    content = req.content if req.content is not None else existing["content"]
+    is_shared = req.is_shared if req.is_shared is not None else existing["is_shared"]
+    
+    updated = update_document_record(doc_id=doc_id, user_email=user["email"], title=title, content=content, is_shared=is_shared)
+    return {"status": "success", "document": updated}
+
+@app.delete("/api/documents/{doc_id}")
+def delete_document_endpoint(doc_id: int, request: Request):
+    user = get_current_user_from_req(request)
+    existing = get_document_by_id(doc_id)
+    if not existing:
+        raise HTTPException(status_code=404, detail="Document not found.")
+    if existing["user_email"].lower() != user["email"].lower():
+        raise HTTPException(status_code=403, detail="You don't have permission to delete this document.")
+    
+    delete_document_record(doc_id=doc_id, user_email=user["email"])
+    return {"status": "success", "message": "Document deleted successfully."}
+
+@app.post("/api/documents/{doc_id}/share")
+def share_document_endpoint(doc_id: int, req: DocumentShareRequest, request: Request):
+    user = get_current_user_from_req(request)
+    existing = get_document_by_id(doc_id)
+    if not existing:
+        raise HTTPException(status_code=404, detail="Document not found.")
+    if existing["user_email"].lower() != user["email"].lower():
+        raise HTTPException(status_code=403, detail="You don't have permission to share this document.")
+    
+    updated = toggle_document_share_record(doc_id=doc_id, user_email=user["email"], is_shared=req.is_shared)
+    return {"status": "success", "document": updated}
 
 class ReportFileRequest(BaseModel):
     filename: str

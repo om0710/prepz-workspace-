@@ -1475,6 +1475,7 @@ function initializeDocPilotApp() {
         
         fetchIndexedFiles();
         fetchUserStats();
+        if (typeof fetchMyDocuments === "function") fetchMyDocuments();
     }
 
     function showBrowseState() {
@@ -1500,6 +1501,7 @@ function initializeDocPilotApp() {
 
         updateBrowseSubjectOptions();
         renderBrowseTable();
+        if (typeof fetchSharedDocuments === "function") fetchSharedDocuments();
     }
 
     function showPredictorState() {
@@ -3540,4 +3542,326 @@ if (document.readyState === "loading") {
     document.addEventListener("DOMContentLoaded", initializeDocPilotApp);
 } else {
     initializeDocPilotApp();
+}
+
+// ----------------------------------------------------
+// Private & Shared Document Library Frontend Controllers
+// ----------------------------------------------------
+
+window.openCreateDocumentModal = function() {
+    const modal = document.getElementById("modal-document-editor");
+    const modalTitle = document.getElementById("doc-editor-modal-title");
+    const docIdInput = document.getElementById("doc-editor-id");
+    const titleInput = document.getElementById("doc-editor-title-input");
+    const contentInput = document.getElementById("doc-editor-content-input");
+    const isSharedCheck = document.getElementById("doc-editor-is-shared");
+    const errorMsg = document.getElementById("doc-editor-error-msg");
+
+    if (errorMsg) { errorMsg.textContent = ""; errorMsg.classList.add("hidden"); }
+    if (modalTitle) modalTitle.textContent = "📝 Create New Document";
+    if (docIdInput) docIdInput.value = "";
+    if (titleInput) titleInput.value = "";
+    if (contentInput) contentInput.value = "";
+    if (isSharedCheck) isSharedCheck.checked = false;
+
+    if (modal) {
+        modal.classList.remove("hidden");
+        modal.style.display = "flex";
+    }
+};
+
+window.openEditDocumentModal = async function(docId) {
+    const user = window.currentUser || JSON.parse(localStorage.getItem("docpilot-user") || "{}");
+    const email = user.email || "student@college.edu";
+    try {
+        const res = await fetch(`/api/documents/${docId}`, {
+            headers: { "X-User-Email": email }
+        });
+        const data = await res.json();
+        if (res.ok && data.document) {
+            const doc = data.document;
+            const modal = document.getElementById("modal-document-editor");
+            const modalTitle = document.getElementById("doc-editor-modal-title");
+            const docIdInput = document.getElementById("doc-editor-id");
+            const titleInput = document.getElementById("doc-editor-title-input");
+            const contentInput = document.getElementById("doc-editor-content-input");
+            const isSharedCheck = document.getElementById("doc-editor-is-shared");
+            const errorMsg = document.getElementById("doc-editor-error-msg");
+
+            if (errorMsg) { errorMsg.textContent = ""; errorMsg.classList.add("hidden"); }
+            if (modalTitle) modalTitle.textContent = "✏️ Edit Document";
+            if (docIdInput) docIdInput.value = doc.id;
+            if (titleInput) titleInput.value = doc.title || "";
+            if (contentInput) contentInput.value = doc.content || "";
+            if (isSharedCheck) isSharedCheck.checked = !!doc.is_shared;
+
+            if (modal) {
+                modal.classList.remove("hidden");
+                modal.style.display = "flex";
+            }
+        } else {
+            alert(data.detail || "Error loading document.");
+        }
+    } catch(err) {
+        console.error("Edit doc error:", err);
+    }
+};
+
+window.closeDocumentEditorModal = function() {
+    const modal = document.getElementById("modal-document-editor");
+    if (modal) {
+        modal.classList.add("hidden");
+        modal.style.display = "none";
+    }
+};
+
+window.handleDocumentFormSubmit = async function(e) {
+    if (e) e.preventDefault();
+    const user = window.currentUser || JSON.parse(localStorage.getItem("docpilot-user") || "{}");
+    const email = user.email || "student@college.edu";
+    
+    const docId = document.getElementById("doc-editor-id").value;
+    const title = document.getElementById("doc-editor-title-input").value.trim();
+    const content = document.getElementById("doc-editor-content-input").value;
+    const isShared = document.getElementById("doc-editor-is-shared").checked;
+    const errorMsg = document.getElementById("doc-editor-error-msg");
+
+    if (!title) {
+        if (errorMsg) { errorMsg.textContent = "Please enter a document title."; errorMsg.classList.remove("hidden"); }
+        return;
+    }
+
+    try {
+        const method = docId ? "PUT" : "POST";
+        const url = docId ? `/api/documents/${docId}` : "/api/documents";
+        const res = await fetch(url, {
+            method: method,
+            headers: {
+                "Content-Type": "application/json",
+                "X-User-Email": email
+            },
+            body: JSON.stringify({ title, content, is_shared: isShared })
+        });
+        const data = await res.json();
+        if (res.ok) {
+            window.closeDocumentEditorModal();
+            if (typeof window.fetchMyDocuments === "function") window.fetchMyDocuments();
+            if (typeof window.fetchSharedDocuments === "function") window.fetchSharedDocuments();
+        } else {
+            if (errorMsg) {
+                errorMsg.textContent = data.detail || "Failed to save document.";
+                errorMsg.classList.remove("hidden");
+            }
+        }
+    } catch(err) {
+        console.error("Save document error:", err);
+        if (errorMsg) {
+            errorMsg.textContent = "Error saving document. Please try again.";
+            errorMsg.classList.remove("hidden");
+        }
+    }
+};
+
+window.toggleDocumentShare = async function(docId, isShared) {
+    const user = window.currentUser || JSON.parse(localStorage.getItem("docpilot-user") || "{}");
+    const email = user.email || "student@college.edu";
+    try {
+        const res = await fetch(`/api/documents/${docId}/share`, {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                "X-User-Email": email
+            },
+            body: JSON.stringify({ is_shared: isShared })
+        });
+        const data = await res.json();
+        if (res.ok) {
+            if (typeof window.fetchMyDocuments === "function") window.fetchMyDocuments();
+            if (typeof window.fetchSharedDocuments === "function") window.fetchSharedDocuments();
+        } else {
+            alert(data.detail || "Error toggling document share status.");
+        }
+    } catch(err) {
+        console.error("Toggle share error:", err);
+    }
+};
+
+window.deleteDocument = async function(docId) {
+    if (!confirm("Are you sure you want to delete this document?")) return;
+    const user = window.currentUser || JSON.parse(localStorage.getItem("docpilot-user") || "{}");
+    const email = user.email || "student@college.edu";
+    try {
+        const res = await fetch(`/api/documents/${docId}`, {
+            method: "DELETE",
+            headers: { "X-User-Email": email }
+        });
+        const data = await res.json();
+        if (res.ok) {
+            if (typeof window.fetchMyDocuments === "function") window.fetchMyDocuments();
+            if (typeof window.fetchSharedDocuments === "function") window.fetchSharedDocuments();
+        } else {
+            alert(data.detail || "Error deleting document.");
+        }
+    } catch(err) {
+        console.error("Delete doc error:", err);
+    }
+};
+
+window.copyDocumentToMyLibrary = async function(docId) {
+    const user = window.currentUser || JSON.parse(localStorage.getItem("docpilot-user") || "{}");
+    const email = user.email || "student@college.edu";
+    try {
+        const getRes = await fetch(`/api/documents/${docId}`, {
+            headers: { "X-User-Email": email }
+        });
+        const getData = await getRes.json();
+        if (!getRes.ok || !getData.document) {
+            alert("Error loading original document.");
+            return;
+        }
+        const orig = getData.document;
+        const createRes = await fetch("/api/documents", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                "X-User-Email": email
+            },
+            body: JSON.stringify({
+                title: `${orig.title} (Copy)`,
+                content: orig.content,
+                is_shared: false
+            })
+        });
+        if (createRes.ok) {
+            alert("Document copied to your Personal My Library! 📚");
+            if (typeof window.fetchMyDocuments === "function") window.fetchMyDocuments();
+        } else {
+            const errData = await createRes.json();
+            alert(errData.detail || "Failed to copy document.");
+        }
+    } catch(err) {
+        console.error("Copy document error:", err);
+    }
+};
+
+window.fetchMyDocuments = async function() {
+    const user = window.currentUser || JSON.parse(localStorage.getItem("docpilot-user") || "{}");
+    const email = user.email || "student@college.edu";
+    try {
+        const res = await fetch("/api/my-library", {
+            headers: { "X-User-Email": email }
+        });
+        const data = await res.json();
+        if (res.ok && data.documents) {
+            renderMyDocumentsList(data.documents);
+        }
+    } catch(err) {
+        console.error("fetchMyDocuments error:", err);
+    }
+};
+
+window.fetchSharedDocuments = async function() {
+    try {
+        const res = await fetch("/api/shared-library");
+        const data = await res.json();
+        if (res.ok && data.documents) {
+            renderSharedDocumentsList(data.documents);
+        }
+    } catch(err) {
+        console.error("fetchSharedDocuments error:", err);
+    }
+};
+
+function renderMyDocumentsList(docs) {
+    const container = document.getElementById("my-documents-container") || document.getElementById("library-grid");
+    if (!container) return;
+    
+    let addBtn = document.getElementById("btn-add-my-doc");
+    if (!addBtn) {
+        const headerArea = container.parentElement;
+        const btnHtml = `<button id="btn-add-my-doc" onclick="openCreateDocumentModal()" style="margin-bottom: 16px; padding: 10px 18px; border-radius: 10px; background: linear-gradient(135deg, #6366f1, #4f46e5); color: #fff; border: none; font-weight: 600; cursor: pointer; display: inline-flex; align-items: center; gap: 6px;">➕ New Document</button>`;
+        container.insertAdjacentHTML("beforebegin", btnHtml);
+    }
+
+    if (!docs || docs.length === 0) {
+        container.innerHTML = `
+            <div class="empty-docs-placeholder" style="grid-column: 1 / -1; padding: 40px 20px; text-align: center; background: rgba(255,255,255,0.02); border-radius: 12px; border: 1px dashed rgba(255,255,255,0.1);">
+                📝 No personal documents created yet. Click <strong>"+ New Document"</strong> above to write study notes or summaries!
+            </div>
+        `;
+        return;
+    }
+
+    function escapeHtmlLocal(text) {
+        if (!text) return '';
+        return String(text).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
+    }
+
+    container.innerHTML = docs.map(doc => {
+        const statusBadge = doc.is_shared 
+            ? `<span style="background: rgba(34, 197, 94, 0.15); color: #4ade80; padding: 4px 8px; border-radius: 6px; font-size: 11px; font-weight: 600;">🌐 Shared</span>`
+            : `<span style="background: rgba(161, 161, 170, 0.15); color: #a1a1aa; padding: 4px 8px; border-radius: 6px; font-size: 11px; font-weight: 600;">🔒 Private</span>`;
+        
+        const shareToggleBtn = doc.is_shared
+            ? `<button onclick="toggleDocumentShare(${doc.id}, false)" style="padding: 4px 8px; background: #27272a; border: 1px solid #3f3f46; color: #a1a1aa; border-radius: 6px; font-size: 11px; cursor: pointer;">Make Private</button>`
+            : `<button onclick="toggleDocumentShare(${doc.id}, true)" style="padding: 4px 8px; background: rgba(99, 102, 241, 0.2); border: 1px solid #6366f1; color: #818cf8; border-radius: 6px; font-size: 11px; cursor: pointer;">Share Publicly</button>`;
+
+        const createdDate = doc.created_at ? new Date(doc.created_at).toLocaleDateString() : 'Recently';
+
+        return `
+            <div class="doc-card" style="background: #18181b; border: 1px solid #27272a; border-radius: 12px; padding: 16px; display: flex; flex-direction: column; gap: 10px; margin-bottom: 12px;">
+                <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+                    <h4 style="margin: 0; font-size: 16px; color: #ffffff; font-weight: 600;">${escapeHtmlLocal(doc.title)}</h4>
+                    ${statusBadge}
+                </div>
+                <p style="margin: 0; font-size: 13px; color: #a1a1aa; line-height: 1.4; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden;">${escapeHtmlLocal(doc.content || 'No content.')}</p>
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 6px; pt-2; border-top: 1px solid rgba(255,255,255,0.05);">
+                    <span style="font-size: 11px; color: #71717a;">📅 ${createdDate}</span>
+                    <div style="display: flex; gap: 6px;">
+                        ${shareToggleBtn}
+                        <button onclick="openEditDocumentModal(${doc.id})" style="padding: 4px 8px; background: #27272a; border: 1px solid #3f3f46; color: #ffffff; border-radius: 6px; font-size: 11px; cursor: pointer;">✏️ Edit</button>
+                        <button onclick="deleteDocument(${doc.id})" style="padding: 4px 8px; background: rgba(239, 68, 68, 0.15); border: 1px solid #ef4444; color: #f87171; border-radius: 6px; font-size: 11px; cursor: pointer;">🗑️ Delete</button>
+                    </div>
+                </div>
+            </div>
+        `;
+    }).join('');
+}
+
+function renderSharedDocumentsList(docs) {
+    const container = document.getElementById("shared-documents-container") || document.getElementById("browse-documents-container");
+    if (!container) return;
+
+    if (!docs || docs.length === 0) {
+        container.innerHTML = `
+            <div class="empty-docs-placeholder" style="grid-column: 1 / -1; padding: 40px 20px; text-align: center; background: rgba(255,255,255,0.02); border-radius: 12px; border: 1px dashed rgba(255,255,255,0.1);">
+                🌐 No public shared documents available yet. Mark your personal notes as "Shared" to publish them here!
+            </div>
+        `;
+        return;
+    }
+
+    function escapeHtmlLocal(text) {
+        if (!text) return '';
+        return String(text).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
+    }
+
+    container.innerHTML = docs.map(doc => {
+        const ownerName = doc.owner_name || (doc.user_email ? doc.user_email.split('@')[0] : 'Student');
+        const createdDate = doc.created_at ? new Date(doc.created_at).toLocaleDateString() : 'Recently';
+
+        return `
+            <div class="doc-card" style="background: #18181b; border: 1px solid #27272a; border-radius: 12px; padding: 16px; display: flex; flex-direction: column; gap: 10px; margin-bottom: 12px;">
+                <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+                    <h4 style="margin: 0; font-size: 16px; color: #ffffff; font-weight: 600;">${escapeHtmlLocal(doc.title)}</h4>
+                    <span style="background: rgba(99, 102, 241, 0.15); color: #818cf8; padding: 4px 8px; border-radius: 6px; font-size: 11px; font-weight: 600;">👤 ${escapeHtmlLocal(ownerName)}</span>
+                </div>
+                <p style="margin: 0; font-size: 13px; color: #a1a1aa; line-height: 1.4; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden;">${escapeHtmlLocal(doc.content || 'No preview available.')}</p>
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 6px;">
+                    <span style="font-size: 11px; color: #71717a;">📅 ${createdDate}</span>
+                    <button onclick="copyDocumentToMyLibrary(${doc.id})" style="padding: 6px 12px; background: linear-gradient(135deg, #6366f1, #4f46e5); color: #ffffff; border: none; border-radius: 6px; font-size: 12px; font-weight: 600; cursor: pointer;">📋 Copy to My Library</button>
+                </div>
+            </div>
+        `;
+    }).join('');
 }

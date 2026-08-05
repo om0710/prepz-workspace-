@@ -190,6 +190,46 @@ def init_user_db():
             attempt_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
     """)
+
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS documents (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL DEFAULT 1,
+            user_email TEXT NOT NULL,
+            title TEXT NOT NULL,
+            content TEXT,
+            is_shared INTEGER DEFAULT 0,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    """)
+
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS shares (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            document_id INTEGER NOT NULL,
+            shared_by_user_id INTEGER NOT NULL,
+            shared_with_user_id INTEGER,
+            permission_type TEXT DEFAULT 'view',
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    """)
+
+    try: cursor.execute("ALTER TABLE documents ADD COLUMN user_id INTEGER DEFAULT 1")
+    except Exception: pass
+    try: cursor.execute("ALTER TABLE documents ADD COLUMN user_email TEXT")
+    except Exception: pass
+    try: cursor.execute("ALTER TABLE documents ADD COLUMN title TEXT")
+    except Exception: pass
+    try: cursor.execute("ALTER TABLE documents ADD COLUMN content TEXT")
+    except Exception: pass
+    try: cursor.execute("ALTER TABLE documents ADD COLUMN is_shared INTEGER DEFAULT 0")
+    except Exception: pass
+    try: cursor.execute("ALTER TABLE documents ADD COLUMN created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP")
+    except Exception: pass
+    try: cursor.execute("ALTER TABLE documents ADD COLUMN updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP")
+    except Exception: pass
+
     conn.commit()
 
 init_user_db()
@@ -515,3 +555,148 @@ def get_reported_files():
         }
         for r in rows
     ]
+
+# ----------------------------------------------------
+# Document Management (Private & Shared Library)
+# ----------------------------------------------------
+
+def create_document(user_id: int, user_email: str, title: str, content: str, is_shared: bool = False) -> dict:
+    user_email = user_email.strip().lower()
+    is_shared_val = 1 if is_shared else 0
+    now_str = datetime.now().isoformat()
+    def _do():
+        with get_db() as c:
+            cur = c.cursor()
+            cur.execute("""
+                INSERT INTO documents (user_id, user_email, title, content, is_shared, created_at, updated_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?)
+            """, (user_id, user_email, title, content, is_shared_val, now_str, now_str))
+            c.commit()
+            return cur.lastrowid
+    doc_id = db_retry(_do)
+    return get_document_by_id(doc_id)
+
+def get_document_by_id(doc_id: int) -> dict:
+    with get_db() as c:
+        cur = c.cursor()
+        cur.execute("""
+            SELECT d.id, d.user_id, d.user_email, d.title, d.content, d.is_shared, d.created_at, d.updated_at, COALESCE(u.name, 'Student') as owner_name
+            FROM documents d
+            LEFT JOIN users u ON lower(d.user_email) = lower(u.email)
+            WHERE d.id = ?
+        """, (doc_id,))
+        row = cur.fetchone()
+        if row:
+            return {
+                "id": row[0],
+                "user_id": row[1],
+                "user_email": row[2],
+                "title": row[3],
+                "content": row[4] or "",
+                "is_shared": bool(row[5]),
+                "created_at": row[6],
+                "updated_at": row[7],
+                "owner_name": row[8]
+            }
+        return None
+
+def get_user_documents(user_email: str) -> list:
+    if not user_email:
+        return []
+    with get_db() as c:
+        cur = c.cursor()
+        cur.execute("""
+            SELECT d.id, d.user_id, d.user_email, d.title, d.content, d.is_shared, d.created_at, d.updated_at, COALESCE(u.name, 'Student') as owner_name
+            FROM documents d
+            LEFT JOIN users u ON lower(d.user_email) = lower(u.email)
+            WHERE lower(d.user_email) = lower(?)
+            ORDER BY d.id DESC
+        """, (user_email.strip(),))
+        rows = cur.fetchall()
+        return [
+            {
+                "id": r[0],
+                "user_id": r[1],
+                "user_email": r[2],
+                "title": r[3],
+                "content": r[4] or "",
+                "is_shared": bool(r[5]),
+                "created_at": r[6],
+                "updated_at": r[7],
+                "owner_name": r[8]
+            }
+            for r in rows
+        ]
+
+def get_shared_documents() -> list:
+    with get_db() as c:
+        cur = c.cursor()
+        cur.execute("""
+            SELECT d.id, d.user_id, d.user_email, d.title, d.content, d.is_shared, d.created_at, d.updated_at, COALESCE(u.name, 'Student') as owner_name
+            FROM documents d
+            LEFT JOIN users u ON lower(d.user_email) = lower(u.email)
+            WHERE d.is_shared = 1
+            ORDER BY d.id DESC
+        """)
+        rows = cur.fetchall()
+        return [
+            {
+                "id": r[0],
+                "user_id": r[1],
+                "user_email": r[2],
+                "title": r[3],
+                "content": r[4] or "",
+                "is_shared": bool(r[5]),
+                "created_at": r[6],
+                "updated_at": r[7],
+                "owner_name": r[8]
+            }
+            for r in rows
+        ]
+
+def update_document_record(doc_id: int, user_email: str, title: str, content: str, is_shared: bool):
+    doc = get_document_by_id(doc_id)
+    if not doc:
+        return None
+    if doc["user_email"].lower() != user_email.lower():
+        return "FORBIDDEN"
+    is_shared_val = 1 if is_shared else 0
+    now_str = datetime.now().isoformat()
+    def _do():
+        with get_db() as c:
+            c.execute("""
+                UPDATE documents
+                SET title = ?, content = ?, is_shared = ?, updated_at = ?
+                WHERE id = ?
+            """, (title, content, is_shared_val, now_str, doc_id))
+            c.commit()
+    db_retry(_do)
+    return get_document_by_id(doc_id)
+
+def delete_document_record(doc_id: int, user_email: str):
+    doc = get_document_by_id(doc_id)
+    if not doc:
+        return None
+    if doc["user_email"].lower() != user_email.lower():
+        return "FORBIDDEN"
+    def _do():
+        with get_db() as c:
+            c.execute("DELETE FROM documents WHERE id = ?", (doc_id,))
+            c.commit()
+    db_retry(_do)
+    return True
+
+def toggle_document_share_record(doc_id: int, user_email: str, is_shared: bool):
+    doc = get_document_by_id(doc_id)
+    if not doc:
+        return None
+    if doc["user_email"].lower() != user_email.lower():
+        return "FORBIDDEN"
+    is_shared_val = 1 if is_shared else 0
+    now_str = datetime.now().isoformat()
+    def _do():
+        with get_db() as c:
+            c.execute("UPDATE documents SET is_shared = ?, updated_at = ? WHERE id = ?", (is_shared_val, now_str, doc_id))
+            c.commit()
+    db_retry(_do)
+    return get_document_by_id(doc_id)

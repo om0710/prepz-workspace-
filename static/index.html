@@ -1047,7 +1047,41 @@
         </div>
     </div>
 
+    <!-- Document Create / Edit Modal -->
+    <div id="modal-document-editor" class="modal-overlay hidden" style="display: none;">
+        <div class="modal-card" style="max-width: 540px;">
+            <div class="modal-header">
+                <h3 id="doc-editor-modal-title">📝 Create Document</h3>
+                <button type="button" onclick="closeDocumentEditorModal()" class="btn-close-modal" aria-label="Close Modal">&times;</button>
+            </div>
+            <p style="font-size: 13.5px; color: #a1a1aa; line-height: 1.5;">Create or edit notes in your personal library. Control whether it stays private or shared with others.</p>
+            <div id="doc-editor-error-msg" class="auth-error hidden" style="margin-top: 8px;"></div>
+            <form id="form-document-editor" class="modal-form" onsubmit="handleDocumentFormSubmit(event)">
+                <input type="hidden" id="doc-editor-id" value="">
+                <div class="form-group">
+                    <label for="doc-editor-title-input">Document Title</label>
+                    <input type="text" id="doc-editor-title-input" placeholder="e.g. Physics Chapter 3 Study Notes" required style="color: #ffffff !important; background: #18181b !important;">
+                </div>
+                <div class="form-group">
+                    <label for="doc-editor-content-input">Notes Content</label>
+                    <textarea id="doc-editor-content-input" placeholder="Type your study notes, formulas, or summaries here..." rows="6" style="width: 100%; padding: 12px; border-radius: 12px; background: #18181b; border: 1px solid #27272a; color: #ffffff; font-family: inherit; font-size: 14px; resize: vertical; box-sizing: border-box;"></textarea>
+                </div>
+                <div class="form-group" style="background: rgba(255, 255, 255, 0.04); padding: 12px; border-radius: 12px; border: 1px solid rgba(255, 255, 255, 0.08);">
+                    <label class="remember-me-label" style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                        <input type="checkbox" id="doc-editor-is-shared" style="width: 18px; height: 18px; accent-color: #6366f1;">
+                        <span style="color: #ffffff; font-weight: 600; font-size: 14px;">🌐 Share with others in Shared Library</span>
+                    </label>
+                    <small style="color: #a1a1aa; font-size: 11px; margin-top: 4px; display: block;">If unchecked, this document remains 🔒 100% Private in your Personal Library.</small>
+                </div>
+                <div style="display: flex; gap: 10px; margin-top: 8px;">
+                    <button type="submit" class="btn-auth-primary" style="flex: 1;">Save Document</button>
+                    <button type="button" onclick="closeDocumentEditorModal()" style="padding: 12px 18px; border-radius: 12px; background: #27272a; border: 1px solid #3f3f46; color: #ffffff; font-weight: 600; cursor: pointer;">Cancel</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
     <!-- Main JavaScript Link -->
-    <script src="app.js?v=2000.0"></script>
+    <script src="app.js?v=3000.0"></script>
 </body>
 </html>
