@@ -2954,7 +2954,9 @@ function initializeDocPilotApp() {
             }
 
             const myUploadedFiles = allCachedFiles.filter(fileObj => {
-                return isFileUploadedByCurrentUser(fileObj);
+                const isOwner = isFileUploadedByCurrentUser(fileObj);
+                const isPrivate = typeof fileObj === 'object' && (fileObj.is_private === 1 || fileObj.is_private === true);
+                return isOwner && isPrivate;
             });
 
             if (myUploadedFiles.length === 0) {
@@ -3865,3 +3867,23 @@ function renderSharedDocumentsList(docs) {
         `;
     }).join('');
 }
+
+window.toggleFilePrivacy = async function(filename, isPrivate) {
+    const user = window.currentUser || JSON.parse(localStorage.getItem("docpilot-user") || "{}");
+    const email = user.email || "anonymous@college.edu";
+    try {
+        const res = await fetch(`/files/${encodeURIComponent(filename)}/toggle-privacy`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ is_private: isPrivate, user_email: email })
+        });
+        const data = await res.json();
+        if (res.ok) {
+            if (typeof fetchIndexedFiles === "function") fetchIndexedFiles();
+        } else {
+            alert(data.detail || "Error toggling file privacy.");
+        }
+    } catch(err) {
+        console.error("toggleFilePrivacy error:", err);
+    }
+};

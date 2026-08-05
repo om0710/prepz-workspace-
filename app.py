@@ -949,6 +949,31 @@ def delete_file(filename: str, user_email: Optional[str] = None, user_name: Opti
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+class ToggleFilePrivacyRequest(BaseModel):
+    is_private: int
+    user_email: Optional[str] = None
+
+@app.post("/files/{filename}/toggle-privacy")
+def toggle_file_privacy_endpoint(filename: str, req: ToggleFilePrivacyRequest, request: Request):
+    user_email = req.user_email or request.headers.get("X-User-Email") or request.query_params.get("user_email")
+    existing_meta = get_upload_by_filename(filename)
+    if not existing_meta:
+        raise HTTPException(status_code=404, detail="File metadata not found.")
+    
+    uploader_email = (existing_meta.get("user_email") or "").lower().strip()
+    req_email = (user_email or "").lower().strip()
+    
+    if req_email and uploader_email and req_email != uploader_email:
+        raise HTTPException(status_code=403, detail="Permission denied. You can only change privacy for files you uploaded.")
+    
+    new_priv = 1 if req.is_private else 0
+    def _do():
+        with get_db() as c:
+            c.execute("UPDATE user_uploads SET is_private = ? WHERE lower(filename) = lower(?)", (new_priv, filename))
+            c.commit()
+    db_retry(_do)
+    return {"status": "success", "filename": filename, "is_private": new_priv}
+
 # ----------------------------------------------------
 # Private & Shared Document Library API Endpoints
 # ----------------------------------------------------
