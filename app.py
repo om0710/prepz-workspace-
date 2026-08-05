@@ -68,6 +68,10 @@ def read_style():
 def read_app_js():
     return FileResponse("static/app.js")
 
+@app.get("/om_avatar.png")
+def read_om_avatar():
+    return FileResponse("static/om_avatar.png")
+
 @app.get("/favicon.ico")
 def read_favicon_ico():
     return FileResponse("static/favicon.ico")

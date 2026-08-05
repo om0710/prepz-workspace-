@@ -6638,6 +6638,7 @@ html, body, #chatbot-app-view, .app-wrapper, .main-panel, .main-container, .cont
     width: 100% !important;
     height: 100% !important;
     object-fit: cover !important;
+    object-position: center 20% !important;
 }
 
 .dev-info-box {
