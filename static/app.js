@@ -1885,7 +1885,7 @@ function initializeDocPilotApp() {
 
         chatMessages.innerHTML = `
             <div class="chat-welcome-card" id="chat-welcome-card">
-                <div class="chat-welcome-badge">⚡ Prepz AI Assistant</div>
+                <div class="chat-welcome-badge">⚡ Buprepz AI Assistant</div>
                 <h2 class="chat-welcome-title">Welcome back, <span class="user-highlight-name">${userName}</span>! 👋</h2>
                 <p class="chat-welcome-subtitle">Ask questions, summarize uploaded study notes, or solve engineering tutorial problems.</p>
                 
@@ -2097,7 +2097,7 @@ function initializeDocPilotApp() {
 
         const sub = predictorSubjectSelect ? predictorSubjectSelect.value : "Exam";
         const sem = predictorSemesterSelect ? predictorSemesterSelect.value : "Sem";
-        const filename = `Prepz_Predicted_Paper_${sub.replace(/\s+/g, '_')}_${sem.replace(/\s+/g, '_')}.pdf`;
+        const filename = `Buprepz_Predicted_Paper_${sub.replace(/\s+/g, '_')}_${sem.replace(/\s+/g, '_')}.pdf`;
 
         if (window.html2pdf) {
             const opt = {
@@ -2436,7 +2436,7 @@ function initializeDocPilotApp() {
             scrollToBottom();
             fetchThreads();
         } catch (err) {
-            assistantBubble.innerHTML = `<span style="color:#ef4444;">Error connecting to Prepz.</span>`;
+            assistantBubble.innerHTML = `<span style="color:#ef4444;">Error connecting to Buprepz.</span>`;
             console.error(err);
         }
     });
