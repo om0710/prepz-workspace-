@@ -287,9 +287,9 @@ window.loginUser = function(user) {
     const displayName = user.name || (user.email ? user.email.split("@")[0].replace(/[._-]/g, ' ').replace(/\b\w/g, c => c.toUpperCase()) : "Student User");
     const displayEmail = user.email || "student@college.edu";
 
-    const userAvatarEls = document.querySelectorAll("#sidebar-user-avatar, .sidebar-user-avatar, #user-avatar");
-    const userNameEls = document.querySelectorAll("#sidebar-user-name, .sidebar-user-name, #user-name");
-    const userEmailEls = document.querySelectorAll("#sidebar-user-email, .sidebar-user-email, #user-email");
+    const userAvatarEls = document.querySelectorAll("#sidebar-user-avatar, .sidebar-user-avatar, #user-avatar, .header-user-avatar, #header-user-avatar, #dropdown-user-avatar");
+    const userNameEls = document.querySelectorAll("#sidebar-user-name, .sidebar-user-name, #user-name, .header-user-name, #header-user-name, #dropdown-user-name");
+    const userEmailEls = document.querySelectorAll("#sidebar-user-email, .sidebar-user-email, #user-email, .header-user-email, #header-user-email, #dropdown-user-email");
 
     userAvatarEls.forEach(el => {
         if (el.tagName === "IMG") {
@@ -3318,6 +3318,35 @@ function initializeDocPilotApp() {
             btnHeaderBack.addEventListener("click", () => {
                 showLandingState();
             });
+        }
+
+        // Header Profile Dropdown Event Manager
+        const btnHeaderProfileDropdown = document.getElementById("btn-header-profile-dropdown");
+        const headerProfileDropdown = document.getElementById("header-profile-dropdown");
+        if (btnHeaderProfileDropdown && headerProfileDropdown) {
+            btnHeaderProfileDropdown.addEventListener("click", (e) => {
+                e.stopPropagation();
+                if (settingsDropdown) settingsDropdown.classList.add("hidden");
+                headerProfileDropdown.classList.toggle("hidden");
+            });
+
+            document.addEventListener("click", (e) => {
+                if (!headerProfileDropdown.contains(e.target) && !btnHeaderProfileDropdown.contains(e.target)) {
+                    headerProfileDropdown.classList.add("hidden");
+                }
+            });
+
+            const linkHome = document.getElementById("dropdown-link-home");
+            const linkLibrary = document.getElementById("dropdown-link-library");
+            const linkShared = document.getElementById("dropdown-link-shared");
+            const linkProfile = document.getElementById("dropdown-link-profile");
+            const linkLogout = document.getElementById("dropdown-link-logout");
+
+            if (linkHome) linkHome.addEventListener("click", () => { headerProfileDropdown.classList.add("hidden"); showLandingState(); });
+            if (linkLibrary) linkLibrary.addEventListener("click", () => { headerProfileDropdown.classList.add("hidden"); showPinnedLibraryState(); });
+            if (linkShared) linkShared.addEventListener("click", () => { headerProfileDropdown.classList.add("hidden"); showBrowseState(); });
+            if (linkProfile) linkProfile.addEventListener("click", () => { headerProfileDropdown.classList.add("hidden"); if (window.openProfileModal) window.openProfileModal(); });
+            if (linkLogout) linkLogout.addEventListener("click", () => { headerProfileDropdown.classList.add("hidden"); if (typeof signOut === "function") signOut(); });
         }
     }
 
