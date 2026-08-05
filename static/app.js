@@ -356,7 +356,6 @@ window.logoutUser = async function() {
 
 // Global User State
 window.currentUser = null;
-}
 
 window.switchAuthTab = function (tab) {
     const tabLogin = document.getElementById("tab-login");
@@ -2952,7 +2951,6 @@ function initializeDocPilotApp() {
                 return;
             }
 
-            const activeUser = currentUser || window.currentUser;
             const myUploadedFiles = allCachedFiles.filter(fileObj => {
                 return isFileUploadedByCurrentUser(fileObj);
             });
