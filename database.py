@@ -234,35 +234,73 @@ def init_user_db():
 
 init_user_db()
 
-def hash_password(password: str) -> str:
-    salt = "college_freshers_salt_2026"
+def hash_password(password: str, email: str = "") -> str:
+    user_salt = f"college_freshers_{email.strip().lower()}_2026_salt"
     return hashlib.pbkdf2_hmac(
         'sha256',
         password.encode('utf-8'),
-        salt.encode('utf-8'),
-        100000
+        user_salt.encode('utf-8'),
+        120000
     ).hex()
 
-def verify_password(password: str, hashed: str) -> bool:
-    return hash_password(password) == hashed
+def verify_password(password: str, hashed: str, email: str = "") -> bool:
+    if not password or not hashed:
+        return False
+    if hash_password(password, email) == hashed:
+        return True
+    legacy_salt = "college_freshers_salt_2026"
+    legacy_hash = hashlib.pbkdf2_hmac('sha256', password.encode('utf-8'), legacy_salt.encode('utf-8'), 100000).hex()
+    return legacy_hash == hashed
 
 import re
 import random
 from datetime import datetime, timedelta
 
 def validate_password_strength(password: str) -> tuple[bool, str]:
-    if len(password) < 8:
+    if not password or len(password) < 8:
         return False, "Password must be at least 8 characters long."
-    if not re.search(r'[A-Za-z]', password):
-        return False, "Password must contain at least one letter."
+    if not re.search(r'[A-Z]', password):
+        return False, "Password must contain at least one uppercase letter (A-Z)."
+    if not re.search(r'[a-z]', password):
+        return False, "Password must contain at least one lowercase letter (a-z)."
     if not re.search(r'\d', password):
-        return False, "Password must contain at least one number."
+        return False, "Password must contain at least one number (0-9)."
+    if not re.search(r'[!@#$%^&*()_+\-=\[\]{};\':"\\|,.<>\/?]', password):
+        return False, "Password must contain at least one special character (!@#$%^&*)."
     return True, "Valid"
+
+def check_login_lockout(email: str, max_attempts: int = 5, window_minutes: int = 15) -> bool:
+    email = email.strip().lower()
+    window_start = (datetime.utcnow() - timedelta(minutes=window_minutes)).strftime("%Y-%m-%d %H:%M:%S")
+    cursor = conn.cursor()
+    cursor.execute("""
+        SELECT COUNT(*) FROM auth_rate_limits
+        WHERE lower(identifier) = ? AND action_type = 'login_failed' AND attempt_time > ?
+    """, (email, window_start))
+    count = cursor.fetchone()[0]
+    return count >= max_attempts
+
+def record_failed_login(email: str):
+    email = email.strip().lower()
+    now_str = datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S")
+    def _do():
+        with get_db() as c:
+            c.execute("INSERT INTO auth_rate_limits (identifier, action_type, attempt_time) VALUES (?, 'login_failed', ?)", (email, now_str))
+            c.commit()
+    db_retry(_do)
+
+def clear_failed_logins(email: str):
+    email = email.strip().lower()
+    def _do():
+        with get_db() as c:
+            c.execute("DELETE FROM auth_rate_limits WHERE lower(identifier) = ? AND action_type = 'login_failed'", (email,))
+            c.commit()
+    db_retry(_do)
 
 def create_user(name: str, email: str, password: str = None, provider: str = "local", avatar_url: str = None, is_verified: bool = True):
     email = email.strip().lower()
     name = name.strip()
-    pwd_hash = hash_password(password) if password else None
+    pwd_hash = hash_password(password, email) if password else None
     if not avatar_url:
         avatar_url = f"https://api.dicebear.com/7.x/bottts/svg?seed={email}"
     
@@ -308,7 +346,7 @@ def get_user_by_email(email: str):
 def create_otp(email: str, otp_type: str = "forgot_password", expiry_minutes: int = 10) -> str:
     email = email.strip().lower()
     otp_code = f"{random.randint(100000, 999999)}"
-    expires_at = datetime.now() + timedelta(minutes=expiry_minutes)
+    expires_at = datetime.utcnow() + timedelta(minutes=expiry_minutes)
     
     def _do():
         with get_db() as c:
@@ -323,7 +361,7 @@ def create_otp(email: str, otp_type: str = "forgot_password", expiry_minutes: in
 def verify_otp_code(email: str, otp_code: str, otp_type: str = "forgot_password") -> bool:
     email = email.strip().lower()
     otp_code = otp_code.strip()
-    now_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    now_str = datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S")
     
     cursor = conn.cursor()
     cursor.execute("""
@@ -344,7 +382,7 @@ def verify_otp_code(email: str, otp_code: str, otp_type: str = "forgot_password"
 
 def update_user_password(email: str, new_password: str) -> bool:
     email = email.strip().lower()
-    pwd_hash = hash_password(new_password)
+    pwd_hash = hash_password(new_password, email)
     def _do():
         with get_db() as c:
             c.execute("UPDATE users SET password_hash = ?, is_verified = 1 WHERE lower(email) = ?", (pwd_hash, email))
@@ -362,7 +400,7 @@ def mark_user_verified(email: str):
 
 def check_rate_limit(identifier: str, action_type: str, max_attempts: int, window_minutes: int) -> bool:
     identifier = identifier.strip().lower()
-    window_start = (datetime.now() - timedelta(minutes=window_minutes)).strftime("%Y-%m-%d %H:%M:%S")
+    window_start = (datetime.utcnow() - timedelta(minutes=window_minutes)).strftime("%Y-%m-%d %H:%M:%S")
     cursor = conn.cursor()
     cursor.execute("""
         SELECT COUNT(*) FROM auth_rate_limits
@@ -373,9 +411,10 @@ def check_rate_limit(identifier: str, action_type: str, max_attempts: int, windo
 
 def record_rate_limit_attempt(identifier: str, action_type: str):
     identifier = identifier.strip().lower()
+    now_str = datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S")
     def _do():
         with get_db() as c:
-            c.execute("INSERT INTO auth_rate_limits (identifier, action_type) VALUES (?, ?)", (identifier, action_type))
+            c.execute("INSERT INTO auth_rate_limits (identifier, action_type, attempt_time) VALUES (?, ?, ?)", (identifier, action_type, now_str))
             c.commit()
     db_retry(_do)
 

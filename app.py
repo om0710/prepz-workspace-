@@ -230,7 +230,8 @@ from database import (
     check_rate_limit, record_rate_limit_attempt,
     create_document, get_document_by_id, get_user_documents,
     get_shared_documents, update_document_record, delete_document_record,
-    toggle_document_share_record
+    toggle_document_share_record, check_login_lockout, record_failed_login,
+    clear_failed_logins
 )
 from fastapi import Form
 from typing import Optional
@@ -459,11 +460,29 @@ def login(req: LoginRequest):
         print(f"[AUTH SERVER] Login failed: invalid email format '{email}'")
         raise HTTPException(status_code=400, detail="Please enter a valid email address.")
 
+    # 1. Rate Limit Lockout Check (Max 5 failed attempts per 15 minutes)
+    if check_login_lockout(email):
+        print(f"[AUTH SERVER] Account locked out due to failed attempts for '{email}'")
+        raise HTTPException(
+            status_code=429,
+            detail="Too many failed login attempts. Account temporarily locked for 15 minutes for your security."
+        )
+
     user = get_user_by_email(email)
     if not user:
         default_name = email.split("@")[0].replace('.', ' ').replace('_', ' ').replace('-', ' ').title()
         user = create_user(name=default_name, email=email, password=password, provider="local", is_verified=True)
         print(f"[AUTH SERVER] Auto-created user on login for '{email}'")
+    else:
+        # 2. Verify Password if user has a password hash set
+        if user.get("password_hash"):
+            if not verify_password(password, user["password_hash"], email):
+                record_failed_login(email)
+                print(f"[AUTH SERVER] Login failed: incorrect password for '{email}'")
+                raise HTTPException(status_code=401, detail="Invalid email or password.")
+
+    # 3. Clear failed login counter on success
+    clear_failed_logins(email)
 
     user = update_user_activity(email) or user
     print(f"[AUTH SERVER] Login SUCCESS for '{email}' (id={user['id']})")
