@@ -6608,12 +6608,12 @@ html, body, #chatbot-app-view, .app-wrapper, .main-panel, .main-container, .cont
     flex-direction: row !important;
     align-items: center !important;
     justify-content: flex-start !important;
-    gap: 24px !important;
-    padding: 22px 28px !important;
+    gap: 16px !important;
+    padding: 16px 22px !important;
     border: 1.5px solid rgba(255, 255, 255, 0.85) !important;
-    border-radius: 20px !important;
+    border-radius: 18px !important;
     background: #0d0d10 !important;
-    max-width: 720px !important;
+    max-width: 430px !important;
     width: 100% !important;
     margin: 0 auto !important;
     box-shadow: 0 10px 40px rgba(0, 0, 0, 0.6) !important;
@@ -6621,8 +6621,8 @@ html, body, #chatbot-app-view, .app-wrapper, .main-panel, .main-container, .cont
 }
 
 .dev-avatar-wrapper {
-    width: 72px !important;
-    height: 72px !important;
+    width: 58px !important;
+    height: 58px !important;
     border-radius: 50% !important;
     overflow: hidden !important;
     flex-shrink: 0 !important;
