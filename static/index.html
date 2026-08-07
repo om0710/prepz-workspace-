@@ -21,7 +21,7 @@
     <!-- Firebase SDK (v10 Compat) loaded upfront -->
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
-    <link rel="stylesheet" href="style.css?v=37005.0">
+    <link rel="stylesheet" href="style.css?v=37006.0">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
     <script>
         function switchAuthTab(tab) {
@@ -463,8 +463,8 @@
                         </footer>
                     </div>
 
-                    <!-- Input Box Panel (Accessible for both Home Dashboard and Chat Modes) -->
-                    <div id="input-panel-wrapper" class="input-panel-wrapper">
+                    <!-- Input Box Panel (Exclusively for Chat Mode) -->
+                    <div id="input-panel-wrapper" class="input-panel-wrapper hidden" style="display: none;">
                         <form id="chat-form" class="chat-input-box">
                             <input type="file" id="file-input" accept=".pdf,.docx,.doc" style="display: none;">
                             <div id="upload-status" style="display: none;"></div>
@@ -1060,6 +1060,6 @@
     </div>
 
     <!-- Main JavaScript Link -->
-    <script src="app.js?v=37005.0"></script>
+    <script src="app.js?v=37006.0"></script>
 </body>
 </html>

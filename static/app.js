@@ -1322,8 +1322,8 @@ function initializeDocPilotApp() {
             landingContainer.style.display = "flex";
         }
         if (inputPanelWrapper) {
-            inputPanelWrapper.classList.remove("hidden");
-            inputPanelWrapper.style.display = "block";
+            inputPanelWrapper.classList.add("hidden");
+            inputPanelWrapper.style.display = "none";
         }
         const devFooter = document.querySelector(".landing-footer-nexa");
         if (devFooter) {
