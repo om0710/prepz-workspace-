@@ -1275,48 +1275,147 @@ button, a[role="button"], input[type="button"], input[type="submit"] {
     color: #ffffff;
 }
 
-/* Chat Message Bubbles */
-.message {
+/* --------------------------------------------------------------------------
+   CHAT STREAM BUBBLES & AVATARS
+   -------------------------------------------------------------------------- */
+.chat-message-item {
+    display: flex;
+    flex-direction: row;
+    gap: 14px;
+    width: 100%;
+    max-width: 820px;
+    margin: 0 auto 20px auto;
+    animation: fadeIn var(--transition-fast);
+}
+
+.user-chat-item {
+    justify-content: flex-end;
+}
+
+.ai-chat-item {
+    justify-content: flex-start;
+}
+
+.msg-avatar-icon {
+    width: 36px;
+    height: 36px;
+    min-width: 36px;
+    min-height: 36px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 15px;
+    flex-shrink: 0;
+}
+
+.user-avatar-bubble {
+    background: #3730a3;
+    color: #ffffff;
+    border: 1.5px solid #6366f1;
+    order: 2;
+}
+
+.ai-avatar-bubble {
+    background: linear-gradient(135deg, #4f46e5 0%, #6366f1 100%);
+    color: #ffffff;
+    box-shadow: 0 0 12px rgba(99, 102, 241, 0.4);
+    order: 1;
+}
+
+.msg-bubble-card {
     display: flex;
     flex-direction: column;
-    gap: 6px;
+    gap: 4px;
+    max-width: 82%;
+}
+
+.user-chat-item .msg-bubble-card {
+    order: 1;
+    align-items: flex-end;
+}
+
+.ai-chat-item .msg-bubble-card {
+    order: 2;
+    align-items: flex-start;
+}
+
+.msg-header-line {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 4px;
+}
+
+.msg-author-tag {
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--text-muted);
+}
+
+.msg-author-tag.ai-tag {
+    color: #a5b4fc;
+}
+
+.msg-ai-pill {
+    font-size: 10.5px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    padding: 2px 7px;
+    border-radius: var(--radius-pill);
+    background: rgba(99, 102, 241, 0.15);
+    color: #818cf8;
+    border: 1px solid rgba(99, 102, 241, 0.3);
+}
+
+.msg-text-content {
     padding: 14px 18px;
     border-radius: var(--radius-lg);
     font-size: 14.5px;
-    line-height: 1.6;
-    animation: fadeIn var(--transition-fast);
+    line-height: 1.65;
     word-break: break-word;
 }
 
-.message.user {
-    align-self: flex-end;
-    max-width: 80%;
-    background: linear-gradient(135deg, #4f46e5 0%, #6366f1 100%);
+.user-chat-item .msg-text-content {
+    background: linear-gradient(135deg, #4338ca 0%, #4f46e5 100%);
     color: #ffffff;
     border-radius: 16px 16px 4px 16px;
     box-shadow: 0 4px 14px rgba(99, 102, 241, 0.3);
 }
 
-.message.assistant {
-    align-self: flex-start;
-    max-width: 88%;
-    background: #14141a;
-    border: 1px solid var(--border-subtle);
+.user-chat-item .msg-text-content p {
+    color: #ffffff !important;
+}
+
+.ai-chat-item .msg-text-content {
+    background: #14141c;
+    border: 1px solid var(--border-medium);
     color: var(--text-heading);
     border-radius: 16px 16px 16px 4px;
     box-shadow: var(--shadow-sm);
+    width: 100%;
 }
 
-.message.assistant pre {
+.ai-chat-item .msg-text-content p {
+    color: #e4e4e7 !important;
+    margin-bottom: 10px;
+}
+
+.ai-chat-item .msg-text-content p:last-child {
+    margin-bottom: 0;
+}
+
+.code-block-wrapper {
     background: #09090d;
     border: 1px solid var(--border-medium);
     border-radius: var(--radius-sm);
     padding: 12px 14px;
     overflow-x: auto;
-    margin: 8px 0;
+    margin: 10px 0;
 }
 
-.message.assistant code {
+.code-block-wrapper code {
     font-family: var(--font-mono);
     font-size: 13px;
     color: #a5b4fc;
@@ -1326,13 +1425,13 @@ button, a[role="button"], input[type="button"], input[type="submit"] {
 .qubi-typing-indicator {
     display: flex;
     align-items: center;
-    gap: 5px;
-    padding: 4px 0;
+    gap: 7px;
+    padding: 6px 0;
 }
 
 .qubi-typing-indicator span {
-    width: 7px;
-    height: 7px;
+    width: 8px;
+    height: 8px;
     border-radius: 50%;
     background: var(--accent-primary);
     animation: typingBounce 1.2s infinite ease-in-out;
@@ -1343,6 +1442,13 @@ button, a[role="button"], input[type="button"], input[type="submit"] {
 }
 .qubi-typing-indicator span:nth-child(3) {
     animation-delay: 0.4s;
+}
+
+.typing-label {
+    font-size: 12.5px;
+    color: var(--text-muted);
+    font-style: italic;
+    margin-left: 6px;
 }
 
 @keyframes typingBounce {

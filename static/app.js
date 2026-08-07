@@ -2311,35 +2311,59 @@ function initializeDocPilotApp() {
         }
     }
 
+    function formatChatMarkdown(text) {
+        if (!text) return "";
+        let formatted = text
+            .replace(/&/g, "&amp;")
+            .replace(/&lt;/g, "<")
+            .replace(/&gt;/g, ">");
+        formatted = formatted.replace(/```([\s\S]+?)```/g, (match, p1) => `<div class="code-block-wrapper"><pre><code>${p1}</code></pre></div>`);
+        formatted = formatted.replace(/`([^`\n]+?)`/g, "<code>$1</code>");
+        formatted = formatted.replace(/\n\n+/g, "</p><p>");
+        formatted = formatted.replace(/\n/g, "<br>");
+        return `<p>${formatted}</p>`;
+    }
+
     function appendMessage(role, content) {
         const msgDiv = document.createElement("div");
-        msgDiv.className = `message ${role}`;
+        const isUser = role === "user";
+        msgDiv.className = `chat-message-item ${isUser ? "user-chat-item" : "ai-chat-item"}`;
         
-        if (role === "assistant" && !content) {
-            msgDiv.innerHTML = `
-                <div class="qubi-typing-indicator">
-                    <span></span>
-                    <span></span>
-                    <span></span>
-                </div>
-            `;
-        } else {
-            let formatted = content
-                .replace(/&/g, "&amp;")
-                .replace(/&lt;/g, "<")
-                .replace(/&gt;/g, ">");
-
-            formatted = formatted.replace(/```([\s\S]+?)```/g, (match, p1) => `<pre><code>${p1}</code></pre>`);
-            formatted = formatted.replace(/`([^`\n]+?)`/g, "<code>$1</code>");
-            formatted = formatted.replace(/\n/g, "<br>");
-                
-            msgDiv.innerHTML = formatted;
+        let userName = "You";
+        if (currentUser && currentUser.name) {
+            userName = currentUser.name.trim().split(" ")[0];
         }
+
+        const avatarHtml = isUser 
+            ? `<div class="msg-avatar-icon user-avatar-bubble">👤</div>`
+            : `<div class="msg-avatar-icon ai-avatar-bubble">⚡</div>`;
+
+        const headerHtml = isUser
+            ? `<div class="msg-header-line"><span class="msg-author-tag">${userName}</span></div>`
+            : `<div class="msg-header-line"><span class="msg-author-tag ai-tag">BU Prepz AI</span><span class="msg-ai-pill">Assistant</span></div>`;
+
+        msgDiv.innerHTML = `
+            ${avatarHtml}
+            <div class="msg-bubble-card">
+                ${headerHtml}
+                <div class="msg-text-content">
+                    ${role === "assistant" && !content ? `
+                        <div class="qubi-typing-indicator">
+                            <span></span>
+                            <span></span>
+                            <span></span>
+                            <span class="typing-label">Analyzing syllabus & preparing response...</span>
+                        </div>
+                    ` : formatChatMarkdown(content)}
+                </div>
+            </div>
+        `;
         
         chatMessages.appendChild(msgDiv);
         scrollToBottom();
         
-        return msgDiv;
+        const bodyContent = msgDiv.querySelector(".msg-text-content");
+        return bodyContent || msgDiv;
     }
 
     // Submit handler (Stream-friendly buffering)
