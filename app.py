@@ -55,18 +55,24 @@ async def add_security_headers(request, call_next):
 os.makedirs("static", exist_ok=True)
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
+NO_CACHE_HEADERS = {
+    "Cache-Control": "no-cache, no-store, must-revalidate, max-age=0",
+    "Pragma": "no-cache",
+    "Expires": "0"
+}
+
 @app.get("/")
 @app.get("/index.html")
 def read_root():
-    return FileResponse("static/index.html")
+    return FileResponse("static/index.html", headers=NO_CACHE_HEADERS)
 
 @app.get("/style.css")
 def read_style():
-    return FileResponse("static/style.css")
+    return FileResponse("static/style.css", headers=NO_CACHE_HEADERS)
 
 @app.get("/app.js")
 def read_app_js():
-    return FileResponse("static/app.js")
+    return FileResponse("static/app.js", headers=NO_CACHE_HEADERS)
 
 @app.get("/om_avatar.png")
 def read_om_avatar():
@@ -182,10 +188,36 @@ class QueueCallbackHandler(BaseCallbackHandler):
     def __init__(self, queue: asyncio.Queue, loop: asyncio.AbstractEventLoop):
         self.queue = queue
         self.loop = loop
+        self.in_tool_call = False
 
-    def on_llm_new_token(self, token: str, **kwargs) -> None:
-        if token:
-            self.loop.call_soon_threadsafe(self.queue.put_nowait, token)
+    def on_llm_start(self, serialized, prompts, **kwargs) -> None:
+        self.in_tool_call = False
+
+    def on_tool_start(self, serialized, input_str, **kwargs) -> None:
+        tool_name = serialized.get("name", "tool") if serialized else "tool"
+        display_name = "Reading uploaded documents..." if "rag" in tool_name else ("Searching Wikipedia..." if "wiki" in tool_name else f"Executing {tool_name}...")
+        self.loop.call_soon_threadsafe(self.queue.put_nowait, f"__STATUS__:{display_name}")
+
+    def on_llm_new_token(self, token: str, chunk=None, **kwargs) -> None:
+        if not token:
+            return
+        if chunk is not None:
+            msg = getattr(chunk, "message", chunk)
+            tool_chunks = getattr(msg, "tool_call_chunks", None)
+            tool_calls = getattr(msg, "tool_calls", None)
+            if tool_chunks or tool_calls:
+                self.in_tool_call = True
+                return
+        if self.in_tool_call:
+            return
+        self.loop.call_soon_threadsafe(self.queue.put_nowait, token)
+
+    def clear_queue(self) -> None:
+        while not self.queue.empty():
+            try:
+                self.queue.get_nowait()
+            except Exception:
+                break
 
 @app.post("/chat")
 async def chat_stream(request: ChatRequest):
@@ -224,9 +256,19 @@ async def chat_stream(request: ChatRequest):
                 err_msg = token[len("__ERROR__:"):]
                 yield f"data: {json.dumps({'error': err_msg})}\n\n"
                 break
-            yield f"data: {json.dumps({'text': token})}\n\n"
+            elif isinstance(token, str) and token.startswith("__STATUS__:"):
+                status_msg = token[len("__STATUS__:"):]
+                yield f"data: {json.dumps({'status': status_msg})}\n\n"
+            else:
+                yield f"data: {json.dumps({'text': token})}\n\n"
             
-    return StreamingResponse(response_generator(), media_type="text/event-stream")
+    headers = {
+        "Cache-Control": "no-cache, no-transform",
+        "Connection": "keep-alive",
+        "Content-Type": "text/event-stream",
+        "X-Accel-Buffering": "no"
+    }
+    return StreamingResponse(response_generator(), headers=headers, media_type="text/event-stream")
 
 from database import (
     create_user, get_user_by_email, verify_password,

@@ -1441,7 +1441,7 @@ function initializeDocPilotApp() {
 
     function showChatState() {
         resetViewModes();
-        updateHeaderTitle("Chat", "💬");
+        updateHeaderTitle("Chat");
         const contentWrapper = document.querySelector(".content-wrapper");
         if (contentWrapper) contentWrapper.classList.add("chat-mode");
 
@@ -1469,7 +1469,7 @@ function initializeDocPilotApp() {
         window.currentUser = activeUser;
 
         resetViewModes();
-        updateHeaderTitle("Personal Collection", "📚");
+        updateHeaderTitle("My Workspace");
         const contentWrapper = document.querySelector(".content-wrapper");
         if (contentWrapper) contentWrapper.classList.add("library-mode");
 
@@ -1495,7 +1495,7 @@ function initializeDocPilotApp() {
 
     function showBrowseState() {
         resetViewModes();
-        updateHeaderTitle("Shared Resources", "📁");
+        updateHeaderTitle("Course Repository");
         const contentWrapper = document.querySelector(".content-wrapper");
         if (contentWrapper) contentWrapper.classList.add("browse-mode");
 
@@ -1525,7 +1525,7 @@ function initializeDocPilotApp() {
         window.currentUser = activeUser;
 
         resetViewModes();
-        updateHeaderTitle("Exam Predictor", "🎯");
+        updateHeaderTitle("Exam Predictor");
         const contentWrapper = document.querySelector(".content-wrapper");
         if (contentWrapper) contentWrapper.classList.add("predictor-mode");
 
@@ -1549,7 +1549,7 @@ function initializeDocPilotApp() {
 
     function showLeaderboardState() {
         resetViewModes();
-        updateHeaderTitle("Leaderboard", "🏆");
+        updateHeaderTitle("Leaderboard");
         const contentWrapper = document.querySelector(".content-wrapper");
         if (contentWrapper) contentWrapper.classList.add("leaderboard-mode");
 
@@ -1585,7 +1585,7 @@ function initializeDocPilotApp() {
                 tbody.innerHTML = `
                     <tr>
                         <td colspan="4" style="padding: 30px; text-align: center; color: #a1a1aa;">
-                            🏆 No activity logged yet. Upload notes, ask AI questions, or download files to earn points!
+                            No activity logged yet. Upload notes, ask AI questions, or download files to earn points!
                         </td>
                     </tr>
                 `;
@@ -1597,9 +1597,9 @@ function initializeDocPilotApp() {
                 let rankBadgeClass = "rank-badge";
                 let rankIcon = `#${rank}`;
 
-                if (rank === 1) { rankBadgeClass += " rank-1"; rankIcon = "🥇 #1"; }
-                else if (rank === 2) { rankBadgeClass += " rank-2"; rankIcon = "🥈 #2"; }
-                else if (rank === 3) { rankBadgeClass += " rank-3"; rankIcon = "🥉 #3"; }
+                if (rank === 1) { rankBadgeClass += " rank-1"; rankIcon = "#1"; }
+                else if (rank === 2) { rankBadgeClass += " rank-2"; rankIcon = "#2"; }
+                else if (rank === 3) { rankBadgeClass += " rank-3"; rankIcon = "#3"; }
 
                 const tr = document.createElement("tr");
                 tr.innerHTML = `
@@ -1610,8 +1610,8 @@ function initializeDocPilotApp() {
                             <span style="font-weight: 600; color: #ffffff;">${item.name || 'Anonymous Student'}</span>
                         </div>
                     </td>
-                    <td style="text-align: right; font-weight: 700; color: #eab308;">⭐ ${item.contribution_score} pts</td>
-                    <td style="text-align: right; font-weight: 600; color: #f97316;">🔥 ${item.current_streak} Day${item.current_streak === 1 ? '' : 's'}</td>
+                    <td style="text-align: right; font-weight: 700; color: #eab308;">${item.contribution_score} pts</td>
+                    <td style="text-align: right; font-weight: 600; color: #f97316;">${item.current_streak} Day${item.current_streak === 1 ? '' : 's'}</td>
                 `;
                 tbody.appendChild(tr);
             });
@@ -1634,8 +1634,8 @@ function initializeDocPilotApp() {
                 const statsEmail = document.getElementById("stats-user-email");
                 const statsAvatar = document.getElementById("stats-user-avatar");
 
-                if (streakDisplay) streakDisplay.textContent = `${data.current_streak} Day${data.current_streak === 1 ? '' : 's'} Streak 🔥`;
-                if (scoreDisplay) scoreDisplay.textContent = `${data.contribution_score} Points ⭐`;
+                if (streakDisplay) streakDisplay.textContent = `${data.current_streak} Day${data.current_streak === 1 ? '' : 's'} Streak`;
+                if (scoreDisplay) scoreDisplay.textContent = `${data.contribution_score} Points`;
                 if (statsName) statsName.textContent = currentUser.name || data.name || "Student User";
                 if (statsEmail) statsEmail.textContent = currentUser.email;
 
@@ -1839,16 +1839,16 @@ function initializeDocPilotApp() {
                         <span>⬇ Download</span>
                     </a>
                     <a href="/view/${encodeURIComponent(filename)}" target="_blank" class="btn-open-browse-pdf" title="View Document">
-                        <span>👁 View</span>
+                        <span>View</span>
                     </a>
                     <button type="button" class="btn-chat-with-doc btn-browse-chat" data-filename="${filename}" title="Chat with Document">
-                        <span>💬 Chat</span>
+                        <span>Chat</span>
                     </button>
                     <button type="button" class="btn-browse-pin btn-pin-browse ${isPinned ? 'active-pinned' : ''}" data-filename="${filename}" title="${isPinned ? 'Unpin from Sidebar Pinned Folders' : 'Pin to Sidebar'}">
-                        <span>📌 ${isPinned ? 'Pinned' : 'Pin'}</span>
+                        <span>${isPinned ? 'Pinned' : 'Pin'}</span>
                     </button>
                     <button type="button" class="btn-browse-report btn-report-browse" data-filename="${filename}" title="Report file to moderation">
-                        <span>🚩 Report</span>
+                        <span>Report</span>
                     </button>
                 </div>
             `;
@@ -1889,25 +1889,21 @@ function initializeDocPilotApp() {
 
         chatMessages.innerHTML = `
             <div class="chat-welcome-card" id="chat-welcome-card">
-                <div class="chat-welcome-badge">⚡ BU Prepz AI Assistant</div>
-                <h2 class="chat-welcome-title">Welcome back, <span class="user-highlight-name">${userName}</span>! 👋</h2>
+                <div class="chat-welcome-badge">BU Prepz AI Assistant</div>
+                <h2 class="chat-welcome-title">Welcome back, <span class="user-highlight-name">${userName}</span></h2>
                 <p class="chat-welcome-subtitle">Ask questions, summarize uploaded study notes, or solve engineering tutorial problems.</p>
                 
                 <div class="welcome-suggestions-grid">
                     <button type="button" class="welcome-suggest-btn" onclick="sendQuickPrompt('Summarize key formulas, definitions, and PYQ exam questions from my uploaded notes.')">
-                        <span class="suggest-icon">📝</span>
                         <span class="suggest-text">Exam Prep & Formulas Summary</span>
                     </button>
                     <button type="button" class="welcome-suggest-btn" onclick="sendQuickPrompt('Help me solve step-by-step tutorial sheet assignments and explain underlying equations.')">
-                        <span class="suggest-icon">🧮</span>
                         <span class="suggest-text">Assignment & Math Helper</span>
                     </button>
                     <button type="button" class="welcome-suggest-btn" onclick="sendQuickPrompt('Explain core concepts in Operating Systems, DBMS, DSA, and Networks with clear examples.')">
-                        <span class="suggest-icon">💡</span>
                         <span class="suggest-text">Engineering Concept Explainer</span>
                     </button>
                     <button type="button" class="welcome-suggest-btn" onclick="sendQuickPrompt('Create a 5-minute quick revision cheat sheet and key takeaways from my uploaded PDF documents.')">
-                        <span class="suggest-icon">⚡</span>
                         <span class="suggest-text">5-Min Quick Revision Sheet</span>
                     </button>
                 </div>
@@ -1938,7 +1934,7 @@ function initializeDocPilotApp() {
 
         showChatState();
         renderChatWelcomeBanner();
-        updateHeaderTitle("Fresh Chat", "💬");
+        updateHeaderTitle("Fresh Chat");
         if (userInput) userInput.focus();
     }
 
@@ -1976,14 +1972,14 @@ function initializeDocPilotApp() {
         navNewChatBtn.addEventListener("click", (e) => {
             e.preventDefault();
             startNewChat();
-            updateHeaderTitle("Fresh Chat", "💬");
+            updateHeaderTitle("Fresh Chat");
         });
     }
     if (headerNewChatBtn) {
         headerNewChatBtn.addEventListener("click", (e) => {
             e.preventDefault();
             startNewChat();
-            updateHeaderTitle("Fresh Chat", "💬");
+            updateHeaderTitle("Fresh Chat");
         });
     }
 
@@ -2250,7 +2246,7 @@ function initializeDocPilotApp() {
                 li.innerHTML = `
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
                     <span>${thread.title}</span>
-                    ${thread.is_pinned ? `<span class="pin-badge" style="margin-left:auto; font-size:10px;">📌</span>` : ""}
+                    ${thread.is_pinned ? `<span class="pin-badge" style="margin-left:auto; font-size:10px;">Pinned</span>` : ""}
                 `;
                 
                 li.addEventListener("click", () => {
@@ -2316,12 +2312,27 @@ function initializeDocPilotApp() {
 
     function formatChatMarkdown(text) {
         if (!text) return "";
+
+        if (typeof marked !== "undefined" && typeof marked.parse === "function") {
+            try {
+                return marked.parse(text);
+            } catch (e) {
+                console.error("Marked parse error:", e);
+            }
+        }
+
         let formatted = text
             .replace(/&/g, "&amp;")
-            .replace(/&lt;/g, "<")
-            .replace(/&gt;/g, ">");
+            .replace(/</g, "&lt;")
+            .replace(/>/g, "&gt;");
+
         formatted = formatted.replace(/```([\s\S]+?)```/g, (match, p1) => `<div class="code-block-wrapper"><pre><code>${p1}</code></pre></div>`);
         formatted = formatted.replace(/`([^`\n]+?)`/g, "<code>$1</code>");
+        formatted = formatted.replace(/\*\*([^*]+?)\*\*/g, "<strong>$1</strong>");
+        formatted = formatted.replace(/\*([^*]+?)\*/g, "<em>$1</em>");
+        formatted = formatted.replace(/^### (.*$)/gim, "<h3>$1</h3>");
+        formatted = formatted.replace(/^## (.*$)/gim, "<h2>$1</h2>");
+        formatted = formatted.replace(/^# (.*$)/gim, "<h1>$1</h1>");
         formatted = formatted.replace(/\n\n+/g, "</p><p>");
         formatted = formatted.replace(/\n/g, "<br>");
         return `<p>${formatted}</p>`;
@@ -2338,8 +2349,8 @@ function initializeDocPilotApp() {
         }
 
         const avatarHtml = isUser 
-            ? `<div class="msg-avatar-icon user-avatar-bubble">👤</div>`
-            : `<div class="msg-avatar-icon ai-avatar-bubble">⚡</div>`;
+            ? `<div class="msg-avatar-icon user-avatar-bubble"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></div>`
+            : `<div class="msg-avatar-icon ai-avatar-bubble"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg></div>`;
 
         const headerHtml = isUser
             ? `<div class="msg-header-line"><span class="msg-author-tag">${userName}</span></div>`
@@ -2352,9 +2363,9 @@ function initializeDocPilotApp() {
                 <div class="msg-text-content">
                     ${role === "assistant" && !content ? `
                         <div class="qubi-typing-indicator">
-                            <span></span>
-                            <span></span>
-                            <span></span>
+                            <span class="typing-dot"></span>
+                            <span class="typing-dot"></span>
+                            <span class="typing-dot"></span>
                             <span class="typing-label">Analyzing syllabus & preparing response...</span>
                         </div>
                     ` : formatChatMarkdown(content)}
@@ -2369,7 +2380,7 @@ function initializeDocPilotApp() {
         return bodyContent || msgDiv;
     }
 
-    // Submit handler (Stream-friendly buffering)
+    // Submit handler (Stream-friendly buffering with smooth typewriter rendering)
     chatForm.addEventListener("submit", async (e) => {
         e.preventDefault();
         let queryText = userInput.value.trim();
@@ -2391,7 +2402,46 @@ function initializeDocPilotApp() {
         appendMessage("user", queryText);
 
         const assistantBubble = appendMessage("assistant", "");
-        let fullResponse = "";
+        let accumulatedResponse = "";
+        let displayedResponse = "";
+        let isStreamFinished = false;
+        let renderTimer = null;
+
+        function updateBubbleUI(text, isDone) {
+            if (!text) return;
+            let formatted = formatChatMarkdown(text);
+            if (isDone) {
+                assistantBubble.innerHTML = formatted;
+            } else {
+                const cursorHtml = '<span class="streaming-cursor">▌</span>';
+                const trimmed = formatted.trim();
+                if (trimmed.endsWith("</p>")) {
+                    const idx = formatted.lastIndexOf("</p>");
+                    formatted = formatted.slice(0, idx) + cursorHtml + formatted.slice(idx);
+                } else {
+                    formatted = formatted + cursorHtml;
+                }
+                assistantBubble.innerHTML = formatted;
+            }
+            scrollToBottom();
+        }
+
+        function startTypewriterLoop() {
+            if (renderTimer) return;
+            renderTimer = setInterval(() => {
+                if (displayedResponse.length < accumulatedResponse.length) {
+                    const diff = accumulatedResponse.length - displayedResponse.length;
+                    const step = diff > 40 ? 8 : (diff > 20 ? 5 : (diff > 8 ? 3 : (diff > 3 ? 2 : 1)));
+                    displayedResponse += accumulatedResponse.substr(displayedResponse.length, step);
+                    updateBubbleUI(displayedResponse, false);
+                } else if (isStreamFinished) {
+                    clearInterval(renderTimer);
+                    renderTimer = null;
+                    updateBubbleUI(accumulatedResponse, true);
+                    fetchThreads();
+                }
+            }, 20);
+        }
 
         try {
             const response = await fetch("/chat", {
@@ -2430,21 +2480,16 @@ function initializeDocPilotApp() {
                             if (dataText === "[DONE]") continue;
                                 
                             const parsed = JSON.parse(dataText);
-                            if (parsed.text) {
-                                fullResponse += parsed.text;
-                                
-                                let streamingHtml = fullResponse
-                                    .replace(/&/g, "&amp;")
-                                    .replace(/&lt;/g, "<")
-                                    .replace(/&gt;/g, ">");
-
-                                streamingHtml = streamingHtml.replace(/```([\s\S]+?)```/g, (m, p) => `<pre><code>${p}</code></pre>`);
-                                streamingHtml = streamingHtml.replace(/`([^`\n]+?)`/g, "<code>$1</code>");
-                                streamingHtml = streamingHtml.replace(/\n/g, "<br>") + "▌";
-
-                                assistantBubble.innerHTML = streamingHtml;
-                                scrollToBottom();
+                            if (parsed.status && !accumulatedResponse) {
+                                const typingLabel = assistantBubble.querySelector(".typing-label");
+                                if (typingLabel) {
+                                    typingLabel.textContent = parsed.status;
+                                }
+                            } else if (parsed.text) {
+                                accumulatedResponse += parsed.text;
+                                startTypewriterLoop();
                             } else if (parsed.error) {
+                                if (renderTimer) clearInterval(renderTimer);
                                 assistantBubble.innerHTML = `<span style="color:#ef4444;">Error: ${parsed.error}</span>`;
                             }
                         } catch (e) {}
@@ -2452,18 +2497,13 @@ function initializeDocPilotApp() {
                 }
             }
             
-            let completedHtml = fullResponse
-                .replace(/&/g, "&amp;")
-                .replace(/&lt;/g, "<")
-                .replace(/&gt;/g, ">");
-            completedHtml = completedHtml.replace(/```([\s\S]+?)```/g, (m, p) => `<pre><code>${p}</code></pre>`);
-            completedHtml = completedHtml.replace(/`([^`\n]+?)`/g, "<code>$1</code>");
-            completedHtml = completedHtml.replace(/\n/g, "<br>");
-            
-            assistantBubble.innerHTML = completedHtml;
-            scrollToBottom();
-            fetchThreads();
+            isStreamFinished = true;
+            if (!renderTimer) {
+                updateBubbleUI(accumulatedResponse, true);
+                fetchThreads();
+            }
         } catch (err) {
+            if (renderTimer) clearInterval(renderTimer);
             assistantBubble.innerHTML = `<span style="color:#ef4444;">Error connecting to BU Prepz.</span>`;
             console.error(err);
         }
@@ -2535,7 +2575,7 @@ function initializeDocPilotApp() {
                 const fileSizeMb = (file.size / (1024 * 1024)).toFixed(1);
 
                 if (file.size > MAX_FILE_SIZE_BYTES) {
-                    fileChosenLabel.textContent = `⚠️ Exceeds 20MB limit (${fileSizeMb} MB)`;
+                    fileChosenLabel.textContent = `Exceeds 20MB limit (${fileSizeMb} MB)`;
                     fileChosenLabel.style.color = "#f87171";
                     fileChosenLabel.style.fontWeight = "600";
                     showModalError(`File size exceeds the 20MB maximum limit (${fileSizeMb} MB). Please choose a smaller file.`);
@@ -2543,7 +2583,7 @@ function initializeDocPilotApp() {
                     return;
                 }
 
-                fileChosenLabel.textContent = `📄 ${file.name} (${fileSizeMb} MB)`;
+                fileChosenLabel.textContent = `${file.name} (${fileSizeMb} MB)`;
                 fileChosenLabel.style.color = "#10b981";
                 fileChosenLabel.style.fontWeight = "600";
                 if (modalUploadStatus) {
@@ -2669,7 +2709,7 @@ function initializeDocPilotApp() {
                         modalUploadStatus.style.padding = "0";
                         modalUploadStatus.innerHTML = `
                             <div class="duplicate-warning-banner">
-                                <div class="warning-title">⚠️ Similar Document Already Exists</div>
+                                <div class="warning-title">Similar Document Already Exists</div>
                                 <p class="warning-msg">A document named <strong>"${file.name}"</strong> already exists under <strong>${subject}</strong> (<strong>${semester}</strong>). Do you still want to upload and overwrite it?</p>
                                 <div class="warning-actions">
                                     <button type="button" id="btn-confirm-overwrite" class="btn-warning-confirm">Yes, Overwrite & Upload</button>
@@ -2754,7 +2794,7 @@ function initializeDocPilotApp() {
 
                 if (res.ok) {
                     if (modalUploadStatus) {
-                        modalUploadStatus.innerHTML = `✅ Uploaded & Indexed successfully!`;
+                        modalUploadStatus.innerHTML = `Uploaded & Indexed successfully!`;
                         modalUploadStatus.style.backgroundColor = "rgba(16, 185, 129, 0.15)";
                         modalUploadStatus.style.color = "#34d399";
                     }
@@ -2771,7 +2811,7 @@ function initializeDocPilotApp() {
                         modalUploadStatus.style.padding = "0";
                         modalUploadStatus.innerHTML = `
                             <div class="duplicate-warning-banner">
-                                <div class="warning-title">⚠️ Similar Document Already Exists</div>
+                                <div class="warning-title">Similar Document Already Exists</div>
                                 <p class="warning-msg">${data.detail || "A similar document already exists. Do you still want to upload?"}</p>
                                 <div class="warning-actions">
                                     <button type="button" id="btn-confirm-overwrite" class="btn-warning-confirm">Yes, Overwrite & Upload</button>
@@ -2900,7 +2940,7 @@ function initializeDocPilotApp() {
                                 <span title="${filename}" style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 600; font-size: 12px; color: #f3f4f6; cursor: pointer;">${filename}</span>
                             </div>
                             <button type="button" class="btn-unpin-sidebar" data-filename="${filename}" title="Remove from Pinned Folders">
-                                ✕
+                                X
                             </button>
                         </div>
                         <div class="meta-badges-row sidebar-badges-row">
@@ -2989,7 +3029,7 @@ function initializeDocPilotApp() {
             if (!activeUser) {
                 libraryGrid.innerHTML = `
                     <div class="empty-docs-placeholder" style="grid-column: 1 / -1; padding: 40px 20px; text-align: center;">
-                        🔒 Please sign in to access your personal "My Library" and manage your uploaded documents.
+                        Please sign in to access your personal workspace and manage your uploaded documents.
                     </div>
                 `;
                 return;
@@ -3004,7 +3044,7 @@ function initializeDocPilotApp() {
             if (myUploadedFiles.length === 0) {
                 libraryGrid.innerHTML = `
                     <div class="empty-docs-placeholder" style="grid-column: 1 / -1; padding: 40px 20px; text-align: center;">
-                        📂 You haven't uploaded any documents yet. Use the "+ Upload Document" button above to add your study materials to your personal library!
+                        You haven't uploaded any documents yet. Use the "+ Upload Document" button above to add study materials to your workspace!
                     </div>
                 `;
                 return;
@@ -3048,7 +3088,7 @@ function initializeDocPilotApp() {
                         </div>
                         <div class="doc-card-tags">
                             <span class="filetype-badge">${fileType}</span>
-                            <span class="privacy-badge ${isPrivate ? 'privacy-private' : 'privacy-shared'}">${isPrivate ? '🔒 Private' : '🌐 Shared'}</span>
+                            <span class="privacy-badge ${isPrivate ? 'privacy-private' : 'privacy-shared'}">${isPrivate ? 'Private' : 'Shared'}</span>
                         </div>
                     </div>
 
@@ -3074,19 +3114,19 @@ function initializeDocPilotApp() {
 
                     <div class="doc-card-actions">
                         <a href="/download/${encodeURIComponent(filename)}?disposition=attachment" download="${filename}" class="btn-download-file" title="Download File">
-                            <span>⬇ Download</span>
+                            <span>Download</span>
                         </a>
                         <a href="/view/${encodeURIComponent(filename)}" target="_blank" class="btn-open-browse-pdf" title="View Document">
-                            <span>👁 View</span>
+                            <span>View</span>
                         </a>
                         <button type="button" class="btn-chat-with-doc btn-browse-chat" data-filename="${filename}" title="Chat with Document">
-                            <span>💬 Chat</span>
+                            <span>Chat</span>
                         </button>
                         <button type="button" class="btn-browse-pin btn-pin-browse ${isPinnedInSidebar ? 'active-pinned' : ''}" data-filename="${filename}" title="${isPinnedInSidebar ? 'Unpin from Sidebar Pinned Folders' : 'Pin to Sidebar'}">
-                            <span>📌 ${isPinnedInSidebar ? 'Pinned' : 'Pin'}</span>
+                            <span>${isPinnedInSidebar ? 'Pinned' : 'Pin'}</span>
                         </button>
                         <button type="button" class="btn-delete-my-library btn-delete-file-doc" data-filename="${filename}" title="Delete File from Storage & DB">
-                            <span>🗑 Delete</span>
+                            <span>Delete</span>
                         </button>
                     </div>
                 `;
@@ -3212,7 +3252,7 @@ function initializeDocPilotApp() {
                     if (res.ok) {
                         if (modalReportStatus) {
                             modalReportStatus.classList.remove("hidden");
-                            modalReportStatus.textContent = `✅ ${data.message || "Report submitted successfully."}`;
+                            modalReportStatus.textContent = data.message || "Report submitted successfully.";
                             modalReportStatus.style.backgroundColor = "rgba(16, 185, 129, 0.15)";
                             modalReportStatus.style.color = "#34d399";
                             modalReportStatus.style.padding = "10px 14px";
@@ -3417,17 +3457,17 @@ function initializeDocPilotApp() {
     let currentOnboardingStep = 1;
     const onboardingSteps = [
         {
-            title: "Browse Documents",
+            title: "Course Repository",
             desc: "Find notes, PYQs, and assignments filtered by subject and semester. Chat directly with any document to ask questions!",
             icon: `<svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/><line x1="11" y1="8" x2="11" y2="14"/><line x1="8" y1="11" x2="14" y2="11"/></svg>`
         },
         {
-            title: "My Library",
+            title: "My Workspace",
             desc: "Your personal workspace where your own uploaded notes and study materials live. Kept safe and private to you.",
             icon: `<svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>`
         },
         {
-            title: "AI Exam Predictor",
+            title: "Exam Predictor",
             desc: "Generate high-yield predicted question papers based on past year questions, pattern frequency, and topic weightage analysis.",
             icon: `<svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>`
         },
@@ -3472,10 +3512,10 @@ function initializeDocPilotApp() {
 
         if (btnNext) {
             if (currentOnboardingStep === 4) {
-                btnNext.textContent = "Get Started 🎉";
+                btnNext.textContent = "Get Started";
                 btnNext.className = "btn-onboarding-primary get-started-btn";
             } else {
-                btnNext.textContent = "Next →";
+                btnNext.textContent = "Next";
                 btnNext.className = "btn-onboarding-primary";
             }
         }
@@ -3620,7 +3660,7 @@ window.openCreateDocumentModal = function() {
     const errorMsg = document.getElementById("doc-editor-error-msg");
 
     if (errorMsg) { errorMsg.textContent = ""; errorMsg.classList.add("hidden"); }
-    if (modalTitle) modalTitle.textContent = "📝 Create New Document";
+    if (modalTitle) modalTitle.textContent = "Create New Document";
     if (docIdInput) docIdInput.value = "";
     if (titleInput) titleInput.value = "";
     if (contentInput) contentInput.value = "";
@@ -3651,7 +3691,7 @@ window.openEditDocumentModal = async function(docId) {
             const errorMsg = document.getElementById("doc-editor-error-msg");
 
             if (errorMsg) { errorMsg.textContent = ""; errorMsg.classList.add("hidden"); }
-            if (modalTitle) modalTitle.textContent = "✏️ Edit Document";
+            if (modalTitle) modalTitle.textContent = "Edit Document";
             if (docIdInput) docIdInput.value = doc.id;
             if (titleInput) titleInput.value = doc.title || "";
             if (contentInput) contentInput.value = doc.content || "";
@@ -3795,7 +3835,7 @@ window.copyDocumentToMyLibrary = async function(docId) {
             })
         });
         if (createRes.ok) {
-            alert("Document copied to your Personal My Library! 📚");
+            alert("Document copied to your Workspace!");
             if (typeof window.fetchMyDocuments === "function") window.fetchMyDocuments();
         } else {
             const errData = await createRes.json();
@@ -3841,14 +3881,14 @@ function renderMyDocumentsList(docs) {
     let addBtn = document.getElementById("btn-add-my-doc");
     if (!addBtn) {
         const headerArea = container.parentElement;
-        const btnHtml = `<button id="btn-add-my-doc" onclick="openCreateDocumentModal()" style="margin-bottom: 16px; padding: 10px 18px; border-radius: 10px; background: linear-gradient(135deg, #6366f1, #4f46e5); color: #fff; border: none; font-weight: 600; cursor: pointer; display: inline-flex; align-items: center; gap: 6px;">➕ New Document</button>`;
+        const btnHtml = `<button id="btn-add-my-doc" onclick="openCreateDocumentModal()" style="margin-bottom: 16px; padding: 10px 18px; border-radius: 10px; background: linear-gradient(135deg, #6366f1, #4f46e5); color: #fff; border: none; font-weight: 600; cursor: pointer; display: inline-flex; align-items: center; gap: 6px;">+ New Document</button>`;
         container.insertAdjacentHTML("beforebegin", btnHtml);
     }
 
     if (!docs || docs.length === 0) {
         container.innerHTML = `
             <div class="empty-docs-placeholder" style="grid-column: 1 / -1; padding: 40px 20px; text-align: center; background: rgba(255,255,255,0.02); border-radius: 12px; border: 1px dashed rgba(255,255,255,0.1);">
-                📝 No personal documents created yet. Click <strong>"+ New Document"</strong> above to write study notes or summaries!
+                No personal documents created yet. Click <strong>"+ New Document"</strong> above to write study notes or summaries!
             </div>
         `;
         return;
@@ -3861,8 +3901,8 @@ function renderMyDocumentsList(docs) {
 
     container.innerHTML = docs.map(doc => {
         const statusBadge = doc.is_shared 
-            ? `<span style="background: rgba(34, 197, 94, 0.15); color: #4ade80; padding: 4px 8px; border-radius: 6px; font-size: 11px; font-weight: 600;">🌐 Shared</span>`
-            : `<span style="background: rgba(161, 161, 170, 0.15); color: #a1a1aa; padding: 4px 8px; border-radius: 6px; font-size: 11px; font-weight: 600;">🔒 Private</span>`;
+            ? `<span style="background: rgba(34, 197, 94, 0.15); color: #4ade80; padding: 4px 8px; border-radius: 6px; font-size: 11px; font-weight: 600;">Shared</span>`
+            : `<span style="background: rgba(161, 161, 170, 0.15); color: #a1a1aa; padding: 4px 8px; border-radius: 6px; font-size: 11px; font-weight: 600;">Private</span>`;
         
         const shareToggleBtn = doc.is_shared
             ? `<button onclick="toggleDocumentShare(${doc.id}, false)" style="padding: 4px 8px; background: #27272a; border: 1px solid #3f3f46; color: #a1a1aa; border-radius: 6px; font-size: 11px; cursor: pointer;">Make Private</button>`
@@ -3878,11 +3918,11 @@ function renderMyDocumentsList(docs) {
                 </div>
                 <p style="margin: 0; font-size: 13px; color: #a1a1aa; line-height: 1.4; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden;">${escapeHtmlLocal(doc.content || 'No content.')}</p>
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 6px; pt-2; border-top: 1px solid rgba(255,255,255,0.05);">
-                    <span style="font-size: 11px; color: #71717a;">📅 ${createdDate}</span>
+                    <span style="font-size: 11px; color: #71717a;">${createdDate}</span>
                     <div style="display: flex; gap: 6px;">
                         ${shareToggleBtn}
-                        <button onclick="openEditDocumentModal(${doc.id})" style="padding: 4px 8px; background: #27272a; border: 1px solid #3f3f46; color: #ffffff; border-radius: 6px; font-size: 11px; cursor: pointer;">✏️ Edit</button>
-                        <button onclick="deleteDocument(${doc.id})" style="padding: 4px 8px; background: rgba(239, 68, 68, 0.15); border: 1px solid #ef4444; color: #f87171; border-radius: 6px; font-size: 11px; cursor: pointer;">🗑️ Delete</button>
+                        <button onclick="openEditDocumentModal(${doc.id})" style="padding: 4px 8px; background: #27272a; border: 1px solid #3f3f46; color: #ffffff; border-radius: 6px; font-size: 11px; cursor: pointer;">Edit</button>
+                        <button onclick="deleteDocument(${doc.id})" style="padding: 4px 8px; background: rgba(239, 68, 68, 0.15); border: 1px solid #ef4444; color: #f87171; border-radius: 6px; font-size: 11px; cursor: pointer;">Delete</button>
                     </div>
                 </div>
             </div>
@@ -3897,7 +3937,7 @@ function renderSharedDocumentsList(docs) {
     if (!docs || docs.length === 0) {
         container.innerHTML = `
             <div class="empty-docs-placeholder" style="grid-column: 1 / -1; padding: 40px 20px; text-align: center; background: rgba(255,255,255,0.02); border-radius: 12px; border: 1px dashed rgba(255,255,255,0.1);">
-                🌐 No public shared documents available yet. Mark your personal notes as "Shared" to publish them here!
+                No public shared documents available yet. Mark your personal notes as "Shared" to publish them here!
             </div>
         `;
         return;
@@ -3916,12 +3956,12 @@ function renderSharedDocumentsList(docs) {
             <div class="doc-card" style="background: #18181b; border: 1px solid #27272a; border-radius: 12px; padding: 16px; display: flex; flex-direction: column; gap: 10px; margin-bottom: 12px;">
                 <div style="display: flex; justify-content: space-between; align-items: flex-start;">
                     <h4 style="margin: 0; font-size: 16px; color: #ffffff; font-weight: 600;">${escapeHtmlLocal(doc.title)}</h4>
-                    <span style="background: rgba(99, 102, 241, 0.15); color: #818cf8; padding: 4px 8px; border-radius: 6px; font-size: 11px; font-weight: 600;">👤 ${escapeHtmlLocal(ownerName)}</span>
+                    <span style="background: rgba(99, 102, 241, 0.15); color: #818cf8; padding: 4px 8px; border-radius: 6px; font-size: 11px; font-weight: 600;">${escapeHtmlLocal(ownerName)}</span>
                 </div>
                 <p style="margin: 0; font-size: 13px; color: #a1a1aa; line-height: 1.4; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden;">${escapeHtmlLocal(doc.content || 'No preview available.')}</p>
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 6px;">
-                    <span style="font-size: 11px; color: #71717a;">📅 ${createdDate}</span>
-                    <button onclick="copyDocumentToMyLibrary(${doc.id})" style="padding: 6px 12px; background: linear-gradient(135deg, #6366f1, #4f46e5); color: #ffffff; border: none; border-radius: 6px; font-size: 12px; font-weight: 600; cursor: pointer;">📋 Copy to My Library</button>
+                    <span style="font-size: 11px; color: #71717a;">${createdDate}</span>
+                    <button onclick="copyDocumentToMyLibrary(${doc.id})" style="padding: 6px 12px; background: linear-gradient(135deg, #6366f1, #4f46e5); color: #ffffff; border: none; border-radius: 6px; font-size: 12px; font-weight: 600; cursor: pointer;">Copy to Workspace</button>
                 </div>
             </div>
         `;

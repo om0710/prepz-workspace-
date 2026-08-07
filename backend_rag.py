@@ -169,6 +169,8 @@ user Query: {query}
         handler = active_streams.get(thread_id)
         llm_config = {}
         if handler:
+            if hasattr(handler, "clear_queue"):
+                handler.clear_queue()
             llm_config["callbacks"] = [handler]
         response = llm.invoke(messages, config=llm_config)
         return response
@@ -446,6 +448,8 @@ def chat_node(state: ChatState, config = None):
 
     # Intercept tool calls to rewrite query using conversational history
     if response.tool_calls:
+        if handler and hasattr(handler, "clear_queue"):
+            handler.clear_queue()
         new_tool_calls = []
         for tc in response.tool_calls:
             if tc["name"] == "rag_tool":
