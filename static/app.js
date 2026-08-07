@@ -1844,11 +1844,11 @@ function initializeDocPilotApp() {
                     <button type="button" class="btn-chat-with-doc btn-browse-chat" data-filename="${filename}" title="Chat with Document">
                         <span>💬 Chat</span>
                     </button>
-                    <button type="button" class="btn-browse-pin btn-pin-browse ${isPinned ? 'active-pinned' : ''}" data-filename="${filename}" title="${isPinned ? 'Unpin from Pinned Folders' : 'Pin to Sidebar'}">
-                        <span>${isPinned ? '📌' : '📌'}</span>
+                    <button type="button" class="btn-browse-pin btn-pin-browse ${isPinned ? 'active-pinned' : ''}" data-filename="${filename}" title="${isPinned ? 'Unpin from Sidebar Pinned Folders' : 'Pin to Sidebar'}">
+                        <span>📌 ${isPinned ? 'Pinned' : 'Pin'}</span>
                     </button>
                     <button type="button" class="btn-browse-report btn-report-browse" data-filename="${filename}" title="Report file to moderation">
-                        <span>🚩</span>
+                        <span>🚩 Report</span>
                     </button>
                 </div>
             `;
