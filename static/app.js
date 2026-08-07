@@ -3040,68 +3040,53 @@ function initializeDocPilotApp() {
                 const isPinnedInSidebar = isFilePinnedInSidebar(filename);
 
                 const card = document.createElement("div");
-                card.className = "library-doc-card";
+                card.className = "browse-doc-card library-doc-card";
                 card.innerHTML = `
-                    <div class="lib-card-top">
-                        <div class="lib-card-badge-group">
+                    <div class="doc-card-top">
+                        <div class="browse-pdf-icon">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+                        </div>
+                        <div class="doc-card-tags">
                             <span class="filetype-badge">${fileType}</span>
-                            <span class="semester-badge">${semester}</span>
-                            ${isPrivate ? '<span style="background: rgba(239, 68, 68, 0.2); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.3); padding: 3px 8px; border-radius: 12px; font-size: 11px; font-weight: 600;">🔒 Private</span>' : '<span style="background: rgba(16, 185, 129, 0.2); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.3); padding: 3px 8px; border-radius: 12px; font-size: 11px; font-weight: 600;">🌐 Shared</span>'}
-                        </div>
-                    </div>
-                    
-                    <div class="lib-card-icon-row">
-                        <div class="lib-doc-icon">
-                            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
-                        </div>
-                        <div class="lib-doc-title-wrapper">
-                            <h4 class="lib-doc-title" title="${filename}">${filename}</h4>
-                            <span class="subject-badge" style="max-width: 100%;">${subject}</span>
+                            <span class="privacy-badge ${isPrivate ? 'privacy-private' : 'privacy-shared'}">${isPrivate ? '🔒 Private' : '🌐 Shared'}</span>
                         </div>
                     </div>
 
-                    <div class="lib-card-meta-list">
-                        <div class="meta-item">
-                            <span class="meta-label">Uploaded By:</span>
+                    <a href="/view/${encodeURIComponent(filename)}" target="_blank" class="browse-file-title" title="${filename}">
+                        ${filename}
+                    </a>
+
+                    <div class="doc-card-curriculum">
+                        <div class="doc-card-subject">${subject}</div>
+                        <div class="doc-card-semester">${semester}</div>
+                    </div>
+
+                    <div class="doc-card-meta">
+                        <div class="meta-row">
+                            <span class="meta-label">Uploaded By</span>
                             <span class="meta-value">${uploaderName} (You)</span>
                         </div>
-                        <div class="meta-item">
-                            <span class="meta-label">Date & Size:</span>
+                        <div class="meta-row">
+                            <span class="meta-label">Date & Size</span>
                             <span class="meta-value">${uploadedAt} (${sizeKb})</span>
                         </div>
                     </div>
 
-                    <div class="lib-card-actions" style="display: flex; gap: 6px; margin-top: 4px;">
-                        <a href="/view/${encodeURIComponent(filename)}" target="_blank" class="btn-open-pdf" title="View or Download Document" style="flex: 1; text-align: center; text-decoration: none;">
-                            👁️ View Document
+                    <div class="doc-card-actions">
+                        <a href="/view/${encodeURIComponent(filename)}" target="_blank" class="btn-open-browse-pdf" title="View Document">
+                            <span>👁 View</span>
                         </a>
-                        <button type="button" class="btn-chat-with-doc" data-filename="${filename}" style="flex: 1;">
-                            💬 Chat
+                        <button type="button" class="btn-chat-with-doc btn-browse-chat" data-filename="${filename}" title="Chat with Document">
+                            <span>💬 Chat</span>
                         </button>
-                        <button type="button" class="btn-pin-browse ${isPinnedInSidebar ? 'active-pinned' : ''}" data-filename="${filename}" title="${isPinnedInSidebar ? 'Unpin from Sidebar Pinned Folders' : 'Pin to Sidebar Pinned Folders'}" style="padding: 7px 10px;">
-                            ${isPinnedInSidebar ? '📌 Pinned' : '📌 Pin'}
+                        <button type="button" class="btn-browse-pin btn-pin-browse ${isPinnedInSidebar ? 'active-pinned' : ''}" data-filename="${filename}" title="${isPinnedInSidebar ? 'Unpin from Sidebar Pinned Folders' : 'Pin to Sidebar'}">
+                            <span>📌 ${isPinnedInSidebar ? 'Pinned' : 'Pin'}</span>
                         </button>
-                        <button type="button" class="btn-delete-my-library" data-filename="${filename}" title="Delete File from Storage & DB">
-                            🗑️ Delete
+                        <button type="button" class="btn-delete-my-library btn-delete-file-doc" data-filename="${filename}" title="Delete File from Storage & DB">
+                            <span>🗑 Delete</span>
                         </button>
                     </div>
                 `;
-
-                const titleElem = card.querySelector(".lib-doc-title");
-                if (titleElem) {
-                    titleElem.style.cursor = "pointer";
-                    titleElem.addEventListener("click", () => {
-                        window.open(`/view/${encodeURIComponent(filename)}`, "_blank");
-                    });
-                }
-
-                const iconElem = card.querySelector(".lib-doc-icon");
-                if (iconElem) {
-                    iconElem.style.cursor = "pointer";
-                    iconElem.addEventListener("click", () => {
-                        window.open(`/view/${encodeURIComponent(filename)}`, "_blank");
-                    });
-                }
 
                 const btnChat = card.querySelector(".btn-chat-with-doc");
                 if (btnChat) {
@@ -3122,7 +3107,7 @@ function initializeDocPilotApp() {
                 if (btnDelete) {
                     btnDelete.addEventListener("click", (e) => {
                         e.stopPropagation();
-                        if (confirm(`Are you sure you want to delete "${filename}"?\n\nThis will permanently remove the file from both storage and the database.`)) {
+                        if (confirm(`Are you sure you want to delete "${filename}"?\n\nThis will permanently remove the file from your library.`)) {
                             deleteUploadedFile(filename);
                         }
                     });

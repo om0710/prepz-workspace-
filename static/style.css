@@ -2741,53 +2741,55 @@ button, a[role="button"], input[type="button"], input[type="submit"] {
     transform: translateY(-1px);
 }
 
-.btn-browse-chat:hover, .btn-chat-with-doc:hover {
-    background: var(--accent-primary);
-    color: #ffffff;
+.library-documents-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    gap: 18px;
+    width: 100%;
+    margin-top: 18px;
 }
 
-.btn-pin-browse {
+.privacy-badge {
+    font-family: var(--font-mono);
+    font-size: 10.5px;
+    font-weight: 700;
+    padding: 3px 8px;
+    border-radius: var(--radius-pill);
+    letter-spacing: 0.4px;
+}
+
+.privacy-badge.privacy-private {
+    background: rgba(239, 68, 68, 0.15);
+    color: #f87171;
+    border: 1px solid rgba(239, 68, 68, 0.35);
+}
+
+.privacy-badge.privacy-shared {
+    background: rgba(16, 185, 129, 0.15);
+    color: #34d399;
+    border: 1px solid rgba(16, 185, 129, 0.35);
+}
+
+.btn-delete-file-doc {
     display: inline-flex;
     align-items: center;
-    gap: 4px;
-    padding: 6px 10px;
-    background: var(--bg-card);
-    border: 1px solid var(--border-subtle);
+    gap: 6px;
+    padding: 8px 12px;
     border-radius: var(--radius-sm);
-    color: var(--text-secondary);
+    background: #14171d;
+    border: 1px solid var(--border-medium);
+    color: #ef4444;
     font-size: 12px;
-    font-weight: 500;
+    font-weight: 600;
+    cursor: pointer;
     transition: all var(--transition-fast);
 }
 
-.btn-pin-browse:hover {
-    background: var(--bg-card-hover);
-    color: var(--text-primary);
-}
-
-.btn-pin-browse.active-pinned {
-    background: rgba(245, 158, 11, 0.15);
-    color: #fcd34d;
-    border-color: rgba(245, 158, 11, 0.35);
-}
-
-.btn-report-browse {
-    display: inline-flex;
-    align-items: center;
-    gap: 4px;
-    padding: 6px 10px;
-    background: transparent;
-    border: 1px solid transparent;
-    border-radius: var(--radius-sm);
-    color: var(--text-muted);
-    font-size: 12px;
-    transition: all var(--transition-fast);
-}
-
-.btn-report-browse:hover {
-    background: var(--accent-danger-light);
-    color: var(--accent-danger);
-    border-color: rgba(239, 68, 68, 0.3);
+.btn-delete-file-doc:hover {
+    background: rgba(239, 68, 68, 0.18);
+    color: #f87171;
+    border-color: rgba(239, 68, 68, 0.5);
+    transform: translateY(-1px);
 }
 
 /* --------------------------------------------------------------------------
