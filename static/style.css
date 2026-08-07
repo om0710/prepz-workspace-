@@ -311,12 +311,10 @@ button, a[role="button"], input[type="button"], input[type="submit"] {
 
 .auth-error {
     background: var(--accent-danger-light);
-    border: 1px solid rgba(239, 68, 68, 0.3);
-    color: #fca5a5;
-    padding: 10px 14px;
-    border-radius: var(--radius-md);
-    font-size: 13px;
-    margin-bottom: 16px;
+    background: var(--accent-primary);
+    color: #08090a;
+    font-weight: 800;
+    box-shadow: 0 0 16px rgba(255, 107, 0, 0.35);
 }
 
 .auth-form {
@@ -325,17 +323,19 @@ button, a[role="button"], input[type="button"], input[type="submit"] {
     gap: 16px;
 }
 
-.form-group {
+.auth-form .form-group {
     display: flex;
     flex-direction: column;
     gap: 6px;
-    text-align: left;
 }
 
-.form-group label {
-    font-size: 13px;
-    font-weight: 500;
-    color: var(--text-secondary);
+.auth-form .form-group label {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
 }
 
 .input-with-icon {
@@ -346,25 +346,33 @@ button, a[role="button"], input[type="button"], input[type="submit"] {
 
 .input-with-icon svg {
     position: absolute;
-    left: 12px;
+    left: 14px;
     color: var(--text-muted);
     pointer-events: none;
+    transition: color var(--transition-fast);
 }
 
 .input-with-icon input {
     width: 100%;
-    padding: 11px 12px 11px 38px;
-    background: var(--bg-input);
-    border: 1px solid var(--border-subtle);
-    border-radius: var(--radius-md);
-    color: var(--text-primary);
+    min-height: 44px;
+    padding: 10px 14px 10px 42px;
+    background: #12151c;
+    border: 1px solid rgba(255, 107, 0, 0.18);
+    border-radius: 12px;
+    color: #ffffff;
+    font-size: 14px;
+    outline: none;
     transition: all var(--transition-fast);
 }
 
 .input-with-icon input:focus {
-    background: var(--bg-input-focus);
+    background: #161a24;
     border-color: var(--accent-primary);
-    box-shadow: 0 0 0 3px var(--accent-primary-light);
+    box-shadow: 0 0 18px rgba(255, 107, 0, 0.28);
+}
+
+.input-with-icon:focus-within svg {
+    color: var(--accent-primary);
 }
 
 .auth-options-row {
@@ -372,7 +380,7 @@ button, a[role="button"], input[type="button"], input[type="submit"] {
     align-items: center;
     justify-content: space-between;
     font-size: 13px;
-    margin-top: -4px;
+    margin-top: -2px;
 }
 
 .remember-me-label {
@@ -392,31 +400,36 @@ button, a[role="button"], input[type="button"], input[type="submit"] {
 .forgot-link {
     font-size: 12.5px;
     color: var(--text-muted);
+    transition: color var(--transition-fast);
 }
+
 .forgot-link:hover {
     color: var(--accent-primary);
+    text-decoration: underline;
 }
 
 .btn-auth-primary {
-    min-height: 42px;
-    background: var(--accent-primary);
-    color: #ffffff;
+    min-height: 46px;
+    background: linear-gradient(135deg, #ff6b00 0%, #ff851a 100%);
+    color: #08090a;
     border: none;
-    border-radius: var(--radius-md);
-    font-weight: 600;
-    font-size: 14px;
+    border-radius: 12px;
+    font-family: var(--font-heading);
+    font-weight: 800;
+    font-size: 15px;
     display: flex;
     align-items: center;
     justify-content: center;
     gap: 8px;
     transition: all var(--transition-fast);
-    box-shadow: 0 2px 8px rgba(99, 102, 241, 0.3);
+    box-shadow: 0 0 24px rgba(255, 107, 0, 0.4);
+    cursor: pointer;
 }
 
 .btn-auth-primary:hover {
-    background: var(--accent-primary-hover);
-    transform: translateY(-1px);
-    box-shadow: 0 4px 14px rgba(99, 102, 241, 0.4);
+    background: #ff851a;
+    transform: translateY(-1.5px);
+    box-shadow: 0 0 32px rgba(255, 107, 0, 0.6);
 }
 
 .btn-auth-primary:active {
@@ -427,18 +440,19 @@ button, a[role="button"], input[type="button"], input[type="submit"] {
     display: flex;
     align-items: center;
     text-align: center;
-    margin: 20px 0 16px 0;
+    margin: 22px 0 16px 0;
     color: var(--text-muted);
-    font-size: 12px;
+    font-family: var(--font-mono);
+    font-size: 11px;
     text-transform: uppercase;
-    letter-spacing: 0.5px;
+    letter-spacing: 0.8px;
 }
 
 .social-login-separator::before,
 .social-login-separator::after {
     content: '';
     flex: 1;
-    border-bottom: 1px solid var(--border-subtle);
+    border-bottom: 1px solid rgba(255, 107, 0, 0.12);
 }
 
 .social-login-separator span {
@@ -452,94 +466,124 @@ button, a[role="button"], input[type="button"], input[type="submit"] {
 
 .btn-social-circle.google-single {
     width: 100%;
-    min-height: 42px;
-    background: var(--bg-card);
-    border: 1px solid var(--border-subtle);
-    border-radius: var(--radius-md);
-    color: var(--text-primary);
+    min-height: 44px;
+    background: #11141a;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 12px;
+    color: #ffffff;
     font-size: 13.5px;
-    font-weight: 500;
+    font-weight: 600;
     display: flex;
     align-items: center;
     justify-content: center;
     gap: 10px;
     transition: all var(--transition-fast);
+    cursor: pointer;
 }
 
 .btn-social-circle.google-single:hover {
-    background: var(--bg-card-hover);
-    border-color: var(--border-hover);
+    background: #161922;
+    border-color: rgba(255, 107, 0, 0.35);
+    box-shadow: 0 0 16px rgba(255, 107, 0, 0.2);
 }
 
-/* Right Side: Hero Graphic Banner */
+/* Right Side: Enterprise Bento Hero Banner */
 .auth-split-right {
-    flex: 0.9;
-    background: linear-gradient(145deg, #101016 0%, #161622 100%);
-    border-left: 1px solid var(--border-subtle);
-    padding: 44px 36px;
+    flex: 1;
+    background: linear-gradient(145deg, #090a0d 0%, #11141b 100%);
+    border-left: 1px solid rgba(255, 107, 0, 0.18);
+    padding: 48px 40px;
     display: flex;
     flex-direction: column;
     justify-content: space-between;
     position: relative;
 }
 
-.hero-brand-graphic {
+.auth-hero-headline {
+    font-family: var(--font-heading);
+    font-size: 26px;
+    font-weight: 800;
+    line-height: 1.25;
+    letter-spacing: -0.02em;
+    color: #ffffff;
+    margin: 14px 0 10px 0;
+    text-transform: uppercase;
+}
+
+.auth-hero-subtext {
+    font-size: 14px;
+    color: var(--text-secondary);
+    line-height: 1.6;
     margin-bottom: 24px;
 }
 
-.hero-logo-badge {
-    width: 56px;
-    height: 56px;
-    border-radius: var(--radius-lg);
-    background: var(--accent-primary);
+.auth-bento-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    margin-bottom: 24px;
+}
+
+.auth-bento-card {
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 107, 0, 0.15);
+    border-radius: var(--radius-md);
+    padding: 14px 18px;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    transition: all var(--transition-fast);
+}
+
+.auth-bento-card:hover {
+    background: rgba(255, 107, 0, 0.06);
+    border-color: var(--accent-primary);
+    transform: translateX(3px);
+}
+
+.bento-icon-badge {
+    width: 38px;
+    height: 38px;
+    border-radius: var(--radius-sm);
+    background: rgba(255, 107, 0, 0.14);
+    border: 1px solid rgba(255, 107, 0, 0.3);
     display: flex;
     align-items: center;
     justify-content: center;
-    box-shadow: 0 8px 24px rgba(99, 102, 241, 0.35);
+    font-size: 16px;
+    flex-shrink: 0;
 }
 
-.hero-tag {
-    display: inline-block;
-    font-size: 11px;
+.bento-card-info h4 {
+    font-family: var(--font-heading);
+    font-size: 14px;
     font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 0.75px;
-    color: #818cf8;
-    background: rgba(99, 102, 241, 0.12);
-    padding: 4px 10px;
-    border-radius: var(--radius-pill);
-    margin-bottom: 10px;
-    border: 1px solid rgba(99, 102, 241, 0.25);
+    color: #ffffff;
+    margin-bottom: 2px;
 }
 
-.hero-title {
-    font-size: 24px;
-    font-weight: 700;
-    margin-bottom: 8px;
-    color: var(--text-primary);
-}
-
-.hero-description {
-    font-size: 13.5px;
-    color: var(--text-secondary);
-    line-height: 1.6;
+.bento-card-info p {
+    font-size: 12px;
+    color: var(--text-muted);
+    line-height: 1.4;
 }
 
 .hero-highlight-card {
-    margin-top: 32px;
-    background: rgba(255, 255, 255, 0.03);
-    border: 1px solid var(--border-subtle);
+    background: #0e1115;
+    border: 1px solid rgba(255, 107, 0, 0.2);
     border-radius: var(--radius-lg);
-    padding: 16px;
+    padding: 16px 20px;
     display: flex;
     align-items: center;
     justify-content: space-between;
     gap: 14px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.6);
 }
 
 .highlight-info h4 {
+    font-family: var(--font-heading);
     font-size: 13.5px;
-    font-weight: 600;
+    font-weight: 700;
     color: var(--text-primary);
     margin-bottom: 2px;
 }
@@ -564,8 +608,12 @@ button, a[role="button"], input[type="button"], input[type="submit"] {
     font-size: 10.5px;
     font-weight: 700;
     color: #ffffff;
-    border: 2px solid #101016;
+    border: 2px solid #0b0d10;
     margin-left: -8px;
+}
+
+.avatar-pill:first-child {
+    margin-left: 0;
 }
 
 .avatar-pill:first-child {
