@@ -1782,11 +1782,10 @@ function initializeDocPilotApp() {
 
         if (filtered.length === 0) {
             tbody.innerHTML = `
-                <tr>
-                    <td colspan="6" style="padding: 40px 20px; text-align: center; color: #6b7280; font-size: 13.5px;">
-                        📂 No uploaded documents found for the selected Semester / Subject / Type filters.
-                    </td>
-                </tr>
+                <div class="browse-empty-state">
+                    <span style="font-size: 28px;">📂</span>
+                    <p style="margin: 0; color: #a1a1aa; font-size: 14px;">No uploaded documents found for the selected Semester / Subject / Type filters.</p>
+                </div>
             `;
             return;
         }
@@ -1802,76 +1801,80 @@ function initializeDocPilotApp() {
             const uploadedAt = typeof fileObj === 'object' && fileObj.uploaded_at ? fileObj.uploaded_at.split("T")[0] : "Recently";
             const isPinned = isFilePinnedInSidebar(filename);
 
-            const tr = document.createElement("tr");
-            tr.className = "browse-row";
-            tr.innerHTML = `
-                <td class="col-filename">
-                    <div style="display: flex; align-items: center; gap: 10px;">
-                        <div class="browse-pdf-icon">
-                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
-                        </div>
-                        <a href="/view/${encodeURIComponent(filename)}" target="_blank" class="browse-file-title" title="${filename}">
-                            ${filename}
-                        </a>
+            const card = document.createElement("div");
+            card.className = "browse-doc-card";
+            card.innerHTML = `
+                <div class="doc-card-top">
+                    <div class="browse-pdf-icon">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
                     </div>
-                </td>
-                <td>
-                    <div style="display: flex; align-items: center; gap: 6px; flex-wrap: wrap;">
+                    <div class="doc-card-tags">
                         <span class="filetype-badge">${fileType}</span>
                         ${examType && examType !== "Other" ? `<span class="examtype-badge">${examType}</span>` : ''}
                     </div>
-                </td>
-                <td>
-                    <div style="display: flex; flex-direction: column; gap: 3px;">
-                        <span style="font-weight: 700; font-size: 13.5px; color: #ffffff !important;">${subject}</span>
-                        <span style="font-size: 12px; color: #bbf43d !important; font-weight: 600;">${semester}</span>
+                </div>
+
+                <a href="/view/${encodeURIComponent(filename)}" target="_blank" class="browse-file-title" title="${filename}">
+                    ${filename}
+                </a>
+
+                <div class="doc-card-curriculum">
+                    <div class="doc-card-subject">${subject}</div>
+                    <div class="doc-card-semester">${semester}</div>
+                </div>
+
+                <div class="doc-card-meta">
+                    <div class="meta-row">
+                        <span class="meta-label">Uploaded By</span>
+                        <span class="meta-value">${uploaderName}</span>
                     </div>
-                </td>
-                <td><span style="font-weight: 600; font-size: 13.5px; color: #f4f4f5 !important;">${uploaderName}</span></td>
-                <td><span style="font-size: 12.5px; color: #a1a1aa !important; font-weight: 500;">${uploadedAt} (${sizeKb})</span></td>
-                <td class="col-action">
-                    <div style="display: flex; align-items: center; justify-content: flex-end; gap: 8px;">
-                        <a href="/download/${encodeURIComponent(filename)}?disposition=attachment" download="${filename}" class="btn-download-file" title="Download File">
-                            <span>⬇ Download</span>
-                        </a>
-                        <a href="/view/${encodeURIComponent(filename)}" target="_blank" class="btn-open-browse-pdf" title="View Document">
-                            <span>👁 View</span>
-                        </a>
-                        <button type="button" class="btn-chat-with-doc btn-browse-chat" data-filename="${filename}" title="Chat with Document">
-                            <span>💬 Chat</span>
-                        </button>
-                        <button type="button" class="btn-browse-pin btn-pin-browse ${isPinned ? 'active-pinned' : ''}" data-filename="${filename}" title="${isPinned ? 'Unpin from Pinned Folders' : 'Pin to Sidebar'}">
-                            <span>${isPinned ? '📌' : '📌'}</span>
-                        </button>
-                        <button type="button" class="btn-browse-report btn-report-browse" data-filename="${filename}" title="Report file to moderation">
-                            <span>🚩</span>
-                        </button>
+                    <div class="meta-row">
+                        <span class="meta-label">Date & Size</span>
+                        <span class="meta-value">${uploadedAt} (${sizeKb})</span>
                     </div>
-                </td>
+                </div>
+
+                <div class="doc-card-actions">
+                    <a href="/download/${encodeURIComponent(filename)}?disposition=attachment" download="${filename}" class="btn-download-file" title="Download File">
+                        <span>⬇ Download</span>
+                    </a>
+                    <a href="/view/${encodeURIComponent(filename)}" target="_blank" class="btn-open-browse-pdf" title="View Document">
+                        <span>👁 View</span>
+                    </a>
+                    <button type="button" class="btn-chat-with-doc btn-browse-chat" data-filename="${filename}" title="Chat with Document">
+                        <span>💬 Chat</span>
+                    </button>
+                    <button type="button" class="btn-browse-pin btn-pin-browse ${isPinned ? 'active-pinned' : ''}" data-filename="${filename}" title="${isPinned ? 'Unpin from Pinned Folders' : 'Pin to Sidebar'}">
+                        <span>${isPinned ? '📌' : '📌'}</span>
+                    </button>
+                    <button type="button" class="btn-browse-report btn-report-browse" data-filename="${filename}" title="Report file to moderation">
+                        <span>🚩</span>
+                    </button>
+                </div>
             `;
 
-            const btnChat = tr.querySelector(".btn-browse-chat");
+            const btnChat = card.querySelector(".btn-browse-chat");
             if (btnChat) {
                 btnChat.addEventListener("click", () => {
                     startNewChatWithDoc(filename);
                 });
             }
 
-            const btnPinBrowse = tr.querySelector(".btn-pin-browse");
+            const btnPinBrowse = card.querySelector(".btn-pin-browse");
             if (btnPinBrowse) {
                 btnPinBrowse.addEventListener("click", () => {
                     toggleSidebarPinFile(filename);
                 });
             }
 
-            const btnReportBrowse = tr.querySelector(".btn-report-browse");
+            const btnReportBrowse = card.querySelector(".btn-report-browse");
             if (btnReportBrowse) {
                 btnReportBrowse.addEventListener("click", () => {
                     openReportModal(filename);
                 });
             }
 
-            tbody.appendChild(tr);
+            tbody.appendChild(card);
         });
     }
 

@@ -2401,65 +2401,74 @@ button, a[role="button"], input[type="button"], input[type="submit"] {
     box-shadow: 0 0 14px rgba(187, 244, 61, 0.25);
 }
 
-/* Modern Data Table - ADSPACE Matrix Layout */
-.browse-table-wrapper {
-    background: #0b0d10;
-    border: 1px solid rgba(187, 244, 61, 0.18);
-    border-radius: var(--radius-lg);
-    overflow-x: auto;
-    box-shadow: 0 12px 36px rgba(0, 0, 0, 0.65);
-}
-
-.browse-table {
+/* --------------------------------------------------------------------------
+   10. BROWSE SHARED DOCUMENTS CATALOG (VERTICAL CARDS GRID)
+   -------------------------------------------------------------------------- */
+.browse-cards-wrapper {
     width: 100%;
-    border-collapse: collapse;
-    text-align: left;
-    font-size: 13.5px;
 }
 
-.browse-table thead {
-    background: #101318;
-    border-bottom: 1px solid rgba(187, 244, 61, 0.16);
+.browse-cards-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    gap: 18px;
+    width: 100%;
 }
 
-.browse-table th {
-    padding: 14px 18px;
-    font-family: var(--font-mono);
-    font-size: 11px;
-    font-weight: 700;
-    color: var(--text-muted);
-    text-transform: uppercase;
-    letter-spacing: 1px;
-    white-space: nowrap;
+.browse-empty-state {
+    grid-column: 1 / -1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    padding: 60px 20px;
+    background: #0d1014;
+    border: 1px dashed rgba(187, 244, 61, 0.25);
+    border-radius: 16px;
+    text-align: center;
 }
 
-.browse-table td {
-    padding: 14px 18px;
-    border-bottom: 1px solid rgba(187, 244, 61, 0.08);
-    color: var(--text-secondary);
-    vertical-align: middle;
+/* Vertical Cyber Document Card */
+.browse-doc-card {
+    background: #0d1014;
+    border: 1px solid rgba(187, 244, 61, 0.16);
+    border-radius: 16px;
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    gap: 14px;
+    transition: all var(--transition-fast);
+    box-shadow: 0 4px 18px rgba(0, 0, 0, 0.5);
+    position: relative;
+    overflow: hidden;
 }
 
-.browse-table tr:last-child td {
-    border-bottom: none;
+.browse-doc-card:hover {
+    border-color: var(--accent-primary);
+    transform: translateY(-3px);
+    box-shadow: 0 12px 30px rgba(0, 0, 0, 0.7), 0 0 20px rgba(187, 244, 61, 0.18);
+    background: #11141a;
 }
 
-.browse-table tbody tr {
-    transition: background var(--transition-fast);
+.doc-card-top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
 }
 
-.browse-table tbody tr:hover {
-    background: rgba(187, 244, 61, 0.04);
-}
-
-.col-action {
-    text-align: right;
-    white-space: nowrap;
+.doc-card-tags {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-wrap: wrap;
 }
 
 .browse-pdf-icon {
-    width: 34px;
-    height: 34px;
+    width: 36px;
+    height: 36px;
     border-radius: var(--radius-sm);
     background: rgba(187, 244, 61, 0.12);
     color: var(--accent-primary);
@@ -2471,16 +2480,14 @@ button, a[role="button"], input[type="button"], input[type="submit"] {
 }
 
 .browse-file-title {
-    font-weight: 600;
+    font-family: var(--font-heading);
+    font-size: 15px;
+    font-weight: 700;
     color: #ffffff;
-    font-size: 13.5px;
     text-decoration: none;
+    line-height: 1.4;
+    word-break: break-word;
     transition: color var(--transition-fast);
-    max-width: 240px;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-    display: inline-block;
 }
 
 .browse-file-title:hover {
@@ -2488,41 +2495,99 @@ button, a[role="button"], input[type="button"], input[type="submit"] {
     text-decoration: underline;
 }
 
-/* Badges */
-.filetype-badge {
-    display: inline-flex;
-    align-items: center;
-    padding: 3px 9px;
-    border-radius: var(--radius-pill);
-    font-family: var(--font-mono);
-    font-size: 10.5px;
+/* Vertical Curriculum Section */
+.doc-card-curriculum {
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(187, 244, 61, 0.1);
+    border-radius: 10px;
+    padding: 10px 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.doc-card-subject {
+    font-size: 13.5px;
     font-weight: 700;
-    text-transform: uppercase;
-    background: rgba(187, 244, 61, 0.12);
+    color: #ffffff;
+    line-height: 1.35;
+}
+
+.doc-card-semester {
+    font-family: var(--font-mono);
+    font-size: 11.5px;
+    font-weight: 600;
     color: var(--accent-primary);
-    border: 1px solid rgba(187, 244, 61, 0.3);
 }
 
-.examtype-badge {
-    display: inline-flex;
+/* Vertical Meta Information */
+.doc-card-meta {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    padding: 2px 0;
+}
+
+.meta-row {
+    display: flex;
     align-items: center;
-    padding: 3px 9px;
-    border-radius: var(--radius-pill);
+    justify-content: space-between;
+    font-size: 12px;
+}
+
+.meta-label {
     font-family: var(--font-mono);
     font-size: 10.5px;
-    font-weight: 700;
+    font-weight: 600;
+    color: var(--text-muted);
     text-transform: uppercase;
-    background: rgba(245, 158, 11, 0.12);
-    color: #fcd34d;
-    border: 1px solid rgba(245, 158, 11, 0.28);
+    letter-spacing: 0.5px;
 }
 
-/* Action Buttons Group */
+.meta-value {
+    font-size: 12px;
+    font-weight: 500;
+    color: #d4d4d8;
+}
+
+/* Action Buttons Toolbar */
+.doc-card-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+    padding-top: 10px;
+    border-top: 1px solid rgba(187, 244, 61, 0.1);
+}
+
+.btn-download-file {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 14px;
+    background: rgba(187, 244, 61, 0.15);
+    border: 1px solid rgba(187, 244, 61, 0.35);
+    border-radius: var(--radius-sm);
+    color: var(--accent-primary);
+    font-size: 12px;
+    font-weight: 700;
+    text-decoration: none;
+    transition: all var(--transition-fast);
+    box-shadow: 0 0 12px rgba(187, 244, 61, 0.15);
+}
+
+.btn-download-file:hover {
+    background: var(--accent-primary);
+    color: #08090a;
+    box-shadow: 0 0 20px rgba(187, 244, 61, 0.5);
+    transform: translateY(-1px);
+}
+
 .btn-open-browse-pdf, .btn-open-pdf {
     display: inline-flex;
     align-items: center;
     gap: 6px;
-    padding: 7px 12px;
+    padding: 8px 12px;
     background: #14171d;
     border: 1px solid var(--border-medium);
     border-radius: var(--radius-sm);
@@ -2540,34 +2605,11 @@ button, a[role="button"], input[type="button"], input[type="submit"] {
     transform: translateY(-1px);
 }
 
-.btn-download-file {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    padding: 7px 14px;
-    background: rgba(187, 244, 61, 0.14);
-    border: 1px solid rgba(187, 244, 61, 0.35);
-    border-radius: var(--radius-sm);
-    color: var(--accent-primary);
-    font-size: 12px;
-    font-weight: 700;
-    text-decoration: none;
-    transition: all var(--transition-fast);
-    box-shadow: 0 0 12px rgba(187, 244, 61, 0.15);
-}
-
-.btn-download-file:hover {
-    background: var(--accent-primary);
-    color: #08090a;
-    box-shadow: 0 0 20px rgba(187, 244, 61, 0.45);
-    transform: translateY(-1px);
-}
-
 .btn-browse-chat, .btn-chat-with-doc {
     display: inline-flex;
     align-items: center;
     gap: 6px;
-    padding: 7px 12px;
+    padding: 8px 12px;
     background: #14171d;
     border: 1px solid var(--border-medium);
     border-radius: var(--radius-sm);
@@ -2589,9 +2631,9 @@ button, a[role="button"], input[type="button"], input[type="submit"] {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    width: 32px;
-    height: 32px;
-    min-width: 32px;
+    width: 34px;
+    height: 34px;
+    min-width: 34px;
     border-radius: var(--radius-sm);
     background: #14171d;
     border: 1px solid var(--border-medium);
@@ -2981,7 +3023,7 @@ button, a[role="button"], input[type="button"], input[type="submit"] {
 }
 
 /* --------------------------------------------------------------------------
-   13. MODALS, DIALOGS & POPUPS
+   13. MODALS, DIALOGS & POPUPS (ADSPACE CYBER THEME)
    -------------------------------------------------------------------------- */
 .modal-overlay {
     position: fixed;
@@ -2989,9 +3031,9 @@ button, a[role="button"], input[type="button"], input[type="submit"] {
     left: 0;
     right: 0;
     bottom: 0;
-    background: var(--bg-modal-backdrop);
-    backdrop-filter: blur(6px);
-    -webkit-backdrop-filter: blur(6px);
+    background: rgba(0, 0, 0, 0.85);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -3001,13 +3043,13 @@ button, a[role="button"], input[type="button"], input[type="submit"] {
 }
 
 .modal-card {
-    background: var(--bg-surface);
-    border: 1px solid var(--border-medium);
-    border-radius: var(--radius-xl);
+    background: #090b0e;
+    border: 1.5px solid rgba(187, 244, 61, 0.25);
+    border-radius: 20px;
     padding: 28px 24px;
     width: 100%;
-    max-width: 480px;
-    box-shadow: var(--shadow-modal);
+    max-width: 500px;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.85), 0 0 30px rgba(187, 244, 61, 0.15);
     display: flex;
     flex-direction: column;
     gap: 16px;
@@ -3018,11 +3060,16 @@ button, a[role="button"], input[type="button"], input[type="submit"] {
     display: flex;
     align-items: center;
     justify-content: space-between;
+    padding-bottom: 12px;
+    border-bottom: 1px solid rgba(187, 244, 61, 0.15);
 }
 
 .modal-header h3 {
-    font-size: 18px;
-    font-weight: 700;
+    font-family: var(--font-heading);
+    font-size: 20px;
+    font-weight: 800;
+    color: #ffffff;
+    letter-spacing: -0.02em;
 }
 
 .btn-close-modal {
@@ -3030,41 +3077,108 @@ button, a[role="button"], input[type="button"], input[type="submit"] {
     height: 32px;
     min-height: 32px;
     min-width: 32px;
-    background: transparent;
-    border: none;
+    background: rgba(187, 244, 61, 0.08);
+    border: 1px solid rgba(187, 244, 61, 0.2);
     border-radius: var(--radius-sm);
-    color: var(--text-muted);
+    color: #d4d4d8;
     font-size: 20px;
     display: flex;
     align-items: center;
     justify-content: center;
     transition: all var(--transition-fast);
+    cursor: pointer;
 }
 
 .btn-close-modal:hover {
-    background: var(--bg-card);
-    color: var(--text-primary);
+    background: rgba(239, 68, 68, 0.15);
+    color: #ef4444;
+    border-color: rgba(239, 68, 68, 0.35);
 }
 
 .modal-form {
     display: flex;
     flex-direction: column;
-    gap: 14px;
+    gap: 16px;
+}
+
+.modal-form .form-group {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.modal-form .form-group label {
+    font-family: var(--font-mono);
+    font-size: 11.5px;
+    font-weight: 700;
+    color: #c4c4c8;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+}
+
+.modal-form .form-group label .req-star {
+    color: #ef4444;
+    font-weight: 700;
+}
+
+/* Fix White Input Box & Unreadable Dropdowns */
+.modal-form select,
+.modal-form input[type="text"],
+.modal-form input[type="email"],
+.modal-form textarea {
+    width: 100%;
+    min-height: 42px;
+    background: #12161c !important;
+    color: #ffffff !important;
+    border: 1.5px solid rgba(187, 244, 61, 0.25) !important;
+    border-radius: 10px !important;
+    padding: 10px 14px !important;
+    font-size: 13.5px !important;
+    outline: none !important;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+    transition: all var(--transition-fast);
+    cursor: pointer;
+}
+
+.modal-form select option {
+    background: #0f1216 !important;
+    color: #ffffff !important;
+    padding: 10px !important;
+}
+
+.modal-form select:focus,
+.modal-form input:focus,
+.modal-form textarea:focus {
+    border-color: #bbf43d !important;
+    box-shadow: 0 0 16px rgba(187, 244, 61, 0.3) !important;
+    background: #161b22 !important;
 }
 
 .custom-file-dropzone {
-    border: 1.5px dashed var(--border-medium);
-    border-radius: var(--radius-md);
+    border: 1.5px dashed rgba(187, 244, 61, 0.35);
+    border-radius: 14px;
     padding: 24px 16px;
     text-align: center;
-    background: var(--bg-input);
+    background: #0e1116;
     cursor: pointer;
     transition: all var(--transition-fast);
+    position: relative;
 }
 
 .custom-file-dropzone:hover {
-    border-color: var(--accent-primary);
-    background: var(--bg-input-focus);
+    border-color: #bbf43d;
+    background: rgba(187, 244, 61, 0.05);
+    box-shadow: 0 0 20px rgba(187, 244, 61, 0.15);
+}
+
+.custom-file-dropzone input[type="file"] {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    opacity: 0;
+    cursor: pointer;
 }
 
 .dropzone-text {
@@ -3072,12 +3186,35 @@ button, a[role="button"], input[type="button"], input[type="submit"] {
     flex-direction: column;
     align-items: center;
     gap: 8px;
-    color: var(--text-secondary);
-    font-size: 13px;
+    color: #a1a1aa;
+    font-size: 13.5px;
+    font-weight: 500;
 }
 
 .dropzone-text svg {
     color: var(--accent-primary);
+}
+
+#btn-submit-upload {
+    min-height: 44px;
+    background: #bbf43d !important;
+    color: #08090a !important;
+    font-family: var(--font-heading);
+    font-size: 14.5px !important;
+    font-weight: 800 !important;
+    border-radius: 9999px !important;
+    padding: 12px 24px !important;
+    border: none !important;
+    cursor: pointer !important;
+    transition: all var(--transition-fast) !important;
+    box-shadow: 0 0 24px rgba(187, 244, 61, 0.4) !important;
+    margin-top: 10px !important;
+}
+
+#btn-submit-upload:hover {
+    background: #ccff00 !important;
+    transform: translateY(-2px);
+    box-shadow: 0 0 32px rgba(187, 244, 61, 0.6) !important;
 }
 
 /* --------------------------------------------------------------------------

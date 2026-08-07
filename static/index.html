@@ -21,7 +21,7 @@
     <!-- Firebase SDK (v10 Compat) loaded upfront -->
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
-    <link rel="stylesheet" href="style.css?v=38002.0">
+    <link rel="stylesheet" href="style.css?v=38003.0">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
     <script>
         function switchAuthTab(tab) {
@@ -680,23 +680,11 @@
                             </div>
                         </div>
 
-                        <!-- Clean List / Table Container -->
-                        <div class="browse-table-wrapper">
-                            <table class="browse-table">
-                                <thead>
-                                    <tr>
-                                        <th>Document Name</th>
-                                        <th>Type</th>
-                                        <th>Subject & Semester</th>
-                                        <th>Uploaded By</th>
-                                        <th>Date & Size</th>
-                                        <th class="col-action">Action</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="browse-files-tbody">
-                                    <!-- Dynamic rows -->
-                                </tbody>
-                            </table>
+                        <!-- Vertical Cards Grid Container -->
+                        <div class="browse-cards-wrapper">
+                            <div id="browse-files-tbody" class="browse-cards-grid">
+                                <!-- Dynamic vertical document cards -->
+                            </div>
                         </div>
                     </div>
 
@@ -1072,6 +1060,6 @@
     </div>
 
     <!-- Main JavaScript Link -->
-    <script src="app.js?v=38002.0"></script>
+    <script src="app.js?v=38003.0"></script>
 </body>
 </html>
