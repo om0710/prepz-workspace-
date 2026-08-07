@@ -1321,6 +1321,10 @@ function initializeDocPilotApp() {
             landingContainer.classList.remove("hidden");
             landingContainer.style.display = "flex";
         }
+        if (inputPanelWrapper) {
+            inputPanelWrapper.classList.remove("hidden");
+            inputPanelWrapper.style.display = "block";
+        }
         const devFooter = document.querySelector(".landing-footer-nexa");
         if (devFooter) {
             devFooter.classList.remove("hidden");
@@ -1329,10 +1333,6 @@ function initializeDocPilotApp() {
         const profileCard = document.getElementById("home-profile-card") || document.querySelector(".developer-profile-card");
         if (profileCard) {
             profileCard.style.display = "flex";
-        }
-        if (inputPanelWrapper) {
-            inputPanelWrapper.classList.add("hidden");
-            inputPanelWrapper.style.display = "none";
         }
         if (settingsContainer) {
             settingsContainer.classList.add("hidden");
@@ -1418,6 +1418,7 @@ function initializeDocPilotApp() {
         if (browseContainer) { browseContainer.classList.add("hidden"); browseContainer.style.display = "none"; }
         if (predictorContainer) { predictorContainer.classList.add("hidden"); predictorContainer.style.display = "none"; }
         if (leaderboardContainer) { leaderboardContainer.classList.add("hidden"); leaderboardContainer.style.display = "none"; }
+        if (inputPanelWrapper) { inputPanelWrapper.classList.add("hidden"); inputPanelWrapper.style.display = "none"; }
 
         const devFooter = document.querySelector(".landing-footer-nexa");
         if (devFooter) { devFooter.classList.add("hidden"); devFooter.style.display = "none !important"; }

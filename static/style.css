@@ -1166,7 +1166,11 @@ button, a[role="button"], input[type="button"], input[type="submit"] {
 .input-panel-wrapper {
     width: 100%;
     max-width: 780px;
-    margin: 0 auto;
+    margin: 0 auto 24px auto;
+}
+
+.input-panel-wrapper.hidden {
+    display: none !important;
 }
 
 .chat-input-box {
@@ -1823,6 +1827,179 @@ button, a[role="button"], input[type="button"], input[type="submit"] {
 
 .col-action {
     text-align: right;
+}
+
+.browse-pdf-icon {
+    width: 32px;
+    height: 32px;
+    border-radius: var(--radius-sm);
+    background: var(--accent-primary-light);
+    color: var(--accent-primary);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.browse-file-title {
+    font-weight: 600;
+    color: #ffffff;
+    font-size: 13.5px;
+    text-decoration: none;
+    transition: color var(--transition-fast);
+}
+
+.browse-file-title:hover {
+    color: var(--accent-primary);
+    text-decoration: underline;
+}
+
+.filetype-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 3px 8px;
+    border-radius: var(--radius-pill);
+    font-size: 11px;
+    font-weight: 600;
+    background: rgba(99, 102, 241, 0.15);
+    color: #a5b4fc;
+    border: 1px solid rgba(99, 102, 241, 0.3);
+}
+
+.examtype-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 3px 8px;
+    border-radius: var(--radius-pill);
+    font-size: 11px;
+    font-weight: 600;
+    background: rgba(245, 158, 11, 0.15);
+    color: #fcd34d;
+    border: 1px solid rgba(245, 158, 11, 0.3);
+}
+
+.semester-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 3px 8px;
+    border-radius: var(--radius-pill);
+    font-size: 11px;
+    font-weight: 500;
+    background: var(--bg-input);
+    color: var(--text-secondary);
+    border: 1px solid var(--border-subtle);
+}
+
+.subject-badge {
+    display: inline-block;
+    font-size: 11.5px;
+    color: #818cf8;
+    font-weight: 600;
+}
+
+.btn-open-browse-pdf, .btn-open-pdf {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 6px 12px;
+    background: var(--bg-card);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-sm);
+    color: var(--text-secondary);
+    font-size: 12px;
+    font-weight: 500;
+    text-decoration: none;
+    transition: all var(--transition-fast);
+}
+
+.btn-open-browse-pdf:hover, .btn-open-pdf:hover {
+    background: var(--bg-card-hover);
+    color: var(--text-primary);
+    border-color: var(--border-hover);
+}
+
+.btn-download-file {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 6px 12px;
+    background: rgba(16, 185, 129, 0.1);
+    border: 1px solid rgba(16, 185, 129, 0.25);
+    border-radius: var(--radius-sm);
+    color: #34d399;
+    font-size: 12px;
+    font-weight: 500;
+    text-decoration: none;
+    transition: all var(--transition-fast);
+}
+
+.btn-download-file:hover {
+    background: rgba(16, 185, 129, 0.2);
+    color: #6ee7b7;
+    border-color: rgba(16, 185, 129, 0.4);
+}
+
+.btn-browse-chat, .btn-chat-with-doc {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 6px 12px;
+    background: var(--accent-primary-light);
+    border: 1px solid var(--accent-primary-border);
+    border-radius: var(--radius-sm);
+    color: #a5b4fc;
+    font-size: 12px;
+    font-weight: 500;
+    transition: all var(--transition-fast);
+}
+
+.btn-browse-chat:hover, .btn-chat-with-doc:hover {
+    background: var(--accent-primary);
+    color: #ffffff;
+}
+
+.btn-pin-browse {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 6px 10px;
+    background: var(--bg-card);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-sm);
+    color: var(--text-secondary);
+    font-size: 12px;
+    font-weight: 500;
+    transition: all var(--transition-fast);
+}
+
+.btn-pin-browse:hover {
+    background: var(--bg-card-hover);
+    color: var(--text-primary);
+}
+
+.btn-pin-browse.active-pinned {
+    background: rgba(245, 158, 11, 0.15);
+    color: #fcd34d;
+    border-color: rgba(245, 158, 11, 0.35);
+}
+
+.btn-report-browse {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 6px 10px;
+    background: transparent;
+    border: 1px solid transparent;
+    border-radius: var(--radius-sm);
+    color: var(--text-muted);
+    font-size: 12px;
+    transition: all var(--transition-fast);
+}
+
+.btn-report-browse:hover {
+    background: var(--accent-danger-light);
+    color: var(--accent-danger);
+    border-color: rgba(239, 68, 68, 0.3);
 }
 
 /* --------------------------------------------------------------------------
