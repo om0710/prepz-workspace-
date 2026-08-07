@@ -1823,28 +1823,28 @@ function initializeDocPilotApp() {
                 </td>
                 <td>
                     <div style="display: flex; flex-direction: column; gap: 3px;">
-                        <span style="font-weight: 700; font-size: 13.5px; color: #60a5fa !important;">${subject}</span>
-                        <span style="font-size: 12px; color: #f4f4f5 !important; font-weight: 500;">${semester}</span>
+                        <span style="font-weight: 700; font-size: 13.5px; color: #ffffff !important;">${subject}</span>
+                        <span style="font-size: 12px; color: #bbf43d !important; font-weight: 600;">${semester}</span>
                     </div>
                 </td>
-                <td><span style="font-weight: 600; font-size: 13.5px; color: #ffffff !important;">${uploaderName}</span></td>
-                <td><span style="font-size: 12.5px; color: #e4e4e7 !important; font-weight: 500;">${uploadedAt} (${sizeKb})</span></td>
+                <td><span style="font-weight: 600; font-size: 13.5px; color: #f4f4f5 !important;">${uploaderName}</span></td>
+                <td><span style="font-size: 12.5px; color: #a1a1aa !important; font-weight: 500;">${uploadedAt} (${sizeKb})</span></td>
                 <td class="col-action">
                     <div style="display: flex; align-items: center; justify-content: flex-end; gap: 8px;">
-                        <a href="/view/${encodeURIComponent(filename)}" target="_blank" class="btn-open-browse-pdf" title="View or Download Document">
-                            👁️ View Document
+                        <a href="/download/${encodeURIComponent(filename)}?disposition=attachment" download="${filename}" class="btn-download-file" title="Download File">
+                            <span>⬇ Download</span>
                         </a>
-                        <a href="/download/${encodeURIComponent(filename)}?disposition=attachment" download="${filename}" class="btn-download-file" title="Download File from Storage">
-                            ⬇️ Download
+                        <a href="/view/${encodeURIComponent(filename)}" target="_blank" class="btn-open-browse-pdf" title="View Document">
+                            <span>👁 View</span>
                         </a>
-                        <button type="button" class="btn-chat-with-doc btn-browse-chat" data-filename="${filename}" title="Chat with Document" style="width: auto; padding: 7px 12px;">
-                            💬 Chat
+                        <button type="button" class="btn-chat-with-doc btn-browse-chat" data-filename="${filename}" title="Chat with Document">
+                            <span>💬 Chat</span>
                         </button>
-                        <button type="button" class="btn-pin-browse ${isPinned ? 'active-pinned' : ''}" data-filename="${filename}" title="${isPinned ? 'Unpin from Sidebar Pinned Folders' : 'Pin to Sidebar Pinned Folders'}">
-                            ${isPinned ? '📌 Pinned' : '📌 Pin'}
+                        <button type="button" class="btn-browse-pin btn-pin-browse ${isPinned ? 'active-pinned' : ''}" data-filename="${filename}" title="${isPinned ? 'Unpin from Pinned Folders' : 'Pin to Sidebar'}">
+                            <span>${isPinned ? '📌' : '📌'}</span>
                         </button>
-                        <button type="button" class="btn-report-browse" data-filename="${filename}" title="Report file to moderation">
-                            🚩 Report
+                        <button type="button" class="btn-browse-report btn-report-browse" data-filename="${filename}" title="Report file to moderation">
+                            <span>🚩</span>
                         </button>
                     </div>
                 </td>
