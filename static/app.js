@@ -3073,6 +3073,9 @@ function initializeDocPilotApp() {
                     </div>
 
                     <div class="doc-card-actions">
+                        <a href="/download/${encodeURIComponent(filename)}?disposition=attachment" download="${filename}" class="btn-download-file" title="Download File">
+                            <span>⬇ Download</span>
+                        </a>
                         <a href="/view/${encodeURIComponent(filename)}" target="_blank" class="btn-open-browse-pdf" title="View Document">
                             <span>👁 View</span>
                         </a>
