@@ -2770,25 +2770,25 @@ button, a[role="button"], input[type="button"], input[type="submit"] {
     border: 1px solid rgba(16, 185, 129, 0.35);
 }
 
-.btn-delete-file-doc {
+.btn-delete-my-library, .btn-delete-file-doc {
     display: inline-flex;
     align-items: center;
     gap: 6px;
     padding: 8px 12px;
     border-radius: var(--radius-sm);
-    background: #14171d;
-    border: 1px solid var(--border-medium);
-    color: #ef4444;
+    background: #14171d !important;
+    border: 1px solid var(--border-medium) !important;
+    color: #ef4444 !important;
     font-size: 12px;
     font-weight: 600;
     cursor: pointer;
     transition: all var(--transition-fast);
 }
 
-.btn-delete-file-doc:hover {
-    background: rgba(239, 68, 68, 0.18);
-    color: #f87171;
-    border-color: rgba(239, 68, 68, 0.5);
+.btn-delete-my-library:hover, .btn-delete-file-doc:hover {
+    background: rgba(239, 68, 68, 0.18) !important;
+    color: #f87171 !important;
+    border-color: rgba(239, 68, 68, 0.5) !important;
     transform: translateY(-1px);
 }
 
