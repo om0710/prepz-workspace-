@@ -21,7 +21,7 @@
     <!-- Firebase SDK (v10 Compat) loaded upfront -->
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
-    <link rel="stylesheet" href="style.css?v=37003.0">
+    <link rel="stylesheet" href="style.css?v=37004.0">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
     <script>
         function switchAuthTab(tab) {
@@ -441,63 +441,6 @@
                             <button type="button" class="subject-chip-btn" onclick="showBrowseState(); document.getElementById('browse-search-input').value = 'Networks'; renderBrowseTable();">Computer Networks</button>
                         </div>
 
-                        <!-- Input Box Panel (Prompt Bar inside Home Dashboard) -->
-                        <div class="input-panel-wrapper">
-                            <form id="chat-form" class="chat-input-box">
-                                <input type="file" id="file-input" accept=".pdf,.docx,.doc" style="display: none;">
-                                <div id="upload-status" style="display: none;"></div>
-
-                                <!-- Attach button -->
-                                <button type="button" id="btn-input-plus" class="control-pill-nexa" title="Upload Document">
-                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-                                        <path d="M12 5v14M5 12h14" stroke-linecap="round"/>
-                                    </svg>
-                                    <span>Attach Files</span>
-                                </button>
-
-                                <textarea id="user-input" placeholder="Type your prompt here..." rows="1" required autocomplete="off"></textarea>
-                                
-                                <div class="input-controls">
-                                    <div class="controls-left">
-                                        <button type="button" id="btn-toggle-search" class="control-pill-nexa" title="Toggle Search Tools">
-                                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-                                            <span>Web Search</span>
-                                        </button>
-                                        <button type="button" id="btn-input-voice" class="control-pill-nexa" title="Speech Input">
-                                            <svg class="voice-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                                                <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/>
-                                                <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
-                                                <line x1="12" y1="19" x2="12" y2="23"/>
-                                                <line x1="8" y1="23" x2="16" y2="23"/>
-                                            </svg>
-                                            <span>Voice</span>
-                                        </button>
-                                    </div>
-                                    <div class="controls-right">
-                                        <button type="submit" id="btn-submit" class="submit-btn-nexa" title="Send Prompt">
-                                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
-                                        </button>
-                                    </div>
-                                </div>
-                            </form>
-
-                            <!-- Suggestion Cards Grid -->
-                            <div class="suggestion-grid-nexa">
-                                <button class="suggestion-pill suggestion-pill-nexa" data-prompt="Summarize key formulas, definitions, and PYQ exam questions from my uploaded notes.">
-                                    <span>Exam Preparation</span>
-                                </button>
-                                <button class="suggestion-pill suggestion-pill-nexa" data-prompt="Help me solve step-by-step tutorial sheet assignments and explain underlying equations.">
-                                    <span>Assignment Helper</span>
-                                </button>
-                                <button class="suggestion-pill suggestion-pill-nexa" data-prompt="Explain core concepts in Operating Systems, DBMS, DSA, and Networks with clear examples.">
-                                    <span>Engineering Concepts</span>
-                                </button>
-                                <button class="suggestion-pill suggestion-pill-nexa" data-prompt="Create a 5-minute quick revision cheat sheet and key takeaways from my uploaded PDF documents.">
-                                    <span>Quick Revision</span>
-                                </button>
-                            </div>
-                        </div>
-
                         <!-- Developer Profile Footer (Visible strictly on Home Dashboard view) -->
                         <footer class="landing-footer-nexa" style="margin-top: auto; padding: 24px 0 12px 0; width: 100%; display: flex; justify-content: center; align-items: center;">
                             <div id="home-profile-card" class="profile-card developer-profile-card" style="display: flex; flex-direction: row; align-items: center; justify-content: flex-start; gap: 16px; background: #08080a; border: 1.5px solid #ffffff; border-radius: 20px; padding: 18px 24px; max-width: 480px; width: 100%; margin: 20px auto 10px auto; box-shadow: 0 10px 40px rgba(0, 0, 0, 0.7);">
@@ -518,6 +461,63 @@
                                 </div>
                             </div>
                         </footer>
+                    </div>
+
+                    <!-- Input Box Panel (Accessible for both Home Dashboard and Chat Modes) -->
+                    <div class="input-panel-wrapper">
+                        <form id="chat-form" class="chat-input-box">
+                            <input type="file" id="file-input" accept=".pdf,.docx,.doc" style="display: none;">
+                            <div id="upload-status" style="display: none;"></div>
+
+                            <!-- Attach button -->
+                            <button type="button" id="btn-input-plus" class="control-pill-nexa" title="Upload Document">
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                                    <path d="M12 5v14M5 12h14" stroke-linecap="round"/>
+                                </svg>
+                                <span>Attach Files</span>
+                            </button>
+
+                            <textarea id="user-input" placeholder="Type your prompt here..." rows="1" required autocomplete="off"></textarea>
+                            
+                            <div class="input-controls">
+                                <div class="controls-left">
+                                    <button type="button" id="btn-toggle-search" class="control-pill-nexa" title="Toggle Search Tools">
+                                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                                        <span>Web Search</span>
+                                    </button>
+                                    <button type="button" id="btn-input-voice" class="control-pill-nexa" title="Speech Input">
+                                        <svg class="voice-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                                            <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/>
+                                            <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
+                                            <line x1="12" y1="19" x2="12" y2="23"/>
+                                            <line x1="8" y1="23" x2="16" y2="23"/>
+                                        </svg>
+                                        <span>Voice</span>
+                                    </button>
+                                </div>
+                                <div class="controls-right">
+                                    <button type="submit" id="btn-submit" class="submit-btn-nexa" title="Send Prompt">
+                                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+                                    </button>
+                                </div>
+                            </div>
+                        </form>
+
+                        <!-- Suggestion Cards Grid -->
+                        <div class="suggestion-grid-nexa">
+                            <button class="suggestion-pill suggestion-pill-nexa" data-prompt="Summarize key formulas, definitions, and PYQ exam questions from my uploaded notes.">
+                                <span>Exam Preparation</span>
+                            </button>
+                            <button class="suggestion-pill suggestion-pill-nexa" data-prompt="Help me solve step-by-step tutorial sheet assignments and explain underlying equations.">
+                                <span>Assignment Helper</span>
+                            </button>
+                            <button class="suggestion-pill suggestion-pill-nexa" data-prompt="Explain core concepts in Operating Systems, DBMS, DSA, and Networks with clear examples.">
+                                <span>Engineering Concepts</span>
+                            </button>
+                            <button class="suggestion-pill suggestion-pill-nexa" data-prompt="Create a 5-minute quick revision cheat sheet and key takeaways from my uploaded PDF documents.">
+                                <span>Quick Revision</span>
+                            </button>
+                        </div>
                     </div>
 
                     <!-- Personal My Library Page View -->
@@ -1060,6 +1060,6 @@
     </div>
 
     <!-- Main JavaScript Link -->
-    <script src="app.js?v=37003.0"></script>
+    <script src="app.js?v=37004.0"></script>
 </body>
 </html>
