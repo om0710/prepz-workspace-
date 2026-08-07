@@ -1,34 +1,40 @@
 /* ==========================================================================
-   BU PREPZ - ENTERPRISE MICROSOFT FLUENT DESIGN SYSTEM
-   Role: Principal Product Designer, Microsoft (Teams, Outlook, Loop, VS Code)
-   Principles: Clean, Intentional, Minimal, Accessible, Production-Ready
+   BU PREPZ - ADSPACE CYBER LIME & OBSIDIAN DESIGN SYSTEM
+   Inspired by: ADSPACE Digital Design Portfolio & Creative Agency
+   Aesthetics: Cyber Electric Lime (#bbf43d), Deep Obsidian Noir (#08090a),
+               Swiss Neo-Grotesque Typography with Editorial Serif Italics.
    ========================================================================== */
 
 /* --------------------------------------------------------------------------
    1. DESIGN TOKENS & CSS VARIABLES
    -------------------------------------------------------------------------- */
 :root {
-    /* Color System - Deep Refined Dark Surfaces */
-    --bg-canvas: #09090b;
-    --bg-surface: #0f0f13;
-    --bg-surface-elevated: #141418;
-    --bg-card: #18181c;
-    --bg-card-hover: #1e1e24;
-    --bg-input: #1a1a20;
-    --bg-input-focus: #202028;
-    --bg-modal-backdrop: rgba(0, 0, 0, 0.75);
+    /* Color System - ADSPACE Obsidian & Electric Lime */
+    --bg-canvas: #08090a;
+    --bg-surface: #0e1013;
+    --bg-surface-elevated: #14171c;
+    --bg-card: #121519;
+    --bg-card-hover: #181c22;
+    --bg-input: #111317;
+    --bg-input-focus: #16191f;
+    --bg-modal-backdrop: rgba(4, 5, 6, 0.85);
 
-    /* Borders & Dividers */
-    --border-subtle: rgba(255, 255, 255, 0.08);
-    --border-medium: rgba(255, 255, 255, 0.14);
-    --border-hover: rgba(255, 255, 255, 0.22);
-    --border-focus: #6366f1;
+    /* Borders & Grid Dividers */
+    --border-subtle: rgba(187, 244, 61, 0.08);
+    --border-medium: rgba(187, 244, 61, 0.18);
+    --border-hover: rgba(187, 244, 61, 0.45);
+    --border-focus: #bbf43d;
 
-    /* Primary Accent - Microsoft Fluent Iris / Indigo */
-    --accent-primary: #6366f1;
-    --accent-primary-hover: #4f46e5;
-    --accent-primary-light: rgba(99, 102, 241, 0.14);
-    --accent-primary-border: rgba(99, 102, 241, 0.35);
+    /* Primary Accent - ADSPACE Electric Cyber Lime / Chartreuse */
+    --accent-primary: #bbf43d;
+    --accent-primary-hover: #ccff00;
+    --accent-primary-light: rgba(187, 244, 61, 0.12);
+    --accent-primary-border: rgba(187, 244, 61, 0.35);
+    --accent-glow: 0 0 24px rgba(187, 244, 61, 0.32);
+
+    /* High Energy Lime Card Tokens */
+    --lime-card-bg: #bbf43d;
+    --lime-card-text: #08090a;
 
     /* Semantic Status Accents */
     --accent-success: #10b981;
@@ -43,16 +49,18 @@
     /* Typography Colors */
     --text-primary: #ffffff;
     --text-heading: #f4f4f5;
-    --text-secondary: #a1a1aa;
-    --text-muted: #71717a;
+    --text-secondary: #d4d4d8;
+    --text-muted: #8a8f98;
     --text-disabled: #52525b;
+    --text-lime: #bbf43d;
 
     /* Typography Families */
-    --font-heading: 'Outfit', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    --font-heading: 'Outfit', 'Space Grotesk', -apple-system, BlinkMacSystemFont, sans-serif;
     --font-body: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-    --font-mono: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, Courier, monospace;
+    --font-serif: 'Newsreader', 'Playfair Display', Georgia, serif;
+    --font-mono: 'Space Grotesk', 'SFMono-Regular', Consolas, Menlo, monospace;
 
-    /* Spatial System (8px Grid) */
+    /* Spatial System */
     --space-2xs: 4px;
     --space-xs: 8px;
     --space-sm: 12px;
@@ -62,26 +70,27 @@
     --space-2xl: 48px;
 
     /* Radii */
-    --radius-sm: 6px;
-    --radius-md: 8px;
-    --radius-lg: 12px;
-    --radius-xl: 16px;
+    --radius-sm: 8px;
+    --radius-md: 12px;
+    --radius-lg: 16px;
+    --radius-xl: 22px;
     --radius-pill: 9999px;
 
     /* Elevations & Shadows */
-    --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.4);
-    --shadow-md: 0 4px 14px rgba(0, 0, 0, 0.45);
-    --shadow-lg: 0 12px 32px rgba(0, 0, 0, 0.6);
-    --shadow-modal: 0 20px 60px rgba(0, 0, 0, 0.8), 0 0 0 1px var(--border-subtle);
+    --shadow-sm: 0 2px 6px rgba(0, 0, 0, 0.5);
+    --shadow-md: 0 6px 20px rgba(0, 0, 0, 0.6);
+    --shadow-lg: 0 16px 40px rgba(0, 0, 0, 0.75);
+    --shadow-neon: 0 0 30px rgba(187, 244, 61, 0.25);
+    --shadow-modal: 0 24px 70px rgba(0, 0, 0, 0.9), 0 0 0 1px var(--border-medium);
 
     /* Transitions */
     --transition-fast: 150ms cubic-bezier(0.4, 0, 0.2, 1);
-    --transition-base: 200ms cubic-bezier(0.4, 0, 0.2, 1);
-    --transition-smooth: 280ms cubic-bezier(0.4, 0, 0.2, 1);
+    --transition-base: 220ms cubic-bezier(0.4, 0, 0.2, 1);
+    --transition-smooth: 320ms cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 /* --------------------------------------------------------------------------
-   2. GLOBAL CSS RESET & BASE STYLES
+   2. GLOBAL CSS RESET & BASE STYLES WITH ADSPACE CYBER MATRIX GRID
    -------------------------------------------------------------------------- */
 * {
     margin: 0;
@@ -93,6 +102,11 @@ html, body {
     width: 100%;
     min-height: 100%;
     background-color: var(--bg-canvas);
+    background-image: 
+        radial-gradient(circle at 50% 12%, rgba(187, 244, 61, 0.08) 0%, transparent 65%),
+        linear-gradient(rgba(187, 244, 61, 0.02) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(187, 244, 61, 0.02) 1px, transparent 1px);
+    background-size: 100% 100%, 48px 48px, 48px 48px;
     color: var(--text-heading);
     font-family: var(--font-body);
     font-size: 15px;
@@ -101,6 +115,14 @@ html, body {
     -moz-osx-font-smoothing: grayscale;
     -webkit-text-size-adjust: 100%;
     overflow-x: hidden;
+}
+
+/* Editorial Serif Italic Accent Class */
+.adspace-serif-italic {
+    font-family: var(--font-serif);
+    font-style: italic;
+    font-weight: 400;
+    color: var(--accent-primary);
 }
 
 body {
@@ -953,94 +975,114 @@ button, a[role="button"], input[type="button"], input[type="submit"] {
     flex-direction: column;
 }
 
+/* --------------------------------------------------------------------------
+   6. HOME DASHBOARD & ADSPACE DISPLAY HERO
+   -------------------------------------------------------------------------- */
 .landing-container {
     display: flex;
     flex-direction: column;
     align-items: center;
     text-align: center;
     width: 100%;
-    margin-top: 12px;
+    max-width: 1080px;
+    margin: 0 auto;
+    padding-top: 20px;
+    animation: fadeIn var(--transition-base);
 }
 
-/* Top Hero Badge */
-.landing-hero-badge {
+/* ADSPACE Hero Pill Badge */
+.adspace-hero-pill {
     display: inline-flex;
     align-items: center;
     gap: 8px;
-    background: var(--accent-primary-light);
-    border: 1px solid var(--accent-primary-border);
-    padding: 5px 14px;
+    background: rgba(187, 244, 61, 0.08);
+    border: 1px solid rgba(187, 244, 61, 0.35);
     border-radius: var(--radius-pill);
-    margin-bottom: 16px;
+    padding: 6px 18px;
+    margin-bottom: 20px;
+    box-shadow: 0 0 24px rgba(187, 244, 61, 0.18);
+    transition: all var(--transition-fast);
 }
 
-.hero-pulse-dot {
-    width: 7px;
-    height: 7px;
-    border-radius: 50%;
-    background: var(--accent-success);
-    box-shadow: 0 0 8px var(--accent-success);
+.adspace-hero-pill:hover {
+    border-color: var(--accent-primary);
+    box-shadow: 0 0 30px rgba(187, 244, 61, 0.3);
 }
 
-.hero-badge-text {
-    font-size: 12px;
-    font-weight: 600;
-    color: #a5b4fc;
-    letter-spacing: 0.25px;
+.adspace-alien-orb {
+    font-size: 15px;
+    filter: drop-shadow(0 0 6px rgba(187, 244, 61, 0.6));
 }
 
-.landing-title {
-    font-size: 32px;
+.adspace-pill-text {
+    font-family: var(--font-mono);
+    font-size: 11.5px;
+    font-weight: 700;
+    color: var(--accent-primary);
+    letter-spacing: 1px;
+    text-transform: uppercase;
+}
+
+/* ADSPACE Big Display Headline */
+.landing-title.adspace-headline {
+    font-family: var(--font-heading);
+    font-size: 42px;
     font-weight: 800;
-    color: var(--text-primary);
-    margin-bottom: 8px;
+    line-height: 1.15;
     letter-spacing: -0.03em;
+    color: #ffffff;
+    margin-bottom: 16px;
+    text-transform: uppercase;
+    max-width: 960px;
 }
 
-.gradient-text {
-    color: #818cf8;
-}
-
-.landing-subtitle {
-    font-size: 14.5px;
+.landing-subtitle.adspace-subtext {
+    font-size: 16px;
     color: var(--text-secondary);
-    max-width: 640px;
-    margin-bottom: 24px;
+    max-width: 720px;
+    margin-bottom: 28px;
     line-height: 1.6;
 }
 
-/* Metrics Ribbon */
+/* Platform Quick Metrics Ribbon */
 .landing-metrics-ribbon {
     display: flex;
     align-items: center;
     justify-content: center;
     flex-wrap: wrap;
-    gap: 10px;
-    margin-bottom: 32px;
+    gap: 12px;
+    margin-bottom: 34px;
 }
 
 .metric-pill {
     display: flex;
     align-items: center;
-    gap: 7px;
-    background: var(--bg-surface-elevated);
-    border: 1px solid var(--border-subtle);
-    padding: 6px 14px;
+    gap: 8px;
+    background: var(--bg-surface);
+    border: 1px solid var(--border-medium);
+    padding: 8px 18px;
     border-radius: var(--radius-pill);
-    font-size: 12.5px;
+    font-size: 13px;
     color: var(--text-secondary);
+    box-shadow: var(--shadow-sm);
+    transition: all var(--transition-fast);
+}
+
+.metric-pill:hover {
+    border-color: var(--accent-primary-border);
+    background: var(--bg-surface-elevated);
 }
 
 .metric-icon {
-    font-size: 14px;
+    font-size: 15px;
 }
 
 .metric-text strong {
-    color: var(--text-primary);
-    font-weight: 600;
+    color: var(--accent-primary);
+    font-weight: 700;
 }
 
-/* 4 Core Action Launcher Cards (Microsoft 365 / Linear Style) */
+/* 4 Core Action Launcher Cards - ADSPACE Cyber Matrix */
 .landing-features-grid {
     display: grid;
     grid-template-columns: repeat(4, 1fr);
@@ -1051,10 +1093,10 @@ button, a[role="button"], input[type="button"], input[type="submit"] {
 }
 
 .landing-feature-card {
-    background: var(--bg-surface-elevated);
-    border: 1px solid var(--border-subtle);
+    background: var(--bg-surface);
+    border: 1px solid var(--border-medium);
     border-radius: var(--radius-lg);
-    padding: 20px 18px;
+    padding: 22px 20px;
     display: flex;
     flex-direction: column;
     align-items: flex-start;
@@ -1063,101 +1105,237 @@ button, a[role="button"], input[type="button"], input[type="submit"] {
     position: relative;
     transition: all var(--transition-base);
     box-shadow: var(--shadow-sm);
+    overflow: hidden;
+}
+
+.landing-feature-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 2px;
+    background: transparent;
+    transition: background var(--transition-fast);
 }
 
 .landing-feature-card:hover {
     background: var(--bg-card-hover);
-    border-color: var(--border-hover);
-    transform: translateY(-2px);
-    box-shadow: var(--shadow-md);
+    border-color: var(--accent-primary);
+    transform: translateY(-3px);
+    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.7), var(--shadow-neon);
+}
+
+.landing-feature-card:hover::before {
+    background: var(--accent-primary);
 }
 
 .card-icon-box {
-    width: 42px;
-    height: 42px;
+    width: 44px;
+    height: 44px;
     border-radius: var(--radius-md);
     display: flex;
     align-items: center;
     justify-content: center;
-    margin-bottom: 14px;
+    margin-bottom: 16px;
+    background: rgba(187, 244, 61, 0.08);
+    border: 1px solid rgba(187, 244, 61, 0.25);
+    color: var(--accent-primary);
+    transition: all var(--transition-fast);
 }
 
-.icon-purple {
-    background: rgba(139, 92, 246, 0.15);
-    color: #a78bfa;
-}
-.icon-blue {
-    background: rgba(59, 130, 246, 0.15);
-    color: #60a5fa;
-}
-.icon-emerald {
-    background: rgba(16, 185, 129, 0.15);
-    color: #34d399;
-}
-.icon-amber {
-    background: rgba(245, 158, 11, 0.15);
-    color: #fbbf24;
+.landing-feature-card:hover .card-icon-box {
+    background: var(--accent-primary);
+    color: #08090a;
+    box-shadow: 0 0 16px rgba(187, 244, 61, 0.5);
 }
 
 .card-content h3 {
-    font-size: 15px;
-    font-weight: 600;
-    margin-bottom: 4px;
+    font-family: var(--font-heading);
+    font-size: 16px;
+    font-weight: 700;
+    margin-bottom: 6px;
     color: var(--text-primary);
+    letter-spacing: -0.01em;
 }
 
 .card-content p {
-    font-size: 12.5px;
+    font-size: 13px;
     color: var(--text-muted);
     line-height: 1.45;
 }
 
 .card-arrow-icon {
     position: absolute;
-    top: 18px;
-    right: 18px;
+    top: 20px;
+    right: 20px;
     font-size: 16px;
     color: var(--text-muted);
     transition: transform var(--transition-fast), color var(--transition-fast);
 }
 
 .landing-feature-card:hover .card-arrow-icon {
-    transform: translateX(3px);
+    transform: translateX(4px);
     color: var(--accent-primary);
 }
 
-/* Quick Subject Chips */
+/* Quick Subject Chips with Neon Pills */
 .landing-chip-row {
     display: flex;
     align-items: center;
     justify-content: center;
     flex-wrap: wrap;
-    gap: 8px;
+    gap: 10px;
     margin-bottom: 36px;
 }
 
 .chip-row-label {
     font-size: 12.5px;
-    font-weight: 500;
+    font-weight: 600;
     color: var(--text-muted);
-    margin-right: 4px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-right: 6px;
 }
 
 .subject-chip-btn {
-    min-height: 32px;
-    background: var(--bg-surface-elevated);
+    min-height: 34px;
+    background: var(--bg-surface);
     border: 1px solid var(--border-subtle);
     border-radius: var(--radius-pill);
     color: var(--text-secondary);
     font-size: 12.5px;
-    padding: 4px 14px;
+    font-weight: 500;
+    padding: 6px 16px;
+    cursor: pointer;
     transition: all var(--transition-fast);
 }
 
 .subject-chip-btn:hover {
-    background: var(--bg-card-hover);
-    color: var(--text-primary);
-    border-color: var(--border-hover);
+    background: rgba(187, 244, 61, 0.1);
+    color: var(--accent-primary);
+    border-color: var(--accent-primary-border);
+    box-shadow: 0 0 14px rgba(187, 244, 61, 0.2);
+}
+
+/* --------------------------------------------------------------------------
+   ADSPACE DEVELOPER PROFILE CARD & CIRCULAR STAMP BADGE
+   -------------------------------------------------------------------------- */
+.adspace-dev-card {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: flex-start;
+    gap: 20px;
+    background: #0b0d10;
+    border: 1px solid rgba(187, 244, 61, 0.35);
+    border-radius: 24px;
+    padding: 22px 28px;
+    max-width: 520px;
+    width: 100%;
+    margin: 20px auto 10px auto;
+    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.8), 0 0 25px rgba(187, 244, 61, 0.12);
+    position: relative;
+    overflow: hidden;
+}
+
+/* Circular Rotating Stamp Badge */
+.adspace-stamp-badge {
+    position: relative;
+    width: 72px;
+    height: 72px;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.rotating-stamp-svg {
+    width: 100%;
+    height: 100%;
+    animation: rotateStamp 18s linear infinite;
+}
+
+.stamp-center-orb {
+    position: absolute;
+    font-size: 20px;
+    filter: drop-shadow(0 0 8px rgba(187, 244, 61, 0.6));
+}
+
+@keyframes rotateStamp {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+}
+
+.dev-avatar-wrapper {
+    width: 60px;
+    height: 60px;
+    border-radius: 50%;
+    overflow: hidden;
+    flex-shrink: 0;
+    border: 2px solid var(--accent-primary);
+    background: #08090a;
+    box-shadow: 0 0 14px rgba(187, 244, 61, 0.35);
+}
+
+.dev-avatar-img {
+    width: 100%;
+    height: 100%;
+    border-radius: 50%;
+    object-fit: cover;
+}
+
+.dev-tag-row {
+    margin-bottom: 2px;
+}
+
+.adspace-micro-tag {
+    font-family: var(--font-mono);
+    font-size: 9.5px;
+    font-weight: 700;
+    color: var(--accent-primary);
+    background: rgba(187, 244, 61, 0.1);
+    border: 1px solid rgba(187, 244, 61, 0.25);
+    padding: 2px 7px;
+    border-radius: var(--radius-pill);
+    letter-spacing: 0.8px;
+    text-transform: uppercase;
+}
+
+.dev-name {
+    font-family: var(--font-heading);
+    font-size: 18px;
+    font-weight: 800;
+    color: #ffffff;
+    margin: 2px 0;
+}
+
+.dev-role {
+    font-size: 13.5px;
+    color: var(--text-secondary);
+    margin-bottom: 8px;
+}
+
+.dev-social-links {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+}
+
+.dev-social-icon {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    color: var(--text-secondary);
+    font-size: 12.5px;
+    font-weight: 600;
+    text-decoration: none;
+    transition: all var(--transition-fast);
+}
+
+.dev-social-icon:hover {
+    color: var(--accent-primary);
+    transform: translateY(-1px);
 }
 
 /* --------------------------------------------------------------------------
@@ -1166,7 +1344,7 @@ button, a[role="button"], input[type="button"], input[type="submit"] {
 .chat-messages-container {
     flex: 1;
     width: 100%;
-    max-width: 820px;
+    max-width: 860px;
     margin: 0 auto;
     overflow-y: auto;
     padding: 20px 0 16px 0;
@@ -1177,55 +1355,59 @@ button, a[role="button"], input[type="button"], input[type="submit"] {
 .chat-messages {
     display: flex;
     flex-direction: column;
-    gap: 18px;
+    gap: 20px;
     width: 100%;
 }
 
-/* Chat Welcome Hero Banner */
+/* ADSPACE Chat Welcome Hero Banner */
 .chat-welcome-card {
-    background: linear-gradient(145deg, #121217 0%, #161620 100%);
-    border: 1px solid var(--border-medium);
+    background: linear-gradient(145deg, #0e1115 0%, #13171d 100%);
+    border: 1px solid rgba(187, 244, 61, 0.22);
     border-radius: var(--radius-xl);
-    padding: 32px 28px;
+    padding: 32px 30px;
     text-align: left;
-    box-shadow: var(--shadow-md);
-    margin-bottom: 20px;
+    box-shadow: 0 12px 36px rgba(0, 0, 0, 0.65), 0 0 20px rgba(187, 244, 61, 0.1);
+    margin-bottom: 22px;
     animation: fadeIn var(--transition-smooth);
+    position: relative;
+    overflow: hidden;
 }
 
 .chat-welcome-badge {
     display: inline-flex;
     align-items: center;
     gap: 6px;
-    background: var(--accent-primary-light);
-    border: 1px solid var(--accent-primary-border);
-    color: #a5b4fc;
-    font-size: 11.5px;
+    background: rgba(187, 244, 61, 0.1);
+    border: 1px solid rgba(187, 244, 61, 0.35);
+    color: var(--accent-primary);
+    font-family: var(--font-mono);
+    font-size: 11px;
     font-weight: 700;
     text-transform: uppercase;
-    letter-spacing: 0.6px;
-    padding: 4px 12px;
+    letter-spacing: 0.8px;
+    padding: 4px 14px;
     border-radius: var(--radius-pill);
-    margin-bottom: 12px;
+    margin-bottom: 14px;
 }
 
 .chat-welcome-title {
-    font-size: 26px;
-    font-weight: 700;
+    font-family: var(--font-heading);
+    font-size: 28px;
+    font-weight: 800;
     color: #ffffff;
-    margin-bottom: 6px;
+    margin-bottom: 8px;
     letter-spacing: -0.02em;
 }
 
 .user-highlight-name {
-    color: #818cf8;
+    color: var(--accent-primary);
 }
 
 .chat-welcome-subtitle {
-    font-size: 14px;
+    font-size: 14.5px;
     color: var(--text-secondary);
     margin-bottom: 24px;
-    line-height: 1.5;
+    line-height: 1.55;
 }
 
 .welcome-suggestions-grid {
@@ -1236,14 +1418,14 @@ button, a[role="button"], input[type="button"], input[type="submit"] {
 }
 
 .welcome-suggest-btn {
-    min-height: 48px;
-    background: #181820;
-    border: 1px solid var(--border-subtle);
+    min-height: 52px;
+    background: #111418;
+    border: 1px solid rgba(187, 244, 61, 0.12);
     border-radius: var(--radius-md);
-    padding: 12px 16px;
+    padding: 14px 18px;
     display: flex;
     align-items: center;
-    gap: 12px;
+    gap: 14px;
     text-align: left;
     color: #f4f4f5;
     cursor: pointer;
@@ -1252,39 +1434,39 @@ button, a[role="button"], input[type="button"], input[type="submit"] {
 }
 
 .welcome-suggest-btn:hover {
-    background: #20202c;
+    background: #161a20;
     border-color: var(--accent-primary);
     transform: translateY(-2px);
-    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.45);
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.5), 0 0 16px rgba(187, 244, 61, 0.2);
     color: #ffffff;
 }
 
 .suggest-icon {
-    font-size: 18px;
+    font-size: 19px;
     flex-shrink: 0;
 }
 
 .suggest-text {
-    font-size: 13px;
+    font-size: 13.5px;
     font-weight: 500;
     line-height: 1.35;
     color: #e4e4e7;
 }
 
 .welcome-suggest-btn:hover .suggest-text {
-    color: #ffffff;
+    color: var(--accent-primary);
 }
 
 /* --------------------------------------------------------------------------
-   CHAT STREAM BUBBLES & AVATARS
+   ADSPACE CHAT BUBBLES: CYBER LIME (USER) VS OBSIDIAN MATRIX (AI)
    -------------------------------------------------------------------------- */
 .chat-message-item {
     display: flex;
     flex-direction: row;
     gap: 14px;
     width: 100%;
-    max-width: 820px;
-    margin: 0 auto 20px auto;
+    max-width: 860px;
+    margin: 0 auto;
     animation: fadeIn var(--transition-fast);
 }
 
@@ -1297,29 +1479,31 @@ button, a[role="button"], input[type="button"], input[type="submit"] {
 }
 
 .msg-avatar-icon {
-    width: 36px;
-    height: 36px;
-    min-width: 36px;
-    min-height: 36px;
+    width: 38px;
+    height: 38px;
+    min-width: 38px;
+    min-height: 38px;
     border-radius: 50%;
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 15px;
+    font-size: 16px;
     flex-shrink: 0;
 }
 
 .user-avatar-bubble {
-    background: #3730a3;
-    color: #ffffff;
-    border: 1.5px solid #6366f1;
+    background: var(--accent-primary);
+    color: #08090a;
+    border: 1.5px solid #ffffff;
+    box-shadow: 0 0 16px rgba(187, 244, 61, 0.4);
     order: 2;
 }
 
 .ai-avatar-bubble {
-    background: linear-gradient(135deg, #4f46e5 0%, #6366f1 100%);
-    color: #ffffff;
-    box-shadow: 0 0 12px rgba(99, 102, 241, 0.4);
+    background: #111418;
+    color: var(--accent-primary);
+    border: 1.5px solid rgba(187, 244, 61, 0.4);
+    box-shadow: 0 0 14px rgba(187, 244, 61, 0.2);
     order: 1;
 }
 
@@ -1354,52 +1538,56 @@ button, a[role="button"], input[type="button"], input[type="submit"] {
 }
 
 .msg-author-tag.ai-tag {
-    color: #a5b4fc;
+    color: var(--accent-primary);
 }
 
 .msg-ai-pill {
-    font-size: 10.5px;
+    font-family: var(--font-mono);
+    font-size: 10px;
     font-weight: 700;
     text-transform: uppercase;
-    letter-spacing: 0.5px;
-    padding: 2px 7px;
+    letter-spacing: 0.6px;
+    padding: 2px 8px;
     border-radius: var(--radius-pill);
-    background: rgba(99, 102, 241, 0.15);
-    color: #818cf8;
-    border: 1px solid rgba(99, 102, 241, 0.3);
+    background: rgba(187, 244, 61, 0.12);
+    color: var(--accent-primary);
+    border: 1px solid rgba(187, 244, 61, 0.3);
 }
 
 .msg-text-content {
-    padding: 14px 18px;
+    padding: 16px 20px;
     border-radius: var(--radius-lg);
     font-size: 14.5px;
     line-height: 1.65;
     word-break: break-word;
 }
 
+/* User Message: Solid Electric Cyber Lime */
 .user-chat-item .msg-text-content {
-    background: linear-gradient(135deg, #4338ca 0%, #4f46e5 100%);
-    color: #ffffff;
-    border-radius: 16px 16px 4px 16px;
-    box-shadow: 0 4px 14px rgba(99, 102, 241, 0.3);
+    background: var(--accent-primary);
+    color: #08090a;
+    font-weight: 600;
+    border-radius: 18px 18px 4px 18px;
+    box-shadow: 0 6px 22px rgba(187, 244, 61, 0.35);
 }
 
 .user-chat-item .msg-text-content p {
-    color: #ffffff !important;
+    color: #08090a !important;
 }
 
+/* AI Message: Deep Obsidian Matrix */
 .ai-chat-item .msg-text-content {
-    background: #14141c;
-    border: 1px solid var(--border-medium);
+    background: #0f1216;
+    border: 1px solid rgba(187, 244, 61, 0.18);
     color: var(--text-heading);
-    border-radius: 16px 16px 16px 4px;
-    box-shadow: var(--shadow-sm);
+    border-radius: 18px 18px 18px 4px;
+    box-shadow: var(--shadow-md);
     width: 100%;
 }
 
 .ai-chat-item .msg-text-content p {
     color: #e4e4e7 !important;
-    margin-bottom: 10px;
+    margin-bottom: 12px;
 }
 
 .ai-chat-item .msg-text-content p:last-child {
@@ -1582,24 +1770,26 @@ button, a[role="button"], input[type="button"], input[type="submit"] {
 }
 
 .submit-btn-nexa {
-    width: 36px;
-    height: 36px;
-    min-height: 36px;
-    min-width: 36px;
+    width: 38px;
+    height: 38px;
+    min-height: 38px;
+    min-width: 38px;
     border-radius: 50%;
     background: var(--accent-primary);
-    color: #ffffff;
+    color: #08090a;
     border: none;
     display: flex;
     align-items: center;
     justify-content: center;
     transition: all var(--transition-fast);
-    box-shadow: 0 2px 8px rgba(99, 102, 241, 0.35);
+    box-shadow: 0 0 16px rgba(187, 244, 61, 0.4);
+    cursor: pointer;
 }
 
 .submit-btn-nexa:hover {
     background: var(--accent-primary-hover);
-    transform: scale(1.05);
+    transform: scale(1.06);
+    box-shadow: 0 0 24px rgba(187, 244, 61, 0.6);
 }
 
 .submit-btn-nexa:active {
@@ -1766,24 +1956,26 @@ button, a[role="button"], input[type="button"], input[type="submit"] {
 }
 
 .btn-main-upload {
-    min-height: 40px;
+    min-height: 42px;
     background: var(--accent-primary);
-    color: #ffffff;
+    color: #08090a;
     border: none;
-    border-radius: var(--radius-md);
-    padding: 8px 18px;
-    font-weight: 600;
+    border-radius: var(--radius-pill);
+    padding: 10px 22px;
+    font-weight: 700;
     font-size: 13.5px;
     display: inline-flex;
     align-items: center;
     gap: 8px;
     transition: all var(--transition-fast);
-    box-shadow: 0 2px 8px rgba(99, 102, 241, 0.3);
+    box-shadow: 0 0 20px rgba(187, 244, 61, 0.35);
+    cursor: pointer;
 }
 
 .btn-main-upload:hover {
     background: var(--accent-primary-hover);
-    transform: translateY(-1px);
+    transform: translateY(-2px);
+    box-shadow: 0 0 30px rgba(187, 244, 61, 0.55);
 }
 
 /* Personal User Stats Card */
