@@ -687,8 +687,19 @@ button, a[role="button"], input[type="button"], input[type="submit"] {
     box-shadow: 0 0 16px rgba(255, 107, 0, 0.35);
 }
 
-.brand-sparkle-dot {
-    filter: drop-shadow(0 0 4px rgba(255, 107, 0, 0.8));
+.brand-text-stack {
+    display: flex;
+    flex-direction: column;
+    gap: 0px;
+}
+
+.brand-sub-badge {
+    font-family: var(--font-mono);
+    font-size: 8.5px;
+    font-weight: 800;
+    color: var(--accent-primary);
+    letter-spacing: 1.2px;
+    text-transform: uppercase;
 }
 
 .brand-name-text {

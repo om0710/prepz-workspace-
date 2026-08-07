@@ -21,7 +21,7 @@
     <!-- Firebase SDK (v10 Compat) loaded upfront -->
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
-    <link rel="stylesheet" href="style.css?v=38006.0">
+    <link rel="stylesheet" href="style.css?v=38007.0">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
     <script>
         function switchAuthTab(tab) {
@@ -73,10 +73,17 @@
             <div class="auth-split-left">
                 <div class="auth-brand-header">
                     <div class="adspace-brand-icon-box">
-                        <span class="brand-sparkle-dot">✦</span>
+                        <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
+                            <path d="M12 2L3 7v10l9 5 9-5V7l-9-5z" stroke="#ff6b00" stroke-width="2" stroke-linejoin="round"/>
+                            <path d="M12 7v10M7 9.5l10 5" stroke="#ff851a" stroke-width="1.8" stroke-linecap="round"/>
+                            <circle cx="12" cy="12" r="2.5" fill="#ff6b00"/>
+                        </svg>
                     </div>
-                    <span class="brand-name-text">BU Prepz</span>
-                    <span class="adspace-version-pill">AI 2.0</span>
+                    <div class="brand-text-stack">
+                        <span class="brand-name-text">BU Prepz</span>
+                        <span class="brand-sub-badge">AI CLOUD</span>
+                    </div>
+                    <span class="adspace-version-pill">v2.4</span>
                 </div>
 
                 <div class="auth-header-text">
@@ -250,12 +257,16 @@
     <!-- ============================================ -->
     <div id="chatbot-app-view" class="view-container app-wrapper" style="display: none;">
         
-        <!-- 1. Left Sidebar (ADSPACE Cyber Obsidian Sidebar) -->
+        <!-- 1. Left Sidebar (Cyber Solar Obsidian Sidebar) -->
         <aside class="app-sidebar">
             <div class="sidebar-top">
                 <div class="sidebar-logo">
                     <div class="adspace-brand-icon-box">
-                        <span class="brand-sparkle-dot">✦</span>
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+                            <path d="M12 2L3 7v10l9 5 9-5V7l-9-5z" stroke="#ff6b00" stroke-width="2" stroke-linejoin="round"/>
+                            <path d="M12 7v10M7 9.5l10 5" stroke="#ff851a" stroke-width="1.8" stroke-linecap="round"/>
+                            <circle cx="12" cy="12" r="2.5" fill="#ff6b00"/>
+                        </svg>
                     </div>
                     <span class="brand-name-text">BU Prepz</span>
                     <span class="adspace-version-pill">AI 2.0</span>
@@ -1084,6 +1095,6 @@
     </div>
 
     <!-- Main JavaScript Link -->
-    <script src="app.js?v=38006.0"></script>
+    <script src="app.js?v=38007.0"></script>
 </body>
 </html>
