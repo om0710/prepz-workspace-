@@ -1571,6 +1571,34 @@ function initializeDocPilotApp() {
         fetchLeaderboard();
     }
 
+    // Expose view-switching functions to global window for inline onclick handlers and direct card clicks
+    window.showChatState = showChatState;
+    window.showLandingState = showLandingState;
+    window.showPinnedLibraryState = showPinnedLibraryState;
+    window.showBrowseState = showBrowseState;
+    window.showPredictorState = showPredictorState;
+    window.showLeaderboardState = showLeaderboardState;
+
+    // Direct event listener binding for landing feature cards to guarantee 100% clickability
+    const cardBindings = [
+        { sel: ".card-predictor, #card-predictor-btn", fn: showPredictorState },
+        { sel: ".card-library, #card-library-btn", fn: showPinnedLibraryState },
+        { sel: ".card-browse, #card-browse-btn", fn: showBrowseState },
+        { sel: ".card-leaderboard, #card-leaderboard-btn", fn: showLeaderboardState }
+    ];
+
+    cardBindings.forEach(binding => {
+        document.querySelectorAll(binding.sel).forEach(el => {
+            el.addEventListener("click", binding.fn);
+            el.addEventListener("keydown", (e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                    e.preventDefault();
+                    binding.fn();
+                }
+            });
+        });
+    });
+
     async function fetchLeaderboard() {
         const tbody = document.getElementById("leaderboard-tbody");
         if (!tbody) return;
