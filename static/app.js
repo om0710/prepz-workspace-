@@ -338,6 +338,20 @@ window.showLoginScreen = function() {
     }
 };
 
+// Fallback guest auto-session enabler so feature cards work directly for unauthenticated visitors
+window.ensureUserSession = function() {
+    if (!window.currentUser) {
+        const guestUser = {
+            id: "guest-user-session",
+            name: "Student User",
+            email: "student@prepz.edu",
+            provider: "guest",
+            avatar_url: "https://api.dicebear.com/7.x/bottts/svg?seed=PrepzStudent"
+        };
+        window.loginUser(guestUser);
+    }
+};
+
 window.logoutUser = async function() {
     console.log("[AUTH] logoutUser() called");
     try {
@@ -1464,6 +1478,7 @@ function initializeDocPilotApp() {
     }
 
     function showPinnedLibraryState() {
+        if (typeof window.ensureUserSession === "function") window.ensureUserSession();
         const activeUser = currentUser || window.currentUser || { name: "Student User", email: "student@college.edu", provider: "local" };
         currentUser = activeUser;
         window.currentUser = activeUser;
@@ -1494,6 +1509,7 @@ function initializeDocPilotApp() {
     }
 
     function showBrowseState() {
+        if (typeof window.ensureUserSession === "function") window.ensureUserSession();
         resetViewModes();
         updateHeaderTitle("Course Repository");
         const contentWrapper = document.querySelector(".content-wrapper");
@@ -1520,6 +1536,7 @@ function initializeDocPilotApp() {
     }
 
     function showPredictorState() {
+        if (typeof window.ensureUserSession === "function") window.ensureUserSession();
         const activeUser = currentUser || window.currentUser || { name: "Student User", email: "student@college.edu", provider: "local" };
         currentUser = activeUser;
         window.currentUser = activeUser;
@@ -1548,6 +1565,7 @@ function initializeDocPilotApp() {
     }
 
     function showLeaderboardState() {
+        if (typeof window.ensureUserSession === "function") window.ensureUserSession();
         resetViewModes();
         updateHeaderTitle("Leaderboard");
         const contentWrapper = document.querySelector(".content-wrapper");
