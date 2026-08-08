@@ -1,6 +1,6 @@
 ---
 title: "BU Prepz AI Workspace"
-emoji: "📚"
+emoji: ""
 colorFrom: "indigo"
 colorTo: "blue"
 sdk: "gradio"
@@ -11,7 +11,7 @@ pinned: false
 
 <div align="center">
 
-# 📚 BU Prepz AI Workspace
+#  BU Prepz AI Workspace
 ### *Next-Gen Engineering Study Assistant & Document Intelligence Platform*
 
 [![FastAPI](https://img.shields.io/badge/FastAPI-005571?style=for-the-badge&logo=fastapi)](https://fastapi.tiangolo.com/)
@@ -31,9 +31,9 @@ pinned: false
 
 ---
 
-## 🔥 Key Features
+##  Key Features
 
-### 📄 Multi-Format RAG Search Engine (`.pdf`, `.docx`, `.doc`)
+###  Multi-Format RAG Search Engine (`.pdf`, `.docx`, `.doc`)
 - Universal document parsing supporting **PDFs**, **DOCX**, and binary **DOC** files.
 - Extracts text, paragraph structures, and tabular data into a dense vector space using `sentence-transformers/all-mpnet-base-v2`.
 - Powered by a **Hybrid Retrieval Engine** combining ChromaDB vector similarity with BM25 sparse keyword matching.
@@ -42,11 +42,11 @@ pinned: false
 - **Personal Library**: Private study space isolated exclusively for your uploaded assignments, notes, and documents.
 - **Shared Catalog**: Collaborative university resource hub where students share open notes, past papers, and study material.
 
-### 📝 In-Browser Document Reader
+###  In-Browser Document Reader
 - Native HTML document reader rendered on-the-fly for Word files (`.docx`, `.doc`).
 - Renders formatted typography, structured data tables, and metadata tags with zero client-side dependencies.
 
-### 🎯 Predictive PYQ & Exam Question Generator
+###  Predictive PYQ & Exam Question Generator
 - AI-driven frequency analysis over past question papers.
 - Generates mock exam papers categorized by subject, semester, and exam type (Mid-Sem / End-Sem) with probability scoring.
 
@@ -54,7 +54,7 @@ pinned: false
 - Multi-turn stateful conversational agent with dynamic tool routing.
 - Integrated thread memory persistence with SQLite (WAL mode for concurrent access).
 
-### 🏆 Gamified Analytics & Leaderboard
+###  Gamified Analytics & Leaderboard
 - Real-time study streak counters and upload contribution tracking.
 - Interactive student leaderboard celebrating top contributors.
 
@@ -64,24 +64,24 @@ pinned: false
 
 ```mermaid
 graph TD
-    User([🎓 Engineering Student]) -->|Interacts with UI| Frontend[🌐 BU Prepz Frontend Interface]
-    Frontend -->|API Requests| FastAPI[⚡ FastAPI Server app.py]
+    User([🎓 Engineering Student]) -->|Interacts with UI| Frontend[ BU Prepz Frontend Interface]
+    Frontend -->|API Requests| FastAPI[ FastAPI Server app.py]
     
-    FastAPI -->|Document Uploads| RAG[📄 Multi-Format Parser rag.py]
-    RAG -->|Extract Text & Tables| Embeddings[🧠 HuggingFace Embeddings]
-    Embeddings -->|Store Vectors| VectorDB[(🔍 ChromaDB Vector Store)]
+    FastAPI -->|Document Uploads| RAG[ Multi-Format Parser rag.py]
+    RAG -->|Extract Text & Tables| Embeddings[ HuggingFace Embeddings]
+    Embeddings -->|Store Vectors| VectorDB[( ChromaDB Vector Store)]
     
-    FastAPI -->|User Queries| LangGraph[🤖 LangGraph State Engine backend_rag.py]
+    FastAPI -->|User Queries| LangGraph[ LangGraph State Engine backend_rag.py]
     LangGraph -->|Vector Search| VectorDB
-    LangGraph -->|Sparse Search| BM25[📊 Rank-BM25 Indexer]
-    LangGraph -->|LLM Inference| Groq[⚡ Groq Llama 3.3 70B]
+    LangGraph -->|Sparse Search| BM25[ Rank-BM25 Indexer]
+    LangGraph -->|LLM Inference| Groq[ Groq Llama 3.3 70B]
     
-    FastAPI -->|State & Metadata| SQLite[(💾 SQLite Database chatbot.db)]
+    FastAPI -->|State & Metadata| SQLite[( SQLite Database chatbot.db)]
 ```
 
 ---
 
-## 💻 Tech Stack
+##  Tech Stack
 
 | Domain | Technologies Used |
 | :--- | :--- |
@@ -95,7 +95,7 @@ graph TD
 
 ---
 
-## 📂 Project Structure
+##  Project Structure
 
 ```text
 prepz-workspace/
@@ -116,7 +116,7 @@ prepz-workspace/
 
 ---
 
-## ⚡ Quick Start (Local Setup)
+##  Quick Start (Local Setup)
 
 ### 1. Clone the Repository
 ```bash
@@ -145,9 +145,9 @@ Visit `http://localhost:7865` in your browser.
 
 ---
 
-## 👨‍💻 Author & Acknowledgements
+## ‍ Author & Acknowledgements
 
-Developed with ❤️ by **Om Bansal**
+Developed with  by **Om Bansal**
 
 - **GitHub**: [@om0710](https://github.com/om0710)
 - **LinkedIn**: [Om Bansal](https://www.linkedin.com/in/om-bansal-78420430a/)
