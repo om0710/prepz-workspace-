@@ -6,10 +6,10 @@ from backend import workflow
 # ---------------- Page ----------------
 st.set_page_config(
     page_title="LangGraph Chatbot",
-    page_icon="🤖"
+    page_icon=""
 )
 
-st.title("🤖 LangGraph Chatbot")
+st.title(" LangGraph Chatbot")
 
 # ---------------- Session State ----------------
 
@@ -31,9 +31,9 @@ if "thread_id" not in st.session_state:
 
 with st.sidebar:
 
-    st.title("💬 Chats")
+    st.title(" Chats")
 
-    if st.button("➕ New Chat"):
+    if st.button(" New Chat"):
 
         chat_no = len(st.session_state.threads) + 1
 

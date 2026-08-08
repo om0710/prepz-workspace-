@@ -16,7 +16,7 @@ if "thread_id" in params:
 # ---------------- Page Configuration ----------------
 st.set_page_config(
     page_title="Intelligent Chat Agent",
-    page_icon="🤖",
+    page_icon="",
     layout="wide",
     initial_sidebar_state="expanded"
 )
@@ -458,7 +458,7 @@ with st.sidebar:
         unsafe_allow_html=True
     )
     
-    if st.button("➕ New Chat", type="primary", use_container_width=True):
+    if st.button(" New Chat", type="primary", use_container_width=True):
         new_thread = str(uuid.uuid4())
         st.session_state.thread_id = new_thread
         st.session_state.current_chat = new_thread
@@ -468,7 +468,7 @@ with st.sidebar:
         st.rerun()
 
     st.divider()
-    st.markdown("### 💬 ACTIVE SESSIONS")
+    st.markdown("###  ACTIVE SESSIONS")
 
     # List chat threads inside a scrollable container
     # (border=False avoids the default bordered box that newer Streamlit
@@ -502,7 +502,7 @@ with st.sidebar:
     st.divider()
 
     # ---------------- Knowledge Base Manager in Sidebar ----------------
-    st.markdown("### 📄 KNOWLEDGE BASE")
+    st.markdown("###  KNOWLEDGE BASE")
     
     # 1. File Uploader
     uploaded_file = st.file_uploader(
@@ -522,7 +522,7 @@ with st.sidebar:
             with st.spinner("Analyzing PDF..."):
                 add_pdf_to_vectordb(pdf_path)
             st.session_state.processed_files.add(file_name)
-            st.success("✅ Context uploaded and indexed!")
+            st.success(" Context uploaded and indexed!")
             st.rerun()
 
     # 2. List & Manage Uploaded Files
@@ -533,14 +533,14 @@ with st.sidebar:
         st.session_state.processed_files.add(pdf_file)
         
     if pdf_files:
-        st.markdown("#### 📁 Indexed Files:")
+        st.markdown("####  Indexed Files:")
         for pdf_file in pdf_files:
             col1, col2 = st.columns([0.8, 0.2])
             with col1:
                 short_name = pdf_file[:22] + "..." if len(pdf_file) > 22 else pdf_file
-                st.caption(f"📄 {short_name}")
+                st.caption(f" {short_name}")
             with col2:
-                if st.button("🗑️", key=f"del_{pdf_file}", help=f"Delete {pdf_file} from database"):
+                if st.button("", key=f"del_{pdf_file}", help=f"Delete {pdf_file} from database"):
                     pdf_path = f"uploads/{pdf_file}"
                     delete_pdf_from_vectordb(pdf_path)
                     try:
@@ -556,7 +556,7 @@ with st.sidebar:
                     st.rerun()
         
         st.markdown("---")
-        if st.button("🚨 Clear All Files", use_container_width=True, help="Wipe out the entire database and start fresh"):
+        if st.button(" Clear All Files", use_container_width=True, help="Wipe out the entire database and start fresh"):
             clear_all_from_vectordb()
             try:
                 from backend_rag import reset_bm25_cache
@@ -607,7 +607,7 @@ def _format_bubble_text(content: str) -> str:
 
 
 def render_bubble_html(content: str, role: str) -> str:
-    avatar = "👤" if role == "user" else "🤖"
+    avatar = "" if role == "user" else ""
     return f"""
     <div class="chat-row {role}">
         <div class="chat-avatar">{avatar}</div>
@@ -623,7 +623,7 @@ def render_bubble(content: str, role: str):
 def render_typing_indicator_html() -> str:
     return """
     <div class="chat-row assistant">
-        <div class="chat-avatar">🤖</div>
+        <div class="chat-avatar"></div>
         <div class="chat-bubble assistant" style="display: flex; align-items: center; gap: 8px; padding: 12px 18px;">
             <div class="typing-indicator" style="padding: 0; margin: 0; display: flex; align-items: center; gap: 4px;">
                 <span></span>
@@ -707,7 +707,7 @@ if user_input:
             full_response = final_messages[-1].content
 
         if not full_response:
-            full_response = "⚠️ I received an empty response. Please check if your LLM connection is functioning properly."
+            full_response = " I received an empty response. Please check if your LLM connection is functioning properly."
 
         placeholder.markdown(
             render_bubble_html(full_response, "assistant"),
@@ -718,7 +718,7 @@ if user_input:
             AIMessage(content=full_response)
         )
     except Exception as e:
-        error_msg = f"⚠️ **Service Connection Error**: {str(e)}\n\n*Please verify that your `GROQ_API_KEY` in the `.env` file is valid and check your network connection.*"
+        error_msg = f" **Service Connection Error**: {str(e)}\n\n*Please verify that your `GROQ_API_KEY` in the `.env` file is valid and check your network connection.*"
         placeholder.markdown(
             render_bubble_html(error_msg, "assistant"),
             unsafe_allow_html=True

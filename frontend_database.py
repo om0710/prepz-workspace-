@@ -6,10 +6,10 @@ import uuid
 # ---------------- Page ----------------
 st.set_page_config(
     page_title="LangGraph Chatbot",
-    page_icon="🤖"
+    page_icon=""
 )
 
-st.title("🤖 LangGraph Chatbot")
+st.title(" LangGraph Chatbot")
 
 # ---------------- Session State ----------------
 
@@ -34,9 +34,9 @@ if "current_chat" not in st.session_state:
 
 with st.sidebar:
 
-    st.title("💬 Chats")
+    st.title(" Chats")
 
-    if st.button("➕ New Chat"):
+    if st.button(" New Chat"):
 
         new_thread = str(uuid.uuid4())
 

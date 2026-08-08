@@ -867,7 +867,6 @@ def render_docx_viewer_html(filename: str, meta: dict, text_docs: list) -> HTMLR
 <body>
     <header class="reader-header">
         <div class="doc-info">
-            <span style="font-size: 24px;">📝</span>
             <div>
                 <h1 class="doc-title">{html.escape(title)}</h1>
                 <div style="display: flex; gap: 6px; margin-top: 4px;">
@@ -877,7 +876,7 @@ def render_docx_viewer_html(filename: str, meta: dict, text_docs: list) -> HTMLR
             </div>
         </div>
         <a href="/download/{quote(filename)}?disposition=attachment" class="btn-download" download>
-            📥 Download Original File
+            Download Original File
         </a>
     </header>
     <main class="reader-container">
@@ -1314,10 +1313,10 @@ INSTRUCTIONS & EXAM PAPER CREATION RULES:
 2. Generate an explicit TOP HIGH-YIELD RECURRING TOPICS & INSIGHTS section followed by a complete PREDICTED QUESTION PAPER for the upcoming examination in {subject} ({semester}).
 3. Structure the entire output in clean Markdown as follows:
 
-## 💡 TOP HIGH-YIELD RECURRING TOPICS & INSIGHTS
+## TOP HIGH-YIELD RECURRING TOPICS & INSIGHTS
 - Provide 4 to 6 bullet points listing the top repeated topics identified across the PYQs.
 - For each topic, include its repetition frequency tag and key exam preparation advice, e.g.:
-  `🔥 **Topic Name**: Appeared in X of Y past years (Z% Probability) — Focus on [specific derivation/numerical/concept].`
+  `**Topic Name**: Appeared in X of Y past years (Z% Probability) — Focus on [specific derivation/numerical/concept].`
 
 ---
 
