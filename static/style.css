@@ -1637,9 +1637,10 @@ button, a[role="button"], input[type="button"], input[type="submit"] {
     display: flex;
     flex-direction: column;
     gap: 4px;
-    max-width: 82%;
-    min-width: 260px;
+    max-width: 86%;
+    min-width: 280px;
     width: 100%;
+    box-sizing: border-box;
 }
 
 .user-chat-item .msg-bubble-card {
@@ -1649,7 +1650,7 @@ button, a[role="button"], input[type="button"], input[type="submit"] {
 
 .ai-chat-item .msg-bubble-card {
     order: 2;
-    align-items: flex-start;
+    align-items: stretch;
     width: 100%;
 }
 
@@ -1689,9 +1690,22 @@ button, a[role="button"], input[type="button"], input[type="submit"] {
     font-size: 14.5px;
     line-height: 1.65;
     width: 100%;
+    min-width: 100%;
     box-sizing: border-box;
-    overflow-wrap: break-word;
-    word-break: break-word;
+    overflow-wrap: anywhere;
+    word-break: normal;
+    white-space: normal;
+}
+
+.msg-text-content p,
+.msg-text-content div,
+.msg-text-content span,
+.msg-text-content li {
+    width: 100%;
+    box-sizing: border-box;
+    overflow-wrap: anywhere;
+    word-break: normal;
+    white-space: normal;
 }
 
 /* User Message: Solid Electric Cyber Orange */
@@ -1744,9 +1758,12 @@ button, a[role="button"], input[type="button"], input[type="submit"] {
 /* Typing Indicator Animation */
 .qubi-typing-indicator {
     display: flex;
+    flex-direction: row;
     align-items: center;
     gap: 7px;
     padding: 6px 0;
+    width: 100%;
+    white-space: normal;
 }
 
 .qubi-typing-indicator .typing-dot {

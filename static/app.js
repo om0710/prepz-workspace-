@@ -2349,25 +2349,30 @@ function initializeDocPilotApp() {
                 console.error("Error loading metadata:", e);
             }
 
-            scrollToBottom();
         } catch (e) {
             console.error("Error loading history:", e);
             showLandingState();
         }
     }
 
+    if (typeof marked !== "undefined" && typeof marked.setOptions === "function") {
+        try {
+            marked.setOptions({ breaks: true, gfm: true });
+        } catch(e) {}
+    }
+
     function formatChatMarkdown(text) {
         if (!text) return "";
-
+        let cleanText = text.trim();
         if (typeof marked !== "undefined" && typeof marked.parse === "function") {
             try {
-                return marked.parse(text);
+                return marked.parse(cleanText);
             } catch (e) {
                 console.error("Marked parse error:", e);
             }
         }
 
-        let formatted = text
+        let formatted = cleanText
             .replace(/&/g, "&amp;")
             .replace(/</g, "&lt;")
             .replace(/>/g, "&gt;");
