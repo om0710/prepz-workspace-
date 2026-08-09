@@ -1618,18 +1618,18 @@ button, a[role="button"], input[type="button"], input[type="submit"] {
 }
 
 .user-avatar-bubble {
-    background: var(--accent-primary);
-    color: #08090a;
-    border: 1.5px solid #ffffff;
-    box-shadow: 0 0 16px rgba(255, 107, 0, 0.4);
+    background: #1c2028;
+    color: var(--accent-primary);
+    border: 1px solid rgba(255, 107, 0, 0.4);
+    box-shadow: 0 0 12px rgba(255, 107, 0, 0.15);
     order: 2;
 }
 
 .ai-avatar-bubble {
-    background: #111418;
+    background: #12151b;
     color: var(--accent-primary);
-    border: 1.5px solid rgba(255, 107, 0, 0.4);
-    box-shadow: 0 0 14px rgba(255, 107, 0, 0.2);
+    border: 1px solid rgba(255, 107, 0, 0.3);
+    box-shadow: 0 0 12px rgba(0, 0, 0, 0.4);
     order: 1;
 }
 
@@ -1664,7 +1664,7 @@ button, a[role="button"], input[type="button"], input[type="submit"] {
 .msg-author-tag {
     font-size: 12px;
     font-weight: 700;
-    color: var(--text-muted);
+    color: #a1a1aa;
 }
 
 .msg-author-tag.ai-tag {
@@ -1708,26 +1708,27 @@ button, a[role="button"], input[type="button"], input[type="submit"] {
     white-space: normal;
 }
 
-/* User Message: Solid Electric Cyber Orange */
+/* User Message: Elegant Dark Graphite with Cyber Orange Accent Border */
 .user-chat-item .msg-text-content {
-    background: var(--accent-primary);
-    color: #08090a;
-    font-weight: 600;
-    border-radius: 18px 18px 4px 18px;
-    box-shadow: 0 6px 22px rgba(255, 107, 0, 0.35);
+    background: #1c2027;
+    border: 1px solid rgba(255, 107, 0, 0.35);
+    color: #ffffff;
+    font-weight: 500;
+    border-radius: 16px 16px 4px 16px;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
 }
 
 .user-chat-item .msg-text-content p {
-    color: #08090a !important;
+    color: #ffffff !important;
 }
 
-/* AI Message: Deep Obsidian Matrix */
+/* AI Message: Premium Obsidian Surface */
 .ai-chat-item .msg-text-content {
-    background: #0f1216;
-    border: 1px solid rgba(255, 107, 0, 0.18);
-    color: var(--text-heading);
-    border-radius: 18px 18px 18px 4px;
-    box-shadow: var(--shadow-md);
+    background: #12151b;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    color: #f4f4f5;
+    border-radius: 16px 16px 16px 4px;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
     width: 100%;
 }
 
