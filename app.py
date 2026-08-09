@@ -98,6 +98,64 @@ def serialize_message(msg):
             return {"role": "assistant", "content": msg.content}
     return None
 
+from collections import defaultdict
+
+# Sliding window IP & route rate limiter
+RATE_LIMIT_WINDOWS = defaultdict(list)
+
+def check_ip_rate_limit(client_ip: str, endpoint_key: str, max_requests: int, window_seconds: int = 60) -> bool:
+    now = time.time()
+    key = f"{client_ip}:{endpoint_key}"
+    history = RATE_LIMIT_WINDOWS[key]
+    
+    # Prune expired timestamps outside the sliding window
+    cutoff = now - window_seconds
+    RATE_LIMIT_WINDOWS[key] = [t for t in history if t > cutoff]
+    
+    if len(RATE_LIMIT_WINDOWS[key]) >= max_requests:
+        return False
+        
+    RATE_LIMIT_WINDOWS[key].append(now)
+    return True
+
+@app.middleware("http")
+async def rate_limit_middleware(request: Request, call_next):
+    client_ip = request.client.host if request.client else "127.0.0.1"
+    path = request.url.path
+    
+    if path == "/chat" and request.method == "POST":
+        if not check_ip_rate_limit(client_ip, "chat", max_requests=30, window_seconds=60):
+            return StreamingResponse(
+                iter([json.dumps({"error": "Rate limit exceeded. Maximum 30 chat queries per minute allowed."}).encode()]),
+                status_code=429,
+                media_type="application/json"
+            )
+            
+    elif path == "/upload" and request.method == "POST":
+        if not check_ip_rate_limit(client_ip, "upload", max_requests=10, window_seconds=60):
+            return StreamingResponse(
+                iter([json.dumps({"detail": "Rate limit exceeded. Maximum 10 file uploads per minute allowed."}).encode()]),
+                status_code=429,
+                media_type="application/json"
+            )
+            
+    elif path.startswith("/api/login") and request.method == "POST":
+        if not check_ip_rate_limit(client_ip, "login", max_requests=5, window_seconds=60):
+            return StreamingResponse(
+                iter([json.dumps({"detail": "Rate limit exceeded. Maximum 5 login attempts per minute allowed."}).encode()]),
+                status_code=429,
+                media_type="application/json"
+            )
+            
+    elif path.startswith("/api/") and not check_ip_rate_limit(client_ip, "api_general", max_requests=120, window_seconds=60):
+        return StreamingResponse(
+            iter([json.dumps({"detail": "Too many requests. API rate limit exceeded (120 requests/min)."}).encode()]),
+            status_code=429,
+            media_type="application/json"
+        )
+        
+    return await call_next(request)
+
 @app.middleware("http")
 async def add_security_headers(request: Request, call_next):
     # Request body payload size limit check (15MB Max)
