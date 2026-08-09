@@ -234,19 +234,29 @@ def init_user_db():
 
 init_user_db()
 
+COMMON_PASSWORDS_BLOCKLIST = {
+    "password123", "12345678", "123456789", "123456", "qwerty", "password",
+    "admin123", "welcome123", "letmein123", "college123", "prepz12345"
+}
+
 def hash_password(password: str, email: str = "") -> str:
     user_salt = f"college_freshers_{email.strip().lower()}_2026_salt"
     return hashlib.pbkdf2_hmac(
         'sha256',
         password.encode('utf-8'),
         user_salt.encode('utf-8'),
-        120000
+        260000
     ).hex()
 
 def verify_password(password: str, hashed: str, email: str = "") -> bool:
     if not password or not hashed:
         return False
     if hash_password(password, email) == hashed:
+        return True
+    # Compatibility checks for legacy iterations (120,000 & 100,000)
+    user_salt = f"college_freshers_{email.strip().lower()}_2026_salt"
+    h120 = hashlib.pbkdf2_hmac('sha256', password.encode('utf-8'), user_salt.encode('utf-8'), 120000).hex()
+    if h120 == hashed:
         return True
     legacy_salt = "college_freshers_salt_2026"
     legacy_hash = hashlib.pbkdf2_hmac('sha256', password.encode('utf-8'), legacy_salt.encode('utf-8'), 100000).hex()
@@ -257,8 +267,8 @@ import random
 from datetime import datetime, timedelta
 
 def validate_password_strength(password: str) -> tuple[bool, str]:
-    if not password or len(password) < 8:
-        return False, "Password must be at least 8 characters long."
+    if not password or len(password) < 12:
+        return False, "Password must be at least 12 characters long."
     if not re.search(r'[A-Z]', password):
         return False, "Password must contain at least one uppercase letter (A-Z)."
     if not re.search(r'[a-z]', password):
@@ -267,6 +277,8 @@ def validate_password_strength(password: str) -> tuple[bool, str]:
         return False, "Password must contain at least one number (0-9)."
     if not re.search(r'[!@#$%^&*()_+\-=\[\]{};\':"\\|,.<>\/?]', password):
         return False, "Password must contain at least one special character (!@#$%^&*)."
+    if password.lower() in COMMON_PASSWORDS_BLOCKLIST:
+        return False, "Password is too common or easily guessable."
     return True, "Valid"
 
 def check_login_lockout(email: str, max_attempts: int = 5, window_minutes: int = 15) -> bool:

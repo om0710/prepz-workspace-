@@ -46,12 +46,33 @@ def serialize_message(msg):
     return None
 
 @app.middleware("http")
-async def add_security_headers(request, call_next):
+async def add_security_headers(request: Request, call_next):
+    # Request body payload size limit check (15MB Max)
+    content_length = request.headers.get("content-length")
+    if content_length and content_length.isdigit() and int(content_length) > 15 * 1024 * 1024:
+        return StreamingResponse(
+            iter([json.dumps({"detail": "Payload too large. Request body exceeds 15MB limit."}).encode()]),
+            status_code=413,
+            media_type="application/json"
+        )
+
     response = await call_next(request)
     response.headers["Cross-Origin-Opener-Policy"] = "same-origin-allow-popups"
     response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate, max-age=0"
     response.headers["Pragma"] = "no-cache"
     response.headers["Expires"] = "0"
+    response.headers["X-Content-Type-Options"] = "nosniff"
+    response.headers["X-Frame-Options"] = "DENY"
+    response.headers["X-XSS-Protection"] = "1; mode=block"
+    response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
+    response.headers["Content-Security-Policy"] = (
+        "default-src 'self'; "
+        "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net https://apis.google.com; "
+        "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; "
+        "img-src 'self' data: https:; "
+        "font-src 'self' https://fonts.gstatic.com; "
+        "connect-src 'self' https://www.googleapis.com https://accounts.google.com https://api.dicebear.com;"
+    )
     return response
 
 # Serve static frontend folder
@@ -672,9 +693,24 @@ async def upload_pdf(
     is_private: int = Form(0),
     confirm_overwrite: bool = Form(False)
 ):
-    allowed_exts = (".pdf", ".docx", ".doc")
-    if not any(file.filename.lower().endswith(ext) for ext in allowed_exts):
-        raise HTTPException(status_code=400, detail="Only PDF (.pdf) and Word (.docx, .doc) files are supported.")
+    allowed_exts = (".pdf", ".docx", ".doc", ".txt")
+    filename_clean = os.path.basename(file.filename or "").strip()
+    if not filename_clean or ".." in filename_clean or "/" in filename_clean or "\\" in filename_clean:
+        raise HTTPException(status_code=400, detail="Invalid or unsafe filename.")
+
+    if not any(filename_clean.lower().endswith(ext) for ext in allowed_exts):
+        raise HTTPException(status_code=400, detail="Only PDF (.pdf), Word (.docx, .doc), and Text (.txt) files are supported.")
+    
+    # Strict MIME-type checking
+    allowed_mimes = {
+        "application/pdf",
+        "application/msword",
+        "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        "text/plain",
+        "application/octet-stream"
+    }
+    if file.content_type and file.content_type.lower() not in allowed_mimes:
+        raise HTTPException(status_code=400, detail=f"Unsupported file MIME type: {file.content_type}")
     
     if not subject or not subject.strip():
         raise HTTPException(status_code=400, detail="Subject is required.")
@@ -687,11 +723,11 @@ async def upload_pdf(
 
     # Check for existing duplicate file under same subject & semester
     if not confirm_overwrite:
-        existing = get_upload_by_filename(file.filename)
+        existing = get_upload_by_filename(filename_clean)
         if existing and existing["subject"] == subject and existing["semester"] == semester:
             raise HTTPException(
                 status_code=409,
-                detail=f"A similar file named '{file.filename}' for {subject} ({semester}) already exists. Do you still want to upload?"
+                detail=f"A similar file named '{filename_clean}' for {subject} ({semester}) already exists. Do you still want to upload?"
             )
 
     # Check headers / size if provided by client
@@ -891,6 +927,7 @@ def render_docx_viewer_html(filename: str, meta: dict, text_docs: list) -> HTMLR
 
 @app.get("/view/{filename}")
 def view_file_route(filename: str):
+    filename = os.path.basename(filename)
     file_path = os.path.join("uploads", filename)
     if not os.path.exists(file_path):
         raise HTTPException(status_code=404, detail="File not found.")
@@ -915,6 +952,7 @@ def view_file_route(filename: str):
 
 @app.get("/files/{filename}")
 def get_file(filename: str):
+    filename = os.path.basename(filename)
     file_path = os.path.join("uploads", filename)
     if not os.path.exists(file_path):
         raise HTTPException(status_code=404, detail="File not found.")
@@ -935,6 +973,7 @@ def get_file(filename: str):
 @app.get("/download/{filename}")
 @app.get("/api/download/{filename}")
 def download_file_route(filename: str, disposition: Optional[str] = "inline"):
+    filename = os.path.basename(filename)
     file_path = os.path.join("uploads", filename)
     if not os.path.exists(file_path):
         raise HTTPException(status_code=404, detail="File not found.")
@@ -989,6 +1028,7 @@ def list_files(user_email: Optional[str] = None):
 @app.delete("/files/{filename}")
 def delete_file(filename: str, user_email: Optional[str] = None, user_name: Optional[str] = None):
     try:
+        filename = os.path.basename(filename)
         import os
         from rag import delete_pdf_from_vectordb
         from backend_rag import reset_bm25_cache
@@ -1026,6 +1066,7 @@ class ToggleFilePrivacyRequest(BaseModel):
 
 @app.post("/files/{filename}/toggle-privacy")
 def toggle_file_privacy_endpoint(filename: str, req: ToggleFilePrivacyRequest, request: Request):
+    filename = os.path.basename(filename)
     user_email = req.user_email or request.headers.get("X-User-Email") or request.query_params.get("user_email")
     existing_meta = get_upload_by_filename(filename)
     if not existing_meta:
