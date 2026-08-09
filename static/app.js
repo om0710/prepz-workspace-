@@ -2363,7 +2363,7 @@ function initializeDocPilotApp() {
 
     function formatChatMarkdown(text) {
         if (!text) return "";
-        let cleanText = text.trim();
+        let cleanText = text;
         if (typeof marked !== "undefined" && typeof marked.parse === "function") {
             try {
                 return marked.parse(cleanText);
