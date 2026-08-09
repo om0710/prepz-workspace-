@@ -1039,14 +1039,27 @@ def render_docx_viewer_html(filename: str, meta: dict, text_docs: list) -> HTMLR
 </html>"""
     return HTMLResponse(content=html_content)
 
+from urllib.parse import unquote, quote
+
+def get_sanitized_upload_file_path(raw_filename: str) -> tuple[str, str]:
+    unquoted = unquote(raw_filename or "").strip()
+    clean_name = os.path.basename(unquoted)
+    file_path = os.path.join("uploads", clean_name)
+    if not os.path.exists(file_path):
+        alt_name = os.path.basename(raw_filename or "")
+        alt_path = os.path.join("uploads", alt_name)
+        if os.path.exists(alt_path):
+            file_path = alt_path
+            clean_name = alt_name
+    return clean_name, file_path
+
 @app.get("/view/{filename}")
 def view_file_route(filename: str):
-    filename = os.path.basename(filename)
-    file_path = os.path.join("uploads", filename)
+    filename, file_path = get_sanitized_upload_file_path(filename)
     if not os.path.exists(file_path):
-        raise HTTPException(status_code=404, detail="File not found.")
+        raise HTTPException(status_code=404, detail=f"File '{filename}' not found.")
     
-    meta = get_upload_by_filename(filename)
+    meta = get_upload_by_filename(filename) or get_upload_by_filename(unquote(filename))
     if meta and meta.get("user_email"):
         uploader_email = meta["user_email"]
         if uploader_email and uploader_email != "anonymous@college.edu":
@@ -1060,14 +1073,13 @@ def view_file_route(filename: str):
 
     return FileResponse(
         file_path,
-        media_type="application/pdf" if fn_lower.endswith(".pdf") else None,
-        headers={"Content-Disposition": f'inline; filename="{filename}"'}
+        media_type="application/pdf" if fn_lower.endswith(".pdf") else get_media_type(filename),
+        headers={"Content-Disposition": f'inline; filename="{quote(filename)}"'}
     )
 
 @app.get("/files/{filename}")
 def get_file(filename: str):
-    filename = os.path.basename(filename)
-    file_path = os.path.join("uploads", filename)
+    filename, file_path = get_sanitized_upload_file_path(filename)
     if not os.path.exists(file_path):
         raise HTTPException(status_code=404, detail="File not found.")
     
@@ -1081,14 +1093,13 @@ def get_file(filename: str):
     return FileResponse(
         file_path,
         media_type=get_media_type(filename),
-        headers={"Content-Disposition": f'inline; filename="{filename}"'}
+        headers={"Content-Disposition": f'inline; filename="{quote(filename)}"'}
     )
 
 @app.get("/download/{filename}")
 @app.get("/api/download/{filename}")
 def download_file_route(filename: str, disposition: Optional[str] = "inline"):
-    filename = os.path.basename(filename)
-    file_path = os.path.join("uploads", filename)
+    filename, file_path = get_sanitized_upload_file_path(filename)
     if not os.path.exists(file_path):
         raise HTTPException(status_code=404, detail="File not found.")
     
@@ -1103,7 +1114,7 @@ def download_file_route(filename: str, disposition: Optional[str] = "inline"):
     return FileResponse(
         file_path,
         media_type=get_media_type(filename),
-        headers={"Content-Disposition": f'{disp}; filename="{filename}"'}
+        headers={"Content-Disposition": f'{disp}; filename="{quote(filename)}"'}
     )
 
 @app.get("/files")
