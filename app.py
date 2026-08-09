@@ -36,6 +36,59 @@ class ChatRequest(BaseModel):
     thread_id: str
     user_email: Optional[str] = None
 
+import hmac
+import hashlib
+import base64
+import time
+
+SECRET_KEY = os.environ.get("JWT_SECRET_KEY") or os.environ.get("SESSION_SECRET") or "prepz_super_secret_cryptographic_key_2026_x89q"
+
+def generate_signed_token(payload_data: dict, exp_seconds: int = 86400) -> str:
+    payload = payload_data.copy()
+    payload["exp"] = int(time.time()) + exp_seconds
+    payload["jti"] = str(uuid.uuid4())
+    
+    payload_bytes = json.dumps(payload, sort_keys=True).encode("utf-8")
+    b64_payload = base64.urlsafe_b64encode(payload_bytes).decode("utf-8").rstrip("=")
+    
+    signature = hmac.new(SECRET_KEY.encode("utf-8"), b64_payload.encode("utf-8"), hashlib.sha256).hexdigest()
+    return f"{b64_payload}.{signature}"
+
+def verify_signed_token(token: str) -> Optional[dict]:
+    if not token or "." not in token:
+        return None
+    try:
+        parts = token.strip().split(".")
+        if len(parts) != 2:
+            return None
+        b64_payload, signature = parts[0], parts[1]
+        
+        expected_sig = hmac.new(SECRET_KEY.encode("utf-8"), b64_payload.encode("utf-8"), hashlib.sha256).hexdigest()
+        if not hmac.compare_digest(expected_sig, signature):
+            return None
+        
+        padding = "=" * (-len(b64_payload) % 4)
+        payload_json = base64.urlsafe_b64decode(b64_payload + padding).decode("utf-8")
+        payload = json.loads(payload_json)
+        
+        if payload.get("exp") and payload["exp"] < time.time():
+            return None
+            
+        return payload
+    except Exception:
+        return None
+
+def get_current_user_payload(request: Request) -> Optional[dict]:
+    auth_header = request.headers.get("Authorization")
+    token = None
+    if auth_header and auth_header.startswith("Bearer "):
+        token = auth_header[7:].strip()
+    if not token:
+        token = request.headers.get("X-Access-Token") or request.cookies.get("session_token")
+    if token:
+        return verify_signed_token(token)
+    return None
+
 def serialize_message(msg):
     if isinstance(msg, HumanMessage):
         return {"role": "user", "content": msg.content}
@@ -559,9 +612,11 @@ def login(req: LoginRequest):
     clear_failed_logins(email)
 
     user = update_user_activity(email) or user
+    auth_token = generate_signed_token({"id": user["id"], "email": user["email"], "name": user["name"]})
     print(f"[AUTH SERVER] Login SUCCESS for '{email}' (id={user['id']})")
     return {
         "status": "success",
+        "token": auth_token,
         "user": {
             "id": user["id"],
             "name": user["name"],
@@ -570,7 +625,8 @@ def login(req: LoginRequest):
             "avatar_url": user["avatar_url"],
             "contribution_score": user.get("contribution_score", 0),
             "current_streak": user.get("current_streak", 1),
-            "has_seen_onboarding": user.get("has_seen_onboarding", False)
+            "has_seen_onboarding": user.get("has_seen_onboarding", False),
+            "token": auth_token
         }
     }
 

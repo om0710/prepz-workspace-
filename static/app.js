@@ -272,12 +272,25 @@ window.loginUser = function(user) {
         window.syncAppCurrentUser(user);
     }
 
-    // Always overwrite — single key docpilot-user
+    // Always overwrite — single key docpilot-user and docpilot-token
     const userData = JSON.stringify(user);
     try {
         localStorage.clear();
         localStorage.setItem("docpilot-user", userData);
+        if (user.token) {
+            localStorage.setItem("docpilot-token", user.token);
+        }
     } catch(e) {}
+
+    window.getAuthHeaders = function(headers = {}) {
+        const token = (window.currentUser && window.currentUser.token) || localStorage.getItem("docpilot-token");
+        const newHeaders = { ...headers };
+        if (token) {
+            newHeaders["Authorization"] = "Bearer " + token;
+            newHeaders["X-Access-Token"] = token;
+        }
+        return newHeaders;
+    };
 
     const landingPageView = document.getElementById("landing-page-view");
     const chatbotAppView = document.getElementById("chatbot-app-view");
