@@ -1951,21 +1951,6 @@ function initializeDocPilotApp() {
                 <div class="chat-welcome-badge">BU Prepz AI Assistant</div>
                 <h2 class="chat-welcome-title">Welcome back, <span class="user-highlight-name">${userName}</span></h2>
                 <p class="chat-welcome-subtitle">Ask questions, summarize uploaded study notes, or solve engineering tutorial problems.</p>
-                
-                <div class="welcome-suggestions-grid">
-                    <button type="button" class="welcome-suggest-btn" onclick="sendQuickPrompt('Summarize key formulas, definitions, and PYQ exam questions from my uploaded notes.')">
-                        <span class="suggest-text">Exam Prep & Formulas Summary</span>
-                    </button>
-                    <button type="button" class="welcome-suggest-btn" onclick="sendQuickPrompt('Help me solve step-by-step tutorial sheet assignments and explain underlying equations.')">
-                        <span class="suggest-text">Assignment & Math Helper</span>
-                    </button>
-                    <button type="button" class="welcome-suggest-btn" onclick="sendQuickPrompt('Explain core concepts in Operating Systems, DBMS, DSA, and Networks with clear examples.')">
-                        <span class="suggest-text">Engineering Concept Explainer</span>
-                    </button>
-                    <button type="button" class="welcome-suggest-btn" onclick="sendQuickPrompt('Create a 5-minute quick revision cheat sheet and key takeaways from my uploaded PDF documents.')">
-                        <span class="suggest-text">5-Min Quick Revision Sheet</span>
-                    </button>
-                </div>
             </div>
         `;
     }

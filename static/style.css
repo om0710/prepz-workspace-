@@ -1542,11 +1542,12 @@ button, a[role="button"], input[type="button"], input[type="submit"] {
     line-height: 1.55;
 }
 
-.welcome-suggestions-grid {
-    display: grid;
-    grid-template-columns: repeat(2, 1fr);
-    gap: 12px;
-    width: 100%;
+.welcome-suggestions-grid,
+.suggestion-grid-nexa,
+.suggestion-pill,
+.suggestion-pill-nexa,
+.welcome-suggest-btn {
+    display: none !important;
 }
 
 .welcome-suggest-btn {
