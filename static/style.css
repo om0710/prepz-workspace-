@@ -126,16 +126,12 @@ html, body {
     font-style: italic;
     font-weight: 400;
     color: var(--accent-primary);
-    margin-right: 18px !important;
-    padding-right: 6px !important;
+    margin-right: 0.25em;
     display: inline-block;
-    letter-spacing: 0.03em;
 }
 
 .headline-platform {
     display: inline-block;
-    margin-left: 6px !important;
-    letter-spacing: 0.02em;
 }
 
 body {
