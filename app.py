@@ -1515,10 +1515,20 @@ Format the entire output in clean, professional Markdown with clear section head
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"AI Paper Generation failed: {str(e)}")
 
-# Mount static and uploads folders
+# Mount uploads folder
 os.makedirs("uploads", exist_ok=True)
-app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
-app.mount("/static", StaticFiles(directory="static"), name="static")
+try:
+    app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
+except Exception:
+    pass
+
+try:
+    import gradio as gr
+    with gr.Blocks(title="BU Prepz AI Workspace") as demo:
+        gr.HTML('<script>window.location.href = "/";</script>')
+    app = gr.mount_gradio_app(app, demo, path="/gradio")
+except Exception as e:
+    print(f"[GRADIO MOUNT NOTICE] {e}")
 
 if __name__ == "__main__":
     import uvicorn
