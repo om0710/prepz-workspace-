@@ -1,10 +1,11 @@
 ---
 title: "BU Prepz AI Workspace"
-emoji: 🎓
+emoji: ""
 colorFrom: "indigo"
 colorTo: "blue"
 sdk: "gradio"
-app_file: "app.py"
+app_file: "app_hf.py"
+header: "mini"
 pinned: false
 ---
 

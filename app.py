@@ -1522,14 +1522,6 @@ try:
 except Exception:
     pass
 
-try:
-    import gradio as gr
-    with gr.Blocks(title="BU Prepz AI Workspace") as demo:
-        gr.HTML('<script>window.location.href = "/";</script>')
-    app = gr.mount_gradio_app(app, demo, path="/gradio")
-except Exception as e:
-    print(f"[GRADIO MOUNT NOTICE] {e}")
-
 if __name__ == "__main__":
     import uvicorn
     port = int(os.environ.get("PORT", 7860))
