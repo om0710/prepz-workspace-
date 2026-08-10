@@ -717,15 +717,7 @@ button, a[role="button"], input[type="button"], input[type="submit"] {
 }
 
 .adspace-version-pill {
-    font-family: var(--font-mono);
-    font-size: 9.5px;
-    font-weight: 700;
-    background: rgba(255, 107, 0, 0.12);
-    border: 1px solid rgba(255, 107, 0, 0.3);
-    color: var(--accent-primary);
-    padding: 2px 7px;
-    border-radius: var(--radius-pill);
-    letter-spacing: 0.6px;
+    display: none !important;
 }
 
 .sidebar-collapse-btn {
