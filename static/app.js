@@ -178,137 +178,66 @@ window.handleGoogleSignIn = function(e) {
         e.stopPropagation();
     }
     console.log('[CLICK]', 'Google button clicked!');
-    
-    const googleBtn = document.getElementById("btn-google-login");
 
     const authErrBox = document.getElementById("auth-error-msg");
-    function showErr(msg) {
-        if (authErrBox) {
-            authErrBox.innerHTML = msg;
-            authErrBox.classList.remove("hidden");
-        }
+    if (authErrBox) {
+        authErrBox.textContent = "";
+        authErrBox.classList.add("hidden");
     }
-    function clearErr() {
-        if (authErrBox) {
-            authErrBox.textContent = "";
-            authErrBox.classList.add("hidden");
-        }
-    }
-    clearErr();
 
-    if (typeof firebase === "undefined") {
-        console.warn('[AUTH]', 'Firebase SDK not yet loaded on window. Attempting dynamic load...');
-        const s1 = document.createElement("script");
-        s1.src = "https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js";
-        s1.onload = () => {
-            const s2 = document.createElement("script");
-            s2.src = "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js";
-            s2.onload = () => {
-                try {
-                    if (typeof firebase !== "undefined" && (!firebase.apps || !firebase.apps.length)) {
-                        firebase.initializeApp(defaultFirebaseConfig);
+    if (typeof firebase !== "undefined" && firebase.auth) {
+        if (!firebase.apps || !firebase.apps.length) {
+            try { firebase.initializeApp(defaultFirebaseConfig); } catch(err){}
+        }
+        try {
+            const auth = firebase.auth();
+            const provider = new firebase.auth.GoogleAuthProvider();
+            provider.setCustomParameters({ prompt: 'select_account' });
+            auth.signInWithPopup(provider)
+                .then(async (result) => {
+                    const user = result.user;
+                    const providerId = (user.providerData && user.providerData[0]) ? user.providerData[0].providerId : "google";
+                    try {
+                        const res = await fetch("/api/firebase-sync", {
+                            method: "POST",
+                            headers: { "Content-Type": "application/json" },
+                            body: JSON.stringify({
+                                uid: user.uid,
+                                email: user.email,
+                                name: user.displayName || user.email.split("@")[0].replace(/[._-]/g, " "),
+                                provider: providerId.includes("google") ? "google" : "local",
+                                avatar_url: user.photoURL || `https://api.dicebear.com/7.x/bottts/svg?seed=${encodeURIComponent(user.email)}`
+                            })
+                        });
+                        const data = await res.json();
+                        window.loginUser(res.ok && data.user ? data.user : {
+                            id: user.uid,
+                            email: user.email,
+                            name: user.displayName || user.email.split("@")[0],
+                            provider: providerId,
+                            avatar_url: user.photoURL || `https://api.dicebear.com/7.x/bottts/svg?seed=${encodeURIComponent(user.email)}`
+                        });
+                    } catch(err) {
+                        window.loginUser({
+                            id: user.uid,
+                            email: user.email,
+                            name: user.displayName || user.email.split("@")[0],
+                            provider: providerId
+                        });
                     }
-                } catch(e){}
-                handleGoogleAuth(e);
-            };
-            s2.onerror = () => executeInstantGoogleSignIn();
-            document.head.appendChild(s2);
-        };
-        s1.onerror = () => executeInstantGoogleSignIn();
-        document.head.appendChild(s1);
-        
-        setTimeout(() => {
-            if (typeof firebase === "undefined") {
-                executeInstantGoogleSignIn();
-            }
-        }, 1200);
-        return;
-    }
-
-    if (!firebase.apps || !firebase.apps.length) {
-        try {
-            console.log('[FIREBASE CALL STARTING]', 'Initializing defaultFirebaseConfig...');
-            firebase.initializeApp(defaultFirebaseConfig);
+                })
+                .catch((error) => {
+                    console.warn('[GOOGLE SIGNIN POPUP ERROR]', error);
+                    executeInstantGoogleSignIn();
+                });
+            return;
         } catch(err) {
-            console.error('[ERROR]', 'Firebase initializeApp error:', err);
+            console.warn('[GOOGLE FIREBASE INIT EXCEPTION]', err);
         }
     }
 
-    let auth = firebaseAuth;
-    if (!auth && typeof firebase.auth === "function") {
-        try {
-            auth = firebase.auth();
-        } catch(err) {
-            console.error('[ERROR]', 'Firebase auth fetch error:', err);
-        }
-    }
-
-    if (!auth) {
-        console.error('[ERROR]', 'firebase.auth() is null');
-        executeInstantGoogleSignIn();
-        return;
-    }
-
-    const provider = new firebase.auth.GoogleAuthProvider();
-    provider.setCustomParameters({ prompt: 'select_account' });
-
-    console.log('[FIREBASE CALL STARTING]', 'Calling signInWithPopup...');
-    auth.signInWithPopup(provider)
-        .then(async (result) => {
-            console.log('[FIREBASE SUCCESS]', result.user.email);
-            const user = result.user;
-            const providerId = (user.providerData && user.providerData[0])
-                ? user.providerData[0].providerId : "google";
-            try {
-                const res = await fetch("/api/firebase-sync", {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({
-                        uid: user.uid,
-                        email: user.email,
-                        name: user.displayName || user.email.split("@")[0].replace(/[._-]/g, " "),
-                        provider: providerId.includes("google") ? "google" : "local",
-                        avatar_url: user.photoURL || `https://api.dicebear.com/7.x/bottts/svg?seed=${encodeURIComponent(user.email)}`
-                    })
-                });
-                const data = await res.json();
-                window.loginUser(res.ok && data.user ? data.user : {
-                    id: user.uid,
-                    email: user.email,
-                    name: user.displayName || user.email.split("@")[0],
-                    provider: providerId,
-                    avatar_url: user.photoURL || `https://api.dicebear.com/7.x/bottts/svg?seed=${encodeURIComponent(user.email)}`
-                });
-            } catch(err) {
-                console.error('[ERROR]', 'firebase-sync API error:', err);
-                window.loginUser({
-                    id: user.uid,
-                    email: user.email,
-                    name: user.displayName || user.email.split("@")[0],
-                    provider: providerId
-                });
-            }
-        })
-        .catch((error) => {
-            const errCode = error.code || "unknown";
-            const errMsg = error.message || "";
-            console.error('[ERROR]', '[GOOGLE SIGNIN ERROR]', errCode, errMsg, error);
-
-            if (errCode === "auth/popup-blocked") {
-                console.warn('[ERROR]', 'Popup blocked — attempting signInWithRedirect fallback');
-                try {
-                    auth.signInWithRedirect(provider);
-                    return;
-                } catch(rErr) {
-                    showErr(`❌ Popup blocked by browser. Please use Email/Password sign in below or click <a href="https://om123bansal-prepz-app.hf.space" target="_blank" style="color: #818cf8;">Open Direct Link ↗</a>`);
-                }
-            } else if (errCode === "auth/unauthorized-domain") {
-                const curDomain = window.location.hostname || "om123bansal-prepz-app.hf.space";
-                showErr(`❌ Domain not authorized in Firebase Console.<br>Fix: Add <b>"${curDomain}"</b> and <b>"huggingface.co"</b> to Firebase Console → Authentication → Settings → Authorized domains.<br>[Error: ${errCode}]`);
-            } else if (errCode !== "auth/popup-closed-by-user" && errCode !== "auth/cancelled-popup-request") {
-                showErr(`❌ [GOOGLE SIGNIN ERROR]<br>Code: <b>${errCode}</b><br>Message: ${errMsg}`);
-            }
-        });
+    // Direct Instant Google Sign-In Fallback when SDK is loading / blocked
+    executeInstantGoogleSignIn();
 };
 
 window.handleGuestLogin = function(e) {
