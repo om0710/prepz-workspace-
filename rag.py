@@ -10,9 +10,7 @@ from langchain_huggingface import HuggingFaceEmbeddings
 from langchain_chroma import Chroma
 from langchain_core.tools import tool
 
-groq_key = os.environ.get("GROQ_API_KEY")
-if not groq_key:
-    raise RuntimeError("GROQ_API_KEY environment variable is missing. Please configure it in your .env file.")
+groq_key = os.environ.get("GROQ_API_KEY") or "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"
 os.environ["GROQ_API_KEY"] = groq_key
 
 # ---------------- LLM ---------------- #
