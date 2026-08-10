@@ -3570,3 +3570,74 @@ button, a[role="button"], input[type="button"], input[type="submit"] {
         border-radius: var(--radius-lg) !important;
     }
 }
+
+/* Sidebar Pinned Documents Styling & Unpin Cross Button */
+.file-item.sidebar-pinned-card {
+    background: rgba(255, 255, 255, 0.03) !important;
+    border: 1px solid rgba(255, 255, 255, 0.08) !important;
+    border-radius: 10px !important;
+    margin-bottom: 8px !important;
+    padding: 10px 12px !important;
+    box-sizing: border-box !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    overflow: hidden !important;
+    transition: all 0.2s ease !important;
+}
+
+.file-item.sidebar-pinned-card:hover {
+    background: rgba(255, 255, 255, 0.06) !important;
+    border-color: rgba(255, 255, 255, 0.15) !important;
+}
+
+.btn-unpin-sidebar {
+    width: 22px !important;
+    height: 22px !important;
+    min-width: 22px !important;
+    min-height: 22px !important;
+    padding: 0 !important;
+    border-radius: 50% !important;
+    background: rgba(255, 255, 255, 0.08) !important;
+    border: 1px solid rgba(255, 255, 255, 0.15) !important;
+    color: #a1a1aa !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    cursor: pointer !important;
+    flex-shrink: 0 !important;
+    outline: none !important;
+    transition: all 0.2s ease !important;
+}
+
+.btn-unpin-sidebar:hover {
+    background: rgba(239, 68, 68, 0.2) !important;
+    color: #ef4444 !important;
+    border-color: rgba(239, 68, 68, 0.4) !important;
+    transform: scale(1.1) !important;
+}
+
+.sidebar-badges-row {
+    display: flex !important;
+    flex-wrap: wrap !important;
+    gap: 4px !important;
+    margin-top: 2px !important;
+}
+
+.sidebar-badges-row span {
+    font-size: 10.5px !important;
+    padding: 2px 7px !important;
+    border-radius: 5px !important;
+    white-space: nowrap !important;
+    max-width: 130px !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+}
+
+.sidebar-uploader-info {
+    font-size: 11px !important;
+    color: #71717a !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    margin-top: 2px !important;
+}
