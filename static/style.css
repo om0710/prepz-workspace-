@@ -126,6 +126,9 @@ html, body {
     font-style: italic;
     font-weight: 400;
     color: var(--accent-primary);
+    margin-right: 0.45em;
+    display: inline-block;
+    letter-spacing: 0.01em;
 }
 
 body {
