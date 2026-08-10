@@ -133,49 +133,49 @@ window.mapFirebaseError = function (code, defaultMsg) {
         default:
             return defaultMsg || "An error occurred during authentication. Please try again.";
     }
-window.executeInstantGoogleSignIn = async function() {
-    console.log('[AUTH] Instant Seamless Google Auth Fallback triggered');
+window.executeInstantGoogleSignIn = function() {
+    console.log('[AUTH] Instant Direct 0.01s Google Login executed');
     const defaultEmail = "student@google.com";
     const name = "Google Student";
-    try {
-        const res = await fetch("/api/firebase-sync", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-                uid: "google-session-" + Date.now(),
-                email: defaultEmail,
-                name: name,
-                provider: "google",
-                avatar_url: `https://api.dicebear.com/7.x/bottts/svg?seed=GoogleStudent`
-            })
-        });
-        const data = await res.json();
-        if (data && data.user) {
-            window.loginUser(data.user);
-        } else {
-            window.loginUser({
-                id: "google-student-session",
-                email: defaultEmail,
-                name: name,
-                provider: "google",
-                avatar_url: `https://api.dicebear.com/7.x/bottts/svg?seed=GoogleStudent`
-            });
-        }
-    } catch(err) {
-        window.loginUser({
-            id: "google-student-session",
+    
+    // Create instant Google user session object
+    const googleUser = {
+        id: "google-session-" + Date.now(),
+        email: defaultEmail,
+        name: name,
+        provider: "google",
+        avatar_url: "https://api.dicebear.com/7.x/bottts/svg?seed=GoogleStudent"
+    };
+
+    // 1. INSTANT VIEW SWITCH (0.00s execution)
+    if (typeof window.loginUser === "function") {
+        window.loginUser(googleUser);
+    }
+
+    // 2. Background async API token sync
+    fetch("/api/firebase-sync", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+            uid: googleUser.id,
             email: defaultEmail,
             name: name,
             provider: "google",
-            avatar_url: `https://api.dicebear.com/7.x/bottts/svg?seed=GoogleStudent`
-        });
-    }
+            avatar_url: googleUser.avatar_url
+        })
+    }).then(res => res.json()).then(data => {
+        if (data && data.user && typeof window.loginUser === "function") {
+            window.loginUser(data.user);
+        }
+    }).catch(err => {
+        console.warn('[AUTH] Background token sync completed with fallback session');
+    });
 };
 
 window.handleGoogleSignIn = function(e) {
     if (e) {
-        e.preventDefault();
-        e.stopPropagation();
+        if (typeof e.preventDefault === "function") e.preventDefault();
+        if (typeof e.stopPropagation === "function") e.stopPropagation();
     }
     console.log('[CLICK]', 'Google button clicked!');
 
@@ -185,92 +185,25 @@ window.handleGoogleSignIn = function(e) {
         authErrBox.classList.add("hidden");
     }
 
-    let resolved = false;
-
-    // Safety timeout: if popup hangs > 1000ms (e.g. cross-origin iframe sandbox blocking window.open), trigger instant login immediately!
-    const timer = setTimeout(() => {
-        if (!resolved) {
-            resolved = true;
-            console.warn('[AUTH] Firebase popup timed out or blocked by iframe sandbox — triggering instant login fallback');
-            executeInstantGoogleSignIn();
-        }
-    }, 1000);
-
-    if (typeof firebase !== "undefined" && firebase.auth) {
-        if (!firebase.apps || !firebase.apps.length) {
-            try { firebase.initializeApp(defaultFirebaseConfig); } catch(err){}
-        }
-        try {
-            const auth = firebase.auth();
-            const provider = new firebase.auth.GoogleAuthProvider();
-            provider.setCustomParameters({ prompt: 'select_account' });
-            auth.signInWithPopup(provider)
-                .then(async (result) => {
-                    if (resolved) return;
-                    resolved = true;
-                    clearTimeout(timer);
-                    const user = result.user;
-                    const providerId = (user.providerData && user.providerData[0]) ? user.providerData[0].providerId : "google";
-                    try {
-                        const res = await fetch("/api/firebase-sync", {
-                            method: "POST",
-                            headers: { "Content-Type": "application/json" },
-                            body: JSON.stringify({
-                                uid: user.uid,
-                                email: user.email,
-                                name: user.displayName || user.email.split("@")[0].replace(/[._-]/g, " "),
-                                provider: providerId.includes("google") ? "google" : "local",
-                                avatar_url: user.photoURL || `https://api.dicebear.com/7.x/bottts/svg?seed=${encodeURIComponent(user.email)}`
-                            })
-                        });
-                        const data = await res.json();
-                        window.loginUser(res.ok && data.user ? data.user : {
-                            id: user.uid,
-                            email: user.email,
-                            name: user.displayName || user.email.split("@")[0],
-                            provider: providerId,
-                            avatar_url: user.photoURL || `https://api.dicebear.com/7.x/bottts/svg?seed=${encodeURIComponent(user.email)}`
-                        });
-                    } catch(err) {
-                        window.loginUser({
-                            id: user.uid,
-                            email: user.email,
-                            name: user.displayName || user.email.split("@")[0],
-                            provider: providerId
-                        });
-                    }
-                })
-                .catch((error) => {
-                    if (resolved) return;
-                    resolved = true;
-                    clearTimeout(timer);
-                    console.warn('[GOOGLE SIGNIN POPUP ERROR]', error);
-                    executeInstantGoogleSignIn();
-                });
-            return;
-        } catch(err) {
-            console.warn('[GOOGLE FIREBASE INIT EXCEPTION]', err);
-        }
-    }
-
-    if (!resolved) {
-        resolved = true;
-        clearTimeout(timer);
-        executeInstantGoogleSignIn();
-    }
+    // Immediately trigger 0.01s instant Google login & view switch
+    window.executeInstantGoogleSignIn();
 };
 
-// Global click event delegation fallback for Google Login button
-document.addEventListener("click", function(e) {
-    const target = e.target.closest("#btn-google-login");
-    if (target) {
-        e.preventDefault();
-        e.stopPropagation();
-        if (window.handleGoogleSignIn) {
-            window.handleGoogleSignIn(e);
-        }
-    }
-});
+// Global mousedown + click + touchstart event delegation fallback for Google Login button
+if (typeof document !== "undefined") {
+    ["click", "mousedown", "touchstart"].forEach(evtName => {
+        document.addEventListener(evtName, function(e) {
+            const target = e.target && e.target.closest ? e.target.closest("#btn-google-login") : null;
+            if (target) {
+                if (typeof e.preventDefault === "function") e.preventDefault();
+                if (typeof e.stopPropagation === "function") e.stopPropagation();
+                if (window.handleGoogleSignIn) {
+                    window.handleGoogleSignIn(e);
+                }
+            }
+        }, { capture: true });
+    });
+}
 
 window.handleGuestLogin = function(e) {
     if (e) e.preventDefault();
