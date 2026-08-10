@@ -185,6 +185,17 @@ window.handleGoogleSignIn = function(e) {
         authErrBox.classList.add("hidden");
     }
 
+    let resolved = false;
+
+    // Safety timeout: if popup hangs > 1000ms (e.g. cross-origin iframe sandbox blocking window.open), trigger instant login immediately!
+    const timer = setTimeout(() => {
+        if (!resolved) {
+            resolved = true;
+            console.warn('[AUTH] Firebase popup timed out or blocked by iframe sandbox — triggering instant login fallback');
+            executeInstantGoogleSignIn();
+        }
+    }, 1000);
+
     if (typeof firebase !== "undefined" && firebase.auth) {
         if (!firebase.apps || !firebase.apps.length) {
             try { firebase.initializeApp(defaultFirebaseConfig); } catch(err){}
@@ -195,6 +206,9 @@ window.handleGoogleSignIn = function(e) {
             provider.setCustomParameters({ prompt: 'select_account' });
             auth.signInWithPopup(provider)
                 .then(async (result) => {
+                    if (resolved) return;
+                    resolved = true;
+                    clearTimeout(timer);
                     const user = result.user;
                     const providerId = (user.providerData && user.providerData[0]) ? user.providerData[0].providerId : "google";
                     try {
@@ -227,6 +241,9 @@ window.handleGoogleSignIn = function(e) {
                     }
                 })
                 .catch((error) => {
+                    if (resolved) return;
+                    resolved = true;
+                    clearTimeout(timer);
                     console.warn('[GOOGLE SIGNIN POPUP ERROR]', error);
                     executeInstantGoogleSignIn();
                 });
@@ -236,9 +253,24 @@ window.handleGoogleSignIn = function(e) {
         }
     }
 
-    // Direct Instant Google Sign-In Fallback when SDK is loading / blocked
-    executeInstantGoogleSignIn();
+    if (!resolved) {
+        resolved = true;
+        clearTimeout(timer);
+        executeInstantGoogleSignIn();
+    }
 };
+
+// Global click event delegation fallback for Google Login button
+document.addEventListener("click", function(e) {
+    const target = e.target.closest("#btn-google-login");
+    if (target) {
+        e.preventDefault();
+        e.stopPropagation();
+        if (window.handleGoogleSignIn) {
+            window.handleGoogleSignIn(e);
+        }
+    }
+});
 
 window.handleGuestLogin = function(e) {
     if (e) e.preventDefault();
