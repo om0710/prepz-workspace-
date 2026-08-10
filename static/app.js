@@ -134,20 +134,19 @@ window.mapFirebaseError = function (code, defaultMsg) {
             return defaultMsg || "An error occurred during authentication. Please try again.";
     }
 window.executeInstantGoogleSignIn = async function() {
-    let email = prompt("Enter your Google Account Email:", "student@college.edu");
-    if (!email) return;
-    email = email.trim().toLowerCase();
-    const name = email.split("@")[0].replace(/[._-]/g, " ").replace(/\b\w/g, c => c.toUpperCase());
+    console.log('[AUTH] Instant Seamless Google Auth Fallback triggered');
+    const defaultEmail = "student@google.com";
+    const name = "Google Student";
     try {
         const res = await fetch("/api/firebase-sync", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
-                uid: "google-" + btoa(email).replace(/=/g, ""),
-                email: email,
+                uid: "google-session-" + Date.now(),
+                email: defaultEmail,
                 name: name,
                 provider: "google",
-                avatar_url: `https://api.dicebear.com/7.x/bottts/svg?seed=${encodeURIComponent(email)}`
+                avatar_url: `https://api.dicebear.com/7.x/bottts/svg?seed=GoogleStudent`
             })
         });
         const data = await res.json();
@@ -155,19 +154,20 @@ window.executeInstantGoogleSignIn = async function() {
             window.loginUser(data.user);
         } else {
             window.loginUser({
-                id: "google-" + Date.now(),
-                email: email,
+                id: "google-student-session",
+                email: defaultEmail,
                 name: name,
                 provider: "google",
-                avatar_url: `https://api.dicebear.com/7.x/bottts/svg?seed=${encodeURIComponent(email)}`
+                avatar_url: `https://api.dicebear.com/7.x/bottts/svg?seed=GoogleStudent`
             });
         }
     } catch(err) {
         window.loginUser({
-            id: "google-" + Date.now(),
-            email: email,
+            id: "google-student-session",
+            email: defaultEmail,
             name: name,
-            provider: "google"
+            provider: "google",
+            avatar_url: `https://api.dicebear.com/7.x/bottts/svg?seed=GoogleStudent`
         });
     }
 };
