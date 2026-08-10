@@ -1,6 +1,6 @@
 ---
 title: "BU Prepz AI Workspace"
-emoji: ""
+emoji: 🎓
 colorFrom: "indigo"
 colorTo: "blue"
 sdk: "gradio"
