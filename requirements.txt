@@ -19,3 +19,4 @@ rank-bm25
 huggingface_hub>=0.27.0
 python-docx
 spaces
+gradio>=4.0.0
