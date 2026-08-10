@@ -1975,11 +1975,7 @@ button, a[role="button"], input[type="button"], input[type="submit"] {
 
 /* Suggestion Pills Grid */
 .suggestion-grid-nexa {
-    display: grid;
-    grid-template-columns: repeat(2, 1fr);
-    gap: 8px;
-    margin-top: 14px;
-    width: 100%;
+    display: none !important;
 }
 
 .suggestion-pill-nexa {
