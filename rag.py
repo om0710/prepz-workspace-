@@ -1,6 +1,8 @@
 from dotenv import load_dotenv
 import os
 
+load_dotenv()
+
 from langchain_groq import ChatGroq
 from langchain_community.document_loaders import PyPDFLoader
 from langchain_text_splitters import RecursiveCharacterTextSplitter
@@ -30,9 +32,21 @@ splitter = RecursiveCharacterTextSplitter(
 
 # ---------------- Embeddings ---------------- #
 
-embeddings = HuggingFaceEmbeddings(
-    model_name="sentence-transformers/all-MiniLM-L6-v2"
-)
+try:
+    embeddings = HuggingFaceEmbeddings(
+        model_name="sentence-transformers/all-MiniLM-L6-v2"
+    )
+except Exception:
+    try:
+        embeddings = HuggingFaceEmbeddings(
+            model_name="sentence-transformers/all-MiniLM-L6-v2",
+            model_kwargs={"local_files_only": True}
+        )
+    except Exception as e:
+        print(f"[EMBEDDINGS NOTICE] HuggingFaceEmbeddings init offline fallback: {e}")
+        embeddings = HuggingFaceEmbeddings(
+            model_name="sentence-transformers/all-MiniLM-L6-v2"
+        )
 
 # ---------------- Vector Store ---------------- #
 
