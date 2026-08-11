@@ -309,9 +309,24 @@ window.loginUser = function(user) {
         chatbotAppView.setAttribute("style", "display: flex !important;");
     }
 
+    // Automatically initialize Home Workspace View (#landing-container)
+    if (typeof window.showLandingState === "function") {
+        window.showLandingState();
+    } else if (typeof window._internalShowLandingState === "function") {
+        window._internalShowLandingState();
+    } else {
+        const landingCont = document.getElementById("landing-container");
+        if (landingCont) {
+            landingCont.classList.remove("hidden");
+            landingCont.style.setProperty("display", "flex", "important");
+        }
+    }
+
     try { if (typeof fetchThreads === "function") fetchThreads(); } catch(e) {}
     try { if (typeof fetchIndexedFiles === "function") fetchIndexedFiles(); } catch(e) {}
     try { if (typeof fetchUserStats === "function") fetchUserStats(); } catch(e) {}
+    try { if (typeof fetchLeaderboard === "function") fetchLeaderboard(); } catch(e) {}
+    try { if (typeof fetchSharedDocuments === "function") fetchSharedDocuments(); } catch(e) {}
 };
 
 window.showLoginScreen = function() {
