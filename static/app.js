@@ -242,10 +242,8 @@ window.loginUser = function(user) {
         window.syncAppCurrentUser(user);
     }
 
-    // Always overwrite — single key docpilot-user and docpilot-token
     const userData = JSON.stringify(user);
     try {
-        localStorage.clear();
         localStorage.setItem("docpilot-user", userData);
         if (user.token) {
             localStorage.setItem("docpilot-token", user.token);
@@ -275,20 +273,22 @@ window.loginUser = function(user) {
     const userEmailEls = document.querySelectorAll("#sidebar-user-email, .sidebar-user-email, #user-email, .header-user-email, #header-user-email, #dropdown-user-email");
 
     userAvatarEls.forEach(el => {
-        if (el.tagName === "IMG") {
-            el.src = avatarUrl;
-        } else {
-            el.style.backgroundImage = `url('${avatarUrl}')`;
-            el.innerHTML = "";
-        }
+        try {
+            if (el.tagName === "IMG") {
+                el.src = avatarUrl;
+            } else {
+                el.style.backgroundImage = `url('${avatarUrl}')`;
+                el.innerHTML = "";
+            }
+        } catch(e) {}
     });
 
-    userNameEls.forEach(el => { el.textContent = displayName; });
-    userEmailEls.forEach(el => { el.textContent = displayEmail; });
+    userNameEls.forEach(el => { try { el.textContent = displayName; } catch(e) {} });
+    userEmailEls.forEach(el => { try { el.textContent = displayEmail; } catch(e) {} });
 
     if (navPinnedLibrary) navPinnedLibrary.style.display = "flex";
 
-    // EXPLICIT VIEW SWITCH TO WORKSPACE DASHBOARD
+    // GUARANTEED VIEW SWITCH TO WORKSPACE DASHBOARD
     if (landingPageView) {
         landingPageView.classList.add("hidden");
         landingPageView.setAttribute("style", "display: none !important;");
@@ -298,13 +298,28 @@ window.loginUser = function(user) {
         chatbotAppView.setAttribute("style", "display: flex !important;");
     }
 
-    if (typeof fetchThreads === "function") fetchThreads();
-    if (typeof fetchIndexedFiles === "function") fetchIndexedFiles();
-    if (typeof fetchUserStats === "function") fetchUserStats();
+    try { if (typeof fetchThreads === "function") fetchThreads(); } catch(e) {}
+    try { if (typeof fetchIndexedFiles === "function") fetchIndexedFiles(); } catch(e) {}
+    try { if (typeof fetchUserStats === "function") fetchUserStats(); } catch(e) {}
 };
 
 window.showLoginScreen = function() {
-    console.log("[AUTH] showLoginScreen() called");
+    if (window.currentUser || localStorage.getItem("docpilot-user")) {
+        console.log("[AUTH] showLoginScreen() suppressed: active user session present.");
+        const landingPageView = document.getElementById("landing-page-view");
+        const chatbotAppView = document.getElementById("chatbot-app-view");
+        if (landingPageView) {
+            landingPageView.classList.add("hidden");
+            landingPageView.setAttribute("style", "display: none !important;");
+        }
+        if (chatbotAppView) {
+            chatbotAppView.classList.remove("hidden");
+            chatbotAppView.setAttribute("style", "display: flex !important;");
+        }
+        return;
+    }
+
+    console.log("[AUTH] showLoginScreen() executing");
     window.currentUser = null;
     const landingPageView = document.getElementById("landing-page-view");
     const chatbotAppView = document.getElementById("chatbot-app-view");
