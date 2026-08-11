@@ -24,7 +24,16 @@ try:
 except Exception as e:
     print(f"[INFO] ZeroGPU init skipped: {e}")
 
-from app import app
+from app import app as fastapi_app
+
+try:
+    import gradio as gr
+    with gr.Blocks(title="BU Prepz AI Workspace") as demo:
+        gr.HTML('<iframe src="/" style="width:100%; height:100vh; border:none; margin:0; padding:0;"></iframe>')
+    app = gr.mount_gradio_app(fastapi_app, demo, path="/gradio")
+except Exception as e:
+    print(f"[GRADIO MOUNT NOTICE] {e}")
+    app = fastapi_app
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 7860))
