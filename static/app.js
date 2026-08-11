@@ -1447,24 +1447,23 @@ function initializeDocPilotApp() {
         if (contentWrapper) {
             contentWrapper.classList.remove("landing-mode", "chat-mode", "library-mode", "browse-mode", "predictor-mode", "leaderboard-mode");
         }
-        if (landingContainer) { landingContainer.classList.add("hidden"); landingContainer.style.display = "none"; }
-        if (chatMessagesContainer) { chatMessagesContainer.classList.add("hidden"); chatMessagesContainer.style.display = "none"; }
-        if (pinnedLibraryContainer) { pinnedLibraryContainer.classList.add("hidden"); pinnedLibraryContainer.style.display = "none"; }
-        if (browseContainer) { browseContainer.classList.add("hidden"); browseContainer.style.display = "none"; }
-        if (predictorContainer) { predictorContainer.classList.add("hidden"); predictorContainer.style.display = "none"; }
-        if (leaderboardContainer) { leaderboardContainer.classList.add("hidden"); leaderboardContainer.style.display = "none"; }
-        if (inputPanelWrapper) { inputPanelWrapper.classList.add("hidden"); inputPanelWrapper.style.display = "none"; }
+        ["landing-container", "chat-messages-container", "pinned-library-container", "browse-container", "predictor-container", "leaderboard-container", "input-panel-wrapper"].forEach(id => {
+            const el = document.getElementById(id);
+            if (el) {
+                el.classList.add("hidden");
+                el.style.setProperty("display", "none", "important");
+            }
+        });
 
         const devFooter = document.querySelector(".landing-footer-nexa");
-        if (devFooter) { devFooter.classList.add("hidden"); devFooter.style.display = "none !important"; }
+        if (devFooter) { devFooter.classList.add("hidden"); devFooter.style.setProperty("display", "none", "important"); }
         const profileCard = document.getElementById("home-profile-card") || document.querySelector(".developer-profile-card");
-        if (profileCard) { profileCard.style.display = "none"; }
+        if (profileCard) { profileCard.style.setProperty("display", "none", "important"); }
 
-        if (navNewChat) navNewChat.classList.remove("active");
-        if (navPinnedLibrary) navPinnedLibrary.classList.remove("active");
-        if (navBrowseDocuments) navBrowseDocuments.classList.remove("active");
-        if (navExamPredictor) navExamPredictor.classList.remove("active");
-        if (navLeaderboard) navLeaderboard.classList.remove("active");
+        ["nav-new-chat", "nav-pinned-library", "nav-browse-documents", "nav-exam-predictor", "nav-leaderboard"].forEach(id => {
+            const btn = document.getElementById(id);
+            if (btn) btn.classList.remove("active");
+        });
     }
 
     function updateHeaderTitle(titleText, icon = "✨") {
@@ -1480,17 +1479,21 @@ function initializeDocPilotApp() {
         const contentWrapper = document.querySelector(".content-wrapper");
         if (contentWrapper) contentWrapper.classList.add("chat-mode");
 
-        if (chatMessagesContainer) {
-            chatMessagesContainer.classList.remove("hidden");
-            chatMessagesContainer.style.display = "flex";
+        const chatMessagesContainerEl = document.getElementById("chat-messages-container");
+        const inputPanelWrapperEl = document.getElementById("input-panel-wrapper");
+        const settingsContainerEl = document.getElementById("settings-container");
+
+        if (chatMessagesContainerEl) {
+            chatMessagesContainerEl.classList.remove("hidden");
+            chatMessagesContainerEl.style.setProperty("display", "flex", "important");
         }
-        if (inputPanelWrapper) {
-            inputPanelWrapper.classList.remove("hidden");
-            inputPanelWrapper.style.display = "block";
+        if (inputPanelWrapperEl) {
+            inputPanelWrapperEl.classList.remove("hidden");
+            inputPanelWrapperEl.style.setProperty("display", "block", "important");
         }
-        if (settingsContainer) {
-            settingsContainer.classList.remove("hidden");
-            settingsContainer.style.display = "block";
+        if (settingsContainerEl) {
+            settingsContainerEl.classList.remove("hidden");
+            settingsContainerEl.style.setProperty("display", "block", "important");
         }
         if (btnHeaderSettings) btnHeaderSettings.style.display = "flex";
         if (btnHeaderBack) btnHeaderBack.style.display = "flex";
@@ -1509,24 +1512,18 @@ function initializeDocPilotApp() {
         const contentWrapper = document.querySelector(".content-wrapper");
         if (contentWrapper) contentWrapper.classList.add("library-mode");
 
-        if (pinnedLibraryContainer) {
-            pinnedLibraryContainer.classList.remove("hidden");
-            pinnedLibraryContainer.style.display = "flex";
-        }
-        if (inputPanelWrapper) {
-            inputPanelWrapper.classList.add("hidden");
-            inputPanelWrapper.style.display = "none";
-        }
-        if (settingsContainer) {
-            settingsContainer.classList.add("hidden");
-            settingsContainer.style.display = "none";
+        const pinnedLibraryContainerEl = document.getElementById("pinned-library-container");
+        if (pinnedLibraryContainerEl) {
+            pinnedLibraryContainerEl.classList.remove("hidden");
+            pinnedLibraryContainerEl.style.setProperty("display", "flex", "important");
         }
 
-        if (navPinnedLibrary) navPinnedLibrary.classList.add("active");
+        const navPinnedLibraryEl = document.getElementById("nav-pinned-library");
+        if (navPinnedLibraryEl) navPinnedLibraryEl.classList.add("active");
         
-        fetchIndexedFiles();
-        fetchUserStats();
-        if (typeof fetchMyDocuments === "function") fetchMyDocuments();
+        try { if (typeof fetchIndexedFiles === "function") fetchIndexedFiles(); } catch(e) {}
+        try { if (typeof fetchUserStats === "function") fetchUserStats(); } catch(e) {}
+        try { if (typeof fetchMyDocuments === "function") fetchMyDocuments(); } catch(e) {}
     }
 
     function showBrowseState() {
@@ -1536,24 +1533,18 @@ function initializeDocPilotApp() {
         const contentWrapper = document.querySelector(".content-wrapper");
         if (contentWrapper) contentWrapper.classList.add("browse-mode");
 
-        if (browseContainer) {
-            browseContainer.classList.remove("hidden");
-            browseContainer.style.display = "flex";
-        }
-        if (inputPanelWrapper) {
-            inputPanelWrapper.classList.add("hidden");
-            inputPanelWrapper.style.display = "none";
-        }
-        if (settingsContainer) {
-            settingsContainer.classList.add("hidden");
-            settingsContainer.style.display = "none";
+        const browseContainerEl = document.getElementById("browse-container");
+        if (browseContainerEl) {
+            browseContainerEl.classList.remove("hidden");
+            browseContainerEl.style.setProperty("display", "flex", "important");
         }
 
-        if (navBrowseDocuments) navBrowseDocuments.classList.add("active");
+        const navBrowseDocumentsEl = document.getElementById("nav-browse-documents");
+        if (navBrowseDocumentsEl) navBrowseDocumentsEl.classList.add("active");
 
-        updateBrowseSubjectOptions();
-        renderBrowseTable();
-        if (typeof fetchSharedDocuments === "function") fetchSharedDocuments();
+        try { if (typeof updateBrowseSubjectOptions === "function") updateBrowseSubjectOptions(); } catch(e) {}
+        try { if (typeof renderBrowseTable === "function") renderBrowseTable(); } catch(e) {}
+        try { if (typeof fetchSharedDocuments === "function") fetchSharedDocuments(); } catch(e) {}
     }
 
     function showPredictorState() {
@@ -1567,22 +1558,16 @@ function initializeDocPilotApp() {
         const contentWrapper = document.querySelector(".content-wrapper");
         if (contentWrapper) contentWrapper.classList.add("predictor-mode");
 
-        if (predictorContainer) {
-            predictorContainer.classList.remove("hidden");
-            predictorContainer.style.display = "flex";
-        }
-        if (inputPanelWrapper) {
-            inputPanelWrapper.classList.add("hidden");
-            inputPanelWrapper.style.display = "none";
-        }
-        if (settingsContainer) {
-            settingsContainer.classList.add("hidden");
-            settingsContainer.style.display = "none";
+        const predictorContainerEl = document.getElementById("predictor-container");
+        if (predictorContainerEl) {
+            predictorContainerEl.classList.remove("hidden");
+            predictorContainerEl.style.setProperty("display", "flex", "important");
         }
 
-        if (navExamPredictor) navExamPredictor.classList.add("active");
+        const navExamPredictorEl = document.getElementById("nav-exam-predictor");
+        if (navExamPredictorEl) navExamPredictorEl.classList.add("active");
 
-        updatePredictorSubjectOptions();
+        try { if (typeof updatePredictorSubjectOptions === "function") updatePredictorSubjectOptions(); } catch(e) {}
     }
 
     function showLeaderboardState() {
@@ -1592,22 +1577,16 @@ function initializeDocPilotApp() {
         const contentWrapper = document.querySelector(".content-wrapper");
         if (contentWrapper) contentWrapper.classList.add("leaderboard-mode");
 
-        if (leaderboardContainer) {
-            leaderboardContainer.classList.remove("hidden");
-            leaderboardContainer.style.display = "flex";
-        }
-        if (inputPanelWrapper) {
-            inputPanelWrapper.classList.add("hidden");
-            inputPanelWrapper.style.display = "none";
-        }
-        if (settingsContainer) {
-            settingsContainer.classList.add("hidden");
-            settingsContainer.style.display = "none";
+        const leaderboardContainerEl = document.getElementById("leaderboard-container");
+        if (leaderboardContainerEl) {
+            leaderboardContainerEl.classList.remove("hidden");
+            leaderboardContainerEl.style.setProperty("display", "flex", "important");
         }
 
-        if (navLeaderboard) navLeaderboard.classList.add("active");
+        const navLeaderboardEl = document.getElementById("nav-leaderboard");
+        if (navLeaderboardEl) navLeaderboardEl.classList.add("active");
 
-        fetchLeaderboard();
+        try { if (typeof fetchLeaderboard === "function") fetchLeaderboard(); } catch(e) {}
     }
 
     // Expose view-switching functions to global window for inline onclick handlers and direct card clicks
