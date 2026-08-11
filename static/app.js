@@ -237,6 +237,14 @@ window.handleGuestLogin = function(e) {
     window.loginUser(demoUser);
 };
 
+// Top-Level Global View State Handlers (guaranteed available from page load)
+window.showLandingState = function() { if (typeof window._internalShowLandingState === "function") window._internalShowLandingState(); };
+window.showPinnedLibraryState = function() { if (typeof window._internalShowPinnedLibraryState === "function") window._internalShowPinnedLibraryState(); };
+window.showBrowseState = function() { if (typeof window._internalShowBrowseState === "function") window._internalShowBrowseState(); };
+window.showPredictorState = function() { if (typeof window._internalShowPredictorState === "function") window._internalShowPredictorState(); };
+window.showLeaderboardState = function() { if (typeof window._internalShowLeaderboardState === "function") window._internalShowLeaderboardState(); };
+window.showChatState = function() { if (typeof window._internalShowChatState === "function") window._internalShowChatState(); };
+
 // Top-Level Global Auth Controller & View Manager
 window.loginUser = function(user) {
     if (!user || !user.email) return;
@@ -1603,6 +1611,13 @@ function initializeDocPilotApp() {
     }
 
     // Expose view-switching functions to global window for inline onclick handlers and direct card clicks
+    window._internalShowChatState = showChatState;
+    window._internalShowLandingState = showLandingState;
+    window._internalShowPinnedLibraryState = showPinnedLibraryState;
+    window._internalShowBrowseState = showBrowseState;
+    window._internalShowPredictorState = showPredictorState;
+    window._internalShowLeaderboardState = showLeaderboardState;
+
     window.showChatState = showChatState;
     window.showLandingState = showLandingState;
     window.showPinnedLibraryState = showPinnedLibraryState;
