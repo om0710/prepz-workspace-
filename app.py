@@ -1536,8 +1536,9 @@ except Exception:
 if __name__ == "__main__":
     import uvicorn
     port = int(os.environ.get("PORT", 7860))
-    print(f"Starting server on http://0.0.0.0:{port}...")
-    uvicorn.run("app:app", host="0.0.0.0", port=port)
+    host = os.environ.get("HOST", "127.0.0.1")
+    print(f"Starting server on http://{host}:{port}...")
+    uvicorn.run("app:app", host=host, port=port)
 
 
 

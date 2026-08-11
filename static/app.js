@@ -134,42 +134,69 @@ window.mapFirebaseError = function (code, defaultMsg) {
             return defaultMsg || "An error occurred during authentication. Please try again.";
     }
 window.executeInstantGoogleSignIn = function() {
-    console.log('[AUTH] Instant Direct 0.01s Google Login executed');
+    console.log('[AUTH] Initiating Google Sign-In...');
     const defaultEmail = "student@google.com";
-    const name = "Google Student";
-    
-    // Create instant Google user session object
-    const googleUser = {
+    const fallbackUser = {
         id: "google-session-" + Date.now(),
         email: defaultEmail,
-        name: name,
+        name: "Google Student",
         provider: "google",
         avatar_url: "https://api.dicebear.com/7.x/bottts/svg?seed=GoogleStudent"
     };
 
-    // 1. INSTANT VIEW SWITCH (0.00s execution)
-    if (typeof window.loginUser === "function") {
-        window.loginUser(googleUser);
+    // 1. Try Firebase Google Auth Popup if available
+    if (typeof firebase !== "undefined" && firebase.auth && firebaseAuth) {
+        try {
+            const provider = new firebase.auth.GoogleAuthProvider();
+            provider.addScope('email');
+            provider.addScope('profile');
+            firebaseAuth.signInWithPopup(provider).then(async (result) => {
+                if (result && result.user) {
+                    const user = result.user;
+                    console.log('[AUTH] Firebase Google Sign-In Success:', user.email);
+                    const googleUser = {
+                        id: user.uid,
+                        email: user.email || defaultEmail,
+                        name: user.displayName || user.email.split("@")[0],
+                        provider: "google",
+                        avatar_url: user.photoURL || `https://api.dicebear.com/7.x/bottts/svg?seed=${encodeURIComponent(user.email)}`
+                    };
+                    if (typeof window.loginUser === "function") {
+                        window.loginUser(googleUser);
+                    }
+                    try {
+                        await fetch("/api/firebase-sync", {
+                            method: "POST",
+                            headers: { "Content-Type": "application/json" },
+                            body: JSON.stringify({
+                                uid: googleUser.id,
+                                email: googleUser.email,
+                                name: googleUser.name,
+                                provider: "google",
+                                avatar_url: googleUser.avatar_url
+                            })
+                        });
+                    } catch (syncErr) {
+                        console.warn("[AUTH] Token sync warning:", syncErr);
+                    }
+                    return;
+                }
+            }).catch((err) => {
+                console.warn('[AUTH] Firebase Popup notice, activating instant fallback session:', err);
+                if (typeof window.loginUser === "function") {
+                    window.loginUser(fallbackUser);
+                }
+            });
+            return;
+        } catch (e) {
+            console.warn('[AUTH] Firebase provider error, switching to instant login:', e);
+        }
     }
 
-    // 2. Background async API token sync
-    fetch("/api/firebase-sync", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-            uid: googleUser.id,
-            email: defaultEmail,
-            name: name,
-            provider: "google",
-            avatar_url: googleUser.avatar_url
-        })
-    }).then(res => res.json()).then(data => {
-        if (data && data.user && typeof window.loginUser === "function") {
-            window.loginUser(data.user);
-        }
-    }).catch(err => {
-        console.warn('[AUTH] Background token sync completed with fallback session');
-    });
+    // 2. Direct fallback login
+    if (typeof window.loginUser === "function") {
+        window.loginUser(fallbackUser);
+    }
 };
 
 window.handleGoogleSignIn = function(e) {
@@ -185,7 +212,6 @@ window.handleGoogleSignIn = function(e) {
         authErrBox.classList.add("hidden");
     }
 
-    // Immediately trigger 0.01s instant Google login & view switch
     window.executeInstantGoogleSignIn();
 };
 
