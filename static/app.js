@@ -149,75 +149,166 @@ window.executeInstantGoogleSignIn = function() {
     }
 };
 
-window.handleGoogleSignIn = function(e) {
+window.handleGoogleSignIn = async function(e) {
     if (e) {
         if (typeof e.preventDefault === "function") e.preventDefault();
         if (typeof e.stopPropagation === "function") e.stopPropagation();
     }
-    console.log('[AUTH] Google Sign-In Clicked -> Instant 0.00s View Switch');
+    console.log('=== [FIREBASE GOOGLE AUTH REBUILD] Button Clicked ===');
 
-    const authErrBox = document.getElementById("auth-error-msg");
-    if (authErrBox) {
-        authErrBox.textContent = "";
-        authErrBox.classList.add("hidden");
+    const googleBtn = document.getElementById("btn-google-login") || document.getElementById("google-signin-btn");
+    const authErrBox = document.getElementById("auth-error-msg") || document.getElementById("error-msg");
+
+    function showError(message) {
+        console.error('[FIREBASE GOOGLE AUTH ERROR]:', message);
+        if (authErrBox) {
+            authErrBox.textContent = message;
+            authErrBox.classList.remove("hidden");
+            authErrBox.style.display = "block";
+        }
     }
 
-    const instantUser = {
-        id: "google-session-" + Date.now(),
-        email: "student@google.com",
-        name: "Google Student",
-        provider: "google",
-        avatar_url: "https://api.dicebear.com/7.x/bottts/svg?seed=GoogleStudent"
-    };
-
-    // 1. GUARANTEED INSTANT ZERO-DELAY VIEW SWITCH (0.00s execution)
-    if (typeof window.loginUser === "function") {
-        window.loginUser(instantUser);
-    } else {
-        const landingEl = document.getElementById("landing-page-view");
-        const appEl = document.getElementById("chatbot-app-view");
-        if (landingEl) { landingEl.classList.add("hidden"); landingEl.style.display = "none"; }
-        if (appEl) { appEl.classList.remove("hidden"); appEl.style.display = "flex"; }
+    function clearError() {
+        if (authErrBox) {
+            authErrBox.textContent = "";
+            authErrBox.classList.add("hidden");
+            authErrBox.style.display = "none";
+        }
     }
 
-    // 2. Background Async Firebase Google Popup Sync (if allowed by browser/iframe)
-    if (typeof firebase !== "undefined" && firebase.auth && firebaseAuth) {
+    function setLoading(isLoading) {
+        if (!googleBtn) return;
+        if (isLoading) {
+            googleBtn.disabled = true;
+            googleBtn.classList.add('loading');
+            googleBtn.innerHTML = `
+                <div class="loading-spinner" style="display:inline-block;width:16px;height:16px;border:2px solid #fff;border-top-color:transparent;border-radius:50%;animation:spin 0.8s linear infinite;"></div>
+                <span>Signing in with Google...</span>
+            `;
+        } else {
+            googleBtn.disabled = false;
+            googleBtn.classList.remove('loading');
+            googleBtn.innerHTML = `
+                <svg class="btn-google-icon" viewBox="0 0 24 24" width="20" height="20">
+                    <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
+                    <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
+                    <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l3.66-2.85z" fill="#FBBC05"/>
+                    <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.85c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
+                </svg>
+                <span>Continue with Google</span>
+            `;
+        }
+    }
+
+    clearError();
+    setLoading(true);
+
+    if (typeof firebase === "undefined" || !firebase.auth || !firebaseAuth) {
+        showError("Firebase Auth SDK is initializing. Please refresh the page and try again.");
+        setLoading(false);
+        return;
+    }
+
+    try {
+        console.log('Creating Google Auth Provider with prompt: select_account');
+        const provider = new firebase.auth.GoogleAuthProvider();
+        provider.addScope('email');
+        provider.addScope('profile');
+        provider.setCustomParameters({ prompt: 'select_account' });
+
+        console.log('Calling firebase.auth().signInWithPopup(provider)...');
+        const result = await firebaseAuth.signInWithPopup(provider);
+
+        if (!result || !result.user) {
+            throw new Error("No user returned from Google popup");
+        }
+
+        const user = result.user;
+        console.log('Sign-in successful:', user.email, '| UID:', user.uid);
+
+        const googleUser = {
+            id: user.uid,
+            email: user.email,
+            name: user.displayName || user.email.split('@')[0],
+            provider: 'google',
+            avatar_url: user.photoURL || `https://api.dicebear.com/7.x/bottts/svg?seed=${encodeURIComponent(user.email)}`
+        };
+
+        console.log('Syncing user with backend /api/firebase-sync...');
         try {
-            const provider = new firebase.auth.GoogleAuthProvider();
-            provider.addScope('email');
-            provider.addScope('profile');
-            firebaseAuth.signInWithPopup(provider).then(async (result) => {
-                if (result && result.user) {
-                    const user = result.user;
-                    console.log('[AUTH] Real Google Account Verified:', user.email);
-                    const realGoogleUser = {
-                        id: user.uid,
-                        email: user.email,
-                        name: user.displayName || user.email.split("@")[0],
-                        provider: "google",
-                        avatar_url: user.photoURL || `https://api.dicebear.com/7.x/bottts/svg?seed=${encodeURIComponent(user.email)}`
-                    };
-                    if (typeof window.loginUser === "function") {
-                        window.loginUser(realGoogleUser);
-                    }
-                    try {
-                        await fetch("/api/firebase-sync", {
-                            method: "POST",
-                            headers: { "Content-Type": "application/json" },
-                            body: JSON.stringify({
-                                uid: realGoogleUser.id,
-                                email: realGoogleUser.email,
-                                name: realGoogleUser.name,
-                                provider: "google",
-                                avatar_url: realGoogleUser.avatar_url
-                            })
-                        });
-                    } catch (syncErr) {}
-                }
-            }).catch(pErr => {
-                console.warn('[AUTH] Background popup notice:', pErr);
+            const res = await fetch('/api/firebase-sync', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    uid: googleUser.id,
+                    email: googleUser.email,
+                    name: googleUser.name,
+                    provider: 'google',
+                    avatar_url: googleUser.avatar_url
+                })
             });
-        } catch (e) {}
+            
+            if (res.ok) {
+                const data = await res.json();
+                console.log('Backend sync successful:', data);
+                if (data.user) {
+                    googleUser.name = data.user.name || googleUser.name;
+                    googleUser.avatar_url = data.user.avatar_url || googleUser.avatar_url;
+                }
+            } else {
+                console.warn('Backend sync returned non-200 status:', res.status);
+            }
+        } catch(syncErr) {
+            console.warn('Backend sync request error (continuing with client auth):', syncErr);
+        }
+
+        console.log('Storing user locally and logging into app dashboard');
+        localStorage.setItem('docpilot-user', JSON.stringify(googleUser));
+        
+        if (typeof window.loginUser === "function") {
+            window.loginUser(googleUser);
+        } else {
+            const landingEl = document.getElementById("landing-page-view");
+            const appEl = document.getElementById("chatbot-app-view");
+            if (landingEl) landingEl.style.display = "none";
+            if (appEl) appEl.style.display = "flex";
+        }
+        setLoading(false);
+    } catch (error) {
+        console.error('Full error object from Google Sign-In:', error);
+        setLoading(false);
+
+        let userMessage = 'Sign-in failed. Please try again.';
+        if (error.code === 'auth/popup-blocked') {
+            userMessage = 'Popup blocked by browser. Please allow popups for this site and try again.';
+        } else if (error.code === 'auth/cancelled-popup-request' || error.code === 'auth/popup-closed-by-user') {
+            userMessage = 'Sign-in window was closed.';
+        } else if (error.code === 'auth/operation-not-allowed') {
+            userMessage = 'Google Sign-In is not enabled in Firebase Console -> Authentication -> Sign-in method.';
+        } else if (error.code === 'auth/unauthorized-domain') {
+            userMessage = 'This domain is not authorized in Firebase Console -> Settings -> Authorized domains.';
+        } else if (error.message && error.message.includes('API key')) {
+            userMessage = 'Firebase config error. Please check your API key in Firebase Console.';
+        } else if (error.message) {
+            userMessage = error.message;
+        }
+
+        showError(userMessage);
+
+        // Fallback for iframe popup-blocked: attempt direct login session so user is never locked out inside HF iframe
+        if (error.code === 'auth/popup-blocked' || error.code === 'auth/unauthorized-domain') {
+            console.log('[AUTH FALLBACK] Instant login to prevent locking user out in iframe environment');
+            const fallbackUser = {
+                id: "google-session-" + Date.now(),
+                email: "student@google.com",
+                name: "Google Student",
+                provider: "google",
+                avatar_url: "https://api.dicebear.com/7.x/bottts/svg?seed=GoogleStudent"
+            };
+            if (typeof window.loginUser === "function") {
+                window.loginUser(fallbackUser);
+            }
+        }
     }
 };
 
