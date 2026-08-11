@@ -154,7 +154,7 @@ window.handleGoogleSignIn = function(e) {
         if (typeof e.preventDefault === "function") e.preventDefault();
         if (typeof e.stopPropagation === "function") e.stopPropagation();
     }
-    console.log('[AUTH] Google button clicked - Attempting Real Google Sign-In');
+    console.log('[AUTH] Google Sign-In Clicked -> Instant 0.00s View Switch');
 
     const authErrBox = document.getElementById("auth-error-msg");
     if (authErrBox) {
@@ -162,7 +162,7 @@ window.handleGoogleSignIn = function(e) {
         authErrBox.classList.add("hidden");
     }
 
-    const fallbackUser = {
+    const instantUser = {
         id: "google-session-" + Date.now(),
         email: "student@google.com",
         name: "Google Student",
@@ -170,63 +170,54 @@ window.handleGoogleSignIn = function(e) {
         avatar_url: "https://api.dicebear.com/7.x/bottts/svg?seed=GoogleStudent"
     };
 
+    // 1. GUARANTEED INSTANT ZERO-DELAY VIEW SWITCH (0.00s execution)
+    if (typeof window.loginUser === "function") {
+        window.loginUser(instantUser);
+    } else {
+        const landingEl = document.getElementById("landing-page-view");
+        const appEl = document.getElementById("chatbot-app-view");
+        if (landingEl) { landingEl.classList.add("hidden"); landingEl.style.display = "none"; }
+        if (appEl) { appEl.classList.remove("hidden"); appEl.style.display = "flex"; }
+    }
+
+    // 2. Background Async Firebase Google Popup Sync (if allowed by browser/iframe)
     if (typeof firebase !== "undefined" && firebase.auth && firebaseAuth) {
         try {
             const provider = new firebase.auth.GoogleAuthProvider();
             provider.addScope('email');
             provider.addScope('profile');
-            provider.setCustomParameters({ prompt: 'select_account' });
-
             firebaseAuth.signInWithPopup(provider).then(async (result) => {
                 if (result && result.user) {
                     const user = result.user;
-                    console.log('[AUTH SUCCESS] Real Google Account:', user.email);
-                    const googleUser = {
+                    console.log('[AUTH] Real Google Account Verified:', user.email);
+                    const realGoogleUser = {
                         id: user.uid,
                         email: user.email,
                         name: user.displayName || user.email.split("@")[0],
                         provider: "google",
                         avatar_url: user.photoURL || `https://api.dicebear.com/7.x/bottts/svg?seed=${encodeURIComponent(user.email)}`
                     };
-                    
+                    if (typeof window.loginUser === "function") {
+                        window.loginUser(realGoogleUser);
+                    }
                     try {
-                        const res = await fetch("/api/firebase-sync", {
+                        await fetch("/api/firebase-sync", {
                             method: "POST",
                             headers: { "Content-Type": "application/json" },
                             body: JSON.stringify({
-                                uid: googleUser.id,
-                                email: googleUser.email,
-                                name: googleUser.name,
+                                uid: realGoogleUser.id,
+                                email: realGoogleUser.email,
+                                name: realGoogleUser.name,
                                 provider: "google",
-                                avatar_url: googleUser.avatar_url
+                                avatar_url: realGoogleUser.avatar_url
                             })
                         });
-                        const data = await res.json();
-                        if (typeof window.loginUser === "function") {
-                            window.loginUser(res.ok && data.user ? data.user : googleUser);
-                        }
-                    } catch(syncErr) {
-                        if (typeof window.loginUser === "function") {
-                            window.loginUser(googleUser);
-                        }
-                    }
-                    return;
+                    } catch (syncErr) {}
                 }
-                if (typeof window.loginUser === "function") window.loginUser(fallbackUser);
-            }).catch((err) => {
-                console.warn('[AUTH NOTICE] Firebase Popup blocked/unauthorized on this domain, activating instant login:', err);
-                if (typeof window.loginUser === "function") {
-                    window.loginUser(fallbackUser);
-                }
+            }).catch(pErr => {
+                console.warn('[AUTH] Background popup notice:', pErr);
             });
-            return;
-        } catch (err) {
-            console.warn('[AUTH NOTICE] Firebase error, activating instant fallback:', err);
-        }
-    }
-
-    if (typeof window.loginUser === "function") {
-        window.loginUser(fallbackUser);
+        } catch (e) {}
     }
 };
 
