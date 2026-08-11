@@ -21,7 +21,7 @@
     <!-- Firebase SDK (v10 Compat) loaded upfront -->
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
-    <link rel="stylesheet" href="style.css?v=20260811_v10000">
+    <link rel="stylesheet" href="style.css?v=20260811_v99999">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
     <script>
@@ -164,7 +164,7 @@
                 </div>
 
                 <div class="social-auth-buttons">
-                    <button id="btn-google-login" type="button" class="btn-social-circle google-single" title="Sign in with Google" onclick="if(window.executeInstantGoogleSignIn){window.executeInstantGoogleSignIn();}else if(window.loginUser){window.loginUser({id:'g-'+Date.now(),email:'student@google.com',name:'Google Student',provider:'google'});}else{document.getElementById('landing-page-view').style.display='none';document.getElementById('chatbot-app-view').style.display='flex';}">
+                    <button id="btn-google-login" type="button" class="btn-social-circle google-single" title="Sign in with Google" onclick="handleGoogleSignIn(event)">
                         <svg class="btn-google-icon" viewBox="0 0 24 24" width="20" height="20">
                             <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
                             <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
@@ -1068,7 +1068,7 @@
     </div>
 
     <!-- Main JavaScript Link -->
-    <script src="app.js?v=20260811_v10000"></script>
+    <script src="app.js?v=20260811_v99999"></script>
     <script>
     document.addEventListener('DOMContentLoaded', function() {
         console.error('=== STEP 1: DOM LOADED - VERIFYING GOOGLE SIGN-IN BUTTON ===');
