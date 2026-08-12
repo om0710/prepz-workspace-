@@ -134,18 +134,8 @@ window.mapFirebaseError = function (code, defaultMsg) {
             return defaultMsg || "An error occurred during authentication. Please try again.";
     }
 window.executeInstantGoogleSignIn = function() {
-    console.log('[AUTH] Executing Direct Google Login');
-    const defaultEmail = "student@google.com";
-    const googleUser = {
-        id: "google-session-" + Date.now(),
-        email: defaultEmail,
-        name: "Google Student",
-        provider: "google",
-        avatar_url: "https://api.dicebear.com/7.x/bottts/svg?seed=GoogleStudent"
-    };
-
-    if (typeof window.loginUser === "function") {
-        window.loginUser(googleUser);
+    if (typeof window.handleGoogleSignIn === "function") {
+        window.handleGoogleSignIn();
     }
 };
 
@@ -260,35 +250,48 @@ window.handleGoogleSignIn = async function(e) {
         }
     }
 
-    console.warn('[AUTH] Direct student session entry.');
-    const fallbackUser = {
-        id: "google-student-001",
-        email: "student@google.com",
-        name: "Google Student",
+    console.warn('[AUTH] Prompting user for real email/name if Firebase Auth is unreachable in iframe.');
+    const userEmail = prompt("Google Sign-In: Please enter your Google email address:", "");
+    if (!userEmail || !userEmail.trim()) {
+        if (authErrBox) {
+            authErrBox.textContent = "Google Sign-In cancelled.";
+            authErrBox.className = "auth-error error";
+            authErrBox.style.display = "block";
+        }
+        return;
+    }
+    const userName = prompt("Please enter your Full Name:", userEmail.split("@")[0]);
+    const realUser = {
+        id: "user-" + Date.now(),
+        email: userEmail.trim(),
+        name: userName && userName.trim() ? userName.trim() : userEmail.split("@")[0],
         provider: "google",
-        avatar_url: "https://api.dicebear.com/7.x/bottts/svg?seed=GoogleStudent"
+        avatar_url: `https://api.dicebear.com/7.x/bottts/svg?seed=${encodeURIComponent(userEmail.trim())}`
     };
+
     if (authErrBox) {
         authErrBox.textContent = "";
         authErrBox.classList.add("hidden");
         authErrBox.style.display = "none";
     }
     if (typeof window.loginUser === "function") {
-        window.loginUser(fallbackUser);
+        window.loginUser(realUser);
     }
 };
 
 window.handleGuestLogin = function(e) {
     if (e) e.preventDefault();
-    console.log("[AUTH] Guest Instant Demo Login triggered");
-    const demoUser = {
-        id: "demo-student-001",
-        name: "Demo Student",
-        email: "student@prepz.edu",
-        provider: "demo",
-        avatar_url: "https://api.dicebear.com/7.x/bottts/svg?seed=DemoStudent"
+    const guestEmail = prompt("Guest Sign-In: Please enter your Email address:", "");
+    if (!guestEmail || !guestEmail.trim()) return;
+    const guestName = prompt("Please enter your Full Name:", guestEmail.split("@")[0]);
+    const guestUser = {
+        id: "guest-" + Date.now(),
+        name: guestName && guestName.trim() ? guestName.trim() : guestEmail.split("@")[0],
+        email: guestEmail.trim(),
+        provider: "guest",
+        avatar_url: `https://api.dicebear.com/7.x/bottts/svg?seed=${encodeURIComponent(guestEmail.trim())}`
     };
-    window.loginUser(demoUser);
+    window.loginUser(guestUser);
 };
 
 // Top-Level Global View State Handlers (guaranteed available from page load)
