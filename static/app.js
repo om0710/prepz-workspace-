@@ -201,10 +201,20 @@ window.handleGoogleSignIn = async function(e) {
         })();
 
         if (isInIframe) {
-            // Inside HF Spaces iframe - popup won't work, use redirect
-            showAuthToast("🔄 Redirecting to Google Sign-In...", "info");
-            console.log('[AUTH] iframe detected — using signInWithRedirect');
-            await firebaseAuth.signInWithRedirect(provider);
+            // HF Spaces iframe blocks both popup and redirect — must open direct tab
+            const directUrl = window.location.href;
+            let toast = document.getElementById("auth-debug-toast");
+            if (!toast) {
+                toast = document.createElement("div");
+                toast.id = "auth-debug-toast";
+                toast.style.cssText = "position:fixed;top:20px;left:50%;transform:translateX(-50%);z-index:99999;padding:14px 24px;border-radius:12px;font-size:14px;font-weight:600;max-width:90vw;text-align:center;box-shadow:0 8px 32px rgba(0,0,0,0.3);";
+                document.body.appendChild(toast);
+            }
+            toast.innerHTML = '⚠️ Google Sign-In needs a direct tab. <a href="' + directUrl + '" target="_blank" style="color:#fff;text-decoration:underline;font-weight:700;">Click here to open in new tab →</a>';
+            toast.style.background = "#E65100";
+            toast.style.color = "#fff";
+            toast.style.display = "block";
+            console.log('[AUTH] iframe detected — showing open-in-new-tab prompt');
             return;
         }
 
