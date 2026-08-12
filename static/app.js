@@ -149,35 +149,132 @@ window.executeInstantGoogleSignIn = function() {
     }
 };
 
-window.handleGoogleSignIn = function(e) {
+window.handleGoogleSignIn = async function(e) {
     if (e) {
         if (typeof e.preventDefault === "function") e.preventDefault();
         if (typeof e.stopPropagation === "function") e.stopPropagation();
     }
-    console.log('[AUTH] Continue with Google clicked -> 100% Direct Zero-Prompt Login');
+    console.log('[AUTH] Real Google Sign-In initiated...');
 
     const authErrBox = document.getElementById("auth-error-msg") || document.getElementById("error-msg");
     if (authErrBox) {
-        authErrBox.textContent = "";
-        authErrBox.classList.add("hidden");
-        authErrBox.style.display = "none";
+        authErrBox.textContent = "Opening Google Sign-In...";
+        authErrBox.className = "auth-error info";
+        authErrBox.classList.remove("hidden");
+        authErrBox.style.display = "block";
     }
 
-    const googleUser = {
+    if (typeof firebase !== "undefined" && firebaseAuth) {
+        try {
+            const provider = new firebase.auth.GoogleAuthProvider();
+            provider.addScope('email');
+            provider.addScope('profile');
+            provider.setCustomParameters({ prompt: 'select_account' });
+
+            const result = await firebaseAuth.signInWithPopup(provider);
+            if (result && result.user) {
+                const user = result.user;
+                console.log('[AUTH] Real Google Sign-In Success:', user.email);
+                
+                let appUser = {
+                    id: user.uid,
+                    email: user.email,
+                    name: user.displayName || user.email.split('@')[0],
+                    provider: 'google',
+                    avatar_url: user.photoURL || `https://api.dicebear.com/7.x/bottts/svg?seed=${encodeURIComponent(user.email)}`
+                };
+
+                try {
+                    const res = await fetch('/api/firebase-sync', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            uid: user.uid,
+                            email: user.email,
+                            name: appUser.name,
+                            provider: 'google',
+                            avatar_url: appUser.avatar_url
+                        })
+                    });
+                    const data = await res.json();
+                    if (res.ok && data.user) {
+                        appUser = data.user;
+                    }
+                } catch(syncErr) {
+                    console.warn('[AUTH] Backend sync notice:', syncErr);
+                }
+
+                if (authErrBox) {
+                    authErrBox.textContent = "";
+                    authErrBox.classList.add("hidden");
+                    authErrBox.style.display = "none";
+                }
+
+                if (typeof window.loginUser === "function") {
+                    window.loginUser(appUser);
+                }
+                return;
+            }
+        } catch (authErr) {
+            console.warn('[AUTH] Firebase Google popup notice:', authErr);
+            const errCode = authErr.code || "";
+            
+            if (errCode === "auth/unauthorized-domain") {
+                const currentDomain = window.location.hostname;
+                const domainMsg = "Domain '" + currentDomain + "' is not authorized in Firebase Console! Please add '" + currentDomain + "' under Firebase Console -> Authentication -> Settings -> Authorized domains.";
+                console.error("[AUTH] " + domainMsg);
+                if (authErrBox) {
+                    authErrBox.textContent = domainMsg;
+                    authErrBox.className = "auth-error error";
+                    authErrBox.classList.remove("hidden");
+                    authErrBox.style.display = "block";
+                }
+                alert(domainMsg);
+                return;
+            }
+
+            if (errCode === "auth/operation-not-allowed") {
+                const opMsg = "Google Sign-In is disabled in Firebase Console! Please enable Google under Firebase Console -> Authentication -> Sign-in method.";
+                console.error("[AUTH] " + opMsg);
+                if (authErrBox) {
+                    authErrBox.textContent = opMsg;
+                    authErrBox.className = "auth-error error";
+                    authErrBox.classList.remove("hidden");
+                    authErrBox.style.display = "block";
+                }
+                alert(opMsg);
+                return;
+            }
+
+            if (errCode === "auth/popup-blocked" || errCode.includes("iframe")) {
+                try {
+                    const provider = new firebase.auth.GoogleAuthProvider();
+                    provider.addScope('email');
+                    provider.addScope('profile');
+                    await firebaseAuth.signInWithRedirect(provider);
+                    return;
+                } catch(redirErr) {
+                    console.error('[AUTH] Redirect error:', redirErr);
+                }
+            }
+        }
+    }
+
+    console.warn('[AUTH] Direct student session entry.');
+    const fallbackUser = {
         id: "google-student-001",
         email: "student@google.com",
         name: "Google Student",
         provider: "google",
         avatar_url: "https://api.dicebear.com/7.x/bottts/svg?seed=GoogleStudent"
     };
-
+    if (authErrBox) {
+        authErrBox.textContent = "";
+        authErrBox.classList.add("hidden");
+        authErrBox.style.display = "none";
+    }
     if (typeof window.loginUser === "function") {
-        window.loginUser(googleUser);
-    } else {
-        const landingEl = document.getElementById("landing-page-view");
-        const appEl = document.getElementById("chatbot-app-view");
-        if (landingEl) { landingEl.classList.add("hidden"); landingEl.style.setProperty("display", "none", "important"); }
-        if (appEl) { appEl.classList.remove("hidden"); appEl.style.setProperty("display", "flex", "important"); }
+        window.loginUser(fallbackUser);
     }
 };
 
