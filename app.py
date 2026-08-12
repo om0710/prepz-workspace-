@@ -26,8 +26,11 @@ app.add_middleware(
 )
 
 @app.middleware("http")
-async def add_coop_header(request, call_next):
+async def add_cors_and_coop_headers(request, call_next):
     response = await call_next(request)
+    response.headers["Access-Control-Allow-Origin"] = "*"
+    response.headers["Access-Control-Allow-Methods"] = "GET, POST, PUT, DELETE, OPTIONS"
+    response.headers["Access-Control-Allow-Headers"] = "Content-Type, Authorization, X-Access-Token"
     response.headers["Cross-Origin-Opener-Policy"] = "same-origin-allow-popups"
     return response
 

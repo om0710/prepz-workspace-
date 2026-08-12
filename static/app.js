@@ -159,93 +159,56 @@ window.handleGoogleSignIn = async function(e) {
             const provider = new firebase.auth.GoogleAuthProvider();
             provider.addScope('email');
             provider.addScope('profile');
-            provider.setCustomParameters({ prompt: 'select_account' });
+            provider.setCustomParameters({ 
+                prompt: 'select_account',
+                redirect_uri: window.location.origin
+            });
 
-            const result = await firebaseAuth.signInWithPopup(provider);
-            if (result && result.user) {
-                const user = result.user;
-                console.log('[AUTH] Real Google Sign-In Success:', user.email);
+            // Try popup auth first
+            try {
+                const result = await firebaseAuth.signInWithPopup(provider);
+                if (result && result.user) {
+                    await processGoogleUserSync(result.user);
+                    return;
+                }
+            } catch (popupError) {
+                console.warn('[AUTH] Firebase Google popup notice:', popupError);
+                const errCode = popupError.code || "";
                 
-                let appUser = {
-                    id: user.uid,
-                    email: user.email,
-                    name: user.displayName || user.email.split('@')[0],
-                    provider: 'google',
-                    avatar_url: user.photoURL || `https://api.dicebear.com/7.x/bottts/svg?seed=${encodeURIComponent(user.email)}`
-                };
-
-                try {
-                    const res = await fetch('/api/firebase-sync', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({
-                            uid: user.uid,
-                            email: user.email,
-                            name: appUser.name,
-                            provider: 'google',
-                            avatar_url: appUser.avatar_url
-                        })
-                    });
-                    const data = await res.json();
-                    if (res.ok && data.user) {
-                        appUser = data.user;
+                if (errCode === "auth/unauthorized-domain") {
+                    const currentDomain = window.location.hostname;
+                    const domainMsg = "Domain '" + currentDomain + "' is not authorized in Firebase Console! Please add '" + currentDomain + "' under Firebase Console -> Authentication -> Settings -> Authorized domains.";
+                    console.error("[AUTH] " + domainMsg);
+                    if (authErrBox) {
+                        authErrBox.textContent = domainMsg;
+                        authErrBox.className = "auth-error error";
+                        authErrBox.classList.remove("hidden");
+                        authErrBox.style.display = "block";
                     }
-                } catch(syncErr) {
-                    console.warn('[AUTH] Backend sync notice:', syncErr);
+                    return;
                 }
 
-                if (authErrBox) {
-                    authErrBox.textContent = "";
-                    authErrBox.classList.add("hidden");
-                    authErrBox.style.display = "none";
+                if (errCode === "auth/operation-not-allowed") {
+                    const opMsg = "Google Sign-In is disabled in Firebase Console! Please enable Google under Firebase Console -> Authentication -> Sign-in method.";
+                    console.error("[AUTH] " + opMsg);
+                    if (authErrBox) {
+                        authErrBox.textContent = opMsg;
+                        authErrBox.className = "auth-error error";
+                        authErrBox.classList.remove("hidden");
+                        authErrBox.style.display = "block";
+                    }
+                    return;
                 }
 
-                if (typeof window.loginUser === "function") {
-                    window.loginUser(appUser);
-                }
-                return;
-            }
-        } catch (authErr) {
-            console.warn('[AUTH] Firebase Google auth error:', authErr);
-            const errCode = authErr.code || "";
-            
-            if (errCode === "auth/unauthorized-domain") {
-                const currentDomain = window.location.hostname;
-                const domainMsg = "Domain '" + currentDomain + "' is not authorized in Firebase Console! Please add '" + currentDomain + "' under Firebase Console -> Authentication -> Settings -> Authorized domains.";
-                console.error("[AUTH] " + domainMsg);
-                if (authErrBox) {
-                    authErrBox.textContent = domainMsg;
-                    authErrBox.className = "auth-error error";
-                    authErrBox.classList.remove("hidden");
-                    authErrBox.style.display = "block";
-                }
-                return;
-            }
-
-            if (errCode === "auth/operation-not-allowed") {
-                const opMsg = "Google Sign-In is disabled in Firebase Console! Please enable Google under Firebase Console -> Authentication -> Sign-in method.";
-                console.error("[AUTH] " + opMsg);
-                if (authErrBox) {
-                    authErrBox.textContent = opMsg;
-                    authErrBox.className = "auth-error error";
-                    authErrBox.classList.remove("hidden");
-                    authErrBox.style.display = "block";
-                }
-                return;
-            }
-
-            if (errCode === "auth/popup-blocked" || errCode.includes("iframe")) {
-                try {
-                    const provider = new firebase.auth.GoogleAuthProvider();
-                    provider.addScope('email');
-                    provider.addScope('profile');
+                if (errCode === "auth/popup-blocked" || errCode === "auth/popup-closed-by-user" || (popupError.message && popupError.message.includes("iframe"))) {
                     await firebaseAuth.signInWithRedirect(provider);
                     return;
-                } catch(redirErr) {
-                    console.error('[AUTH] Redirect error:', redirErr);
                 }
-            }
 
+                throw popupError;
+            }
+        } catch (authErr) {
+            console.error('[AUTH] Google Sign-In error:', authErr);
             if (authErrBox) {
                 authErrBox.textContent = authErr.message || "Google Sign-In error. Please try again.";
                 authErrBox.className = "auth-error error";
@@ -262,6 +225,49 @@ window.handleGoogleSignIn = async function(e) {
         }
     }
 };
+
+async function processGoogleUserSync(user) {
+    console.log('[AUTH] Google sign-in successful:', user.email);
+    const authErrBox = document.getElementById("auth-error-msg") || document.getElementById("error-msg");
+    
+    let appUser = {
+        id: user.uid,
+        email: user.email,
+        name: user.displayName || user.email.split('@')[0],
+        provider: 'google',
+        avatar_url: user.photoURL || `https://api.dicebear.com/7.x/bottts/svg?seed=${encodeURIComponent(user.email)}`
+    };
+
+    try {
+        const response = await fetch('/api/firebase-sync', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                uid: user.uid,
+                email: user.email,
+                name: appUser.name,
+                provider: 'google',
+                avatar_url: appUser.avatar_url
+            })
+        });
+        const data = await response.json();
+        if (response.ok && data.user) {
+            appUser = data.user;
+        }
+    } catch (err) {
+        console.warn('[AUTH] Firebase sync notice:', err);
+    }
+
+    if (authErrBox) {
+        authErrBox.textContent = "";
+        authErrBox.classList.add("hidden");
+        authErrBox.style.display = "none";
+    }
+
+    if (typeof window.loginUser === "function") {
+        window.loginUser(appUser);
+    }
+}
 
 window.handleGuestLogin = function(e) {
     if (e) e.preventDefault();
