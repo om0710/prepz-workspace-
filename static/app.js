@@ -33,7 +33,7 @@ window.fetch = function (url, options = {}) {
 // To allow popup from hf.space, add hf.space to Firebase Console -> Auth -> Authorized Domains.
 const defaultFirebaseConfig = {
     apiKey: "AIzaSyAFe1P9Jss-J9EwfwLUOfnxv5BaVyuoGew",
-    authDomain: "om123bansal-prepz-app.hf.space",
+    authDomain: "prepz-workspace.firebaseapp.com",
     projectId: "prepz-workspace",
     storageBucket: "prepz-workspace.firebasestorage.app",
     messagingSenderId: "585299422541",

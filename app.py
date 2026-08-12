@@ -32,8 +32,24 @@ async def add_cors_headers(request, call_next):
     response.headers["Access-Control-Allow-Origin"] = "*"
     response.headers["Access-Control-Allow-Methods"] = "GET, POST, PUT, DELETE, OPTIONS"
     response.headers["Access-Control-Allow-Headers"] = "Content-Type, Authorization, X-Access-Token"
-    # COOP must be unsafe-none so Firebase signInWithPopup can access popup.closed
     response.headers["Cross-Origin-Opener-Policy"] = "unsafe-none"
+    # Allow Firebase auth iframe (prepz-workspace.firebaseapp.com) and Google auth domains
+    response.headers["Content-Security-Policy"] = (
+        "default-src 'self' data: blob: 'unsafe-inline' 'unsafe-eval'; "
+        "script-src 'self' 'unsafe-inline' 'unsafe-eval' "
+            "https://cdn.jsdelivr.net https://apis.google.com https://www.gstatic.com "
+            "https://cdnjs.cloudflare.com https://accounts.google.com; "
+        "frame-src 'self' https://prepz-workspace.firebaseapp.com "
+            "https://accounts.google.com https://www.gstatic.com; "
+        "connect-src 'self' https://www.googleapis.com https://accounts.google.com "
+            "https://api.dicebear.com https://*.firebaseio.com "
+            "https://identitytoolkit.googleapis.com https://securetoken.googleapis.com "
+            "https://www.gstatic.com https://prepz-workspace.firebaseapp.com; "
+        "img-src 'self' data: blob: https:; "
+        "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; "
+        "font-src 'self' https://fonts.gstatic.com; "
+        "frame-ancestors *;"
+    )
     return response
 
 # ── Firebase Auth Proxy ────────────────────────────────────────────────────────
