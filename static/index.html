@@ -18,12 +18,9 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Newsreader:ital,opsz,wght@0,6..72,400..700;1,6..72,400..700&family=Outfit:wght@400;600;700;800;900&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
-    <!-- Firebase SDK (v10 Compat) loaded upfront -->
-    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
-    <!-- Google Identity Services — bypasses Firebase popup/iframe for HF Spaces -->
-    <script src="https://accounts.google.com/gsi/client" async defer></script>
-    <link rel="stylesheet" href="style.css?v=20260813_v3">
+    <!-- Supabase JS SDK (replaces Firebase) -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <link rel="stylesheet" href="style.css?v=20260813_supabase">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
     <script>
@@ -1082,6 +1079,6 @@
     </div>
 
     <!-- Main JavaScript Link -->
-    <script src="app.js?v=20260813_v3"></script>
+    <script src="app.js?v=20260813_supabase"></script>
 </body>
 </html>

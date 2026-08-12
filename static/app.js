@@ -26,110 +26,49 @@ window.fetch = function (url, options = {}) {
     return originalFetch(url, options);
 };
 
-// Global Fail-Proof Auth Handlers
-// NOTE: authDomain MUST be firebaseapp.com (Firebase's own domain) because
-// Firebase Popup flow loads /__/auth/handler from authDomain. Custom domains
-// only work with Firebase Hosting which serves that endpoint automatically.
-// To allow popup from hf.space, add hf.space to Firebase Console -> Auth -> Authorized Domains.
-const defaultFirebaseConfig = {
-    apiKey: "AIzaSyAFe1P9Jss-J9EwfwLUOfnxv5BaVyuoGew",
-    authDomain: "prepz-workspace.firebaseapp.com",
-    projectId: "prepz-workspace",
-    storageBucket: "prepz-workspace.firebasestorage.app",
-    messagingSenderId: "585299422541",
-    appId: "1:585299422541:web:a3734d501021c5bc581b04",
-    measurementId: "G-MMM66H0FWG"
-};
+// ── SUPABASE AUTH (replaces Firebase) ──────────────────────────────────────
+var SUPABASE_URL = "https://tuynzxkucwfcgwzynzrw.supabase.co";
+var SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InR1eW56eGt1Y3dmY2d3enluenJ3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODY1NjEyNDQsImV4cCI6MjEwMjEzNzI0NH0.gLV5uglVNYF6xIBf22F9WM2IPcg1bA0sRkOD52xtVBE";
 
-const firebaseConfig = (typeof window.FIREBASE_CONFIG === "object" && window.FIREBASE_CONFIG) ? window.FIREBASE_CONFIG : defaultFirebaseConfig;
-
-let firebaseApp = null;
-let firebaseAuth = null;
-
+var supabaseClient = null;
 try {
-    if (typeof firebase !== "undefined") {
-        if (!firebase.apps.length) {
-            firebaseApp = firebase.initializeApp(firebaseConfig);
-        } else {
-            firebaseApp = firebase.app();
-        }
-        firebaseAuth = firebase.auth();
-        firebaseAuth.setPersistence(firebase.auth.Auth.Persistence.LOCAL)
-            .then(() => console.log("[FIREBASE CLIENT] Persistence set to LOCAL"))
-            .catch(err => console.warn("[FIREBASE CLIENT] Error setting persistence:", err));
-        
-        // onAuthStateChanged: PRIMARY login handler — fires on page load after redirect AND after popup
-        // This is more reliable than getRedirectResult alone
-        firebaseAuth.onAuthStateChanged(function(user) {
-            if (!user) return;
-            console.log('[FIREBASE] onAuthStateChanged — user:', user.email);
-            var avatarUrl = user.photoURL || ('https://api.dicebear.com/7.x/bottts/svg?seed=' + encodeURIComponent(user.email));
-            var fbUser = {
-                id: user.uid,
-                email: user.email,
-                name: user.displayName || user.email.split('@')[0],
-                provider: 'google',
-                avatar_url: avatarUrl
-            };
-            // LOGIN IMMEDIATELY — don't wait for backend sync
-            console.log('[FIREBASE] Logging in immediately:', fbUser.email);
-            if (typeof window.loginUser === 'function') window.loginUser(fbUser);
-            // Sync with backend in background (non-blocking)
-            fetch('/api/firebase-sync', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ uid: user.uid, email: user.email, name: fbUser.name, provider: 'google', avatar_url: avatarUrl })
-            }).then(function(res) {
-                return res.json().then(function(data) {
-                    if (res.ok && data.user && data.user.email && typeof window.syncAppCurrentUser === 'function') {
-                        window.syncAppCurrentUser(data.user);
-                    }
-                });
-            }).catch(function(e) {
-                console.warn('[FIREBASE] Background sync failed (login still works):', e);
-            });
+    if (typeof window.supabase !== "undefined" && window.supabase.createClient) {
+        supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        console.log("[SUPABASE] Client initialized");
+
+        // Auth state listener — fires on page load AND after OAuth redirect
+        supabaseClient.auth.onAuthStateChange(function(event, session) {
+            console.log("[SUPABASE] Auth event:", event, session ? session.user.email : "no session");
+            if (session && session.user) {
+                var user = session.user;
+                var meta = user.user_metadata || {};
+                var appUser = {
+                    id: user.id,
+                    email: user.email,
+                    name: meta.full_name || meta.name || user.email.split("@")[0],
+                    provider: "google",
+                    avatar_url: meta.avatar_url || meta.picture || ("https://api.dicebear.com/7.x/bottts/svg?seed=" + encodeURIComponent(user.email))
+                };
+                console.log("[SUPABASE] Logging in:", appUser.email);
+                if (typeof window.loginUser === "function") window.loginUser(appUser);
+                // Background sync with our backend DB
+                fetch("/api/firebase-sync", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ uid: user.id, email: appUser.email, name: appUser.name, provider: "google", avatar_url: appUser.avatar_url })
+                }).catch(function() {});
+            }
         });
-
-        console.log("[FIREBASE CLIENT] SDK Initialized Successfully!");
     } else {
-        console.warn("[FIREBASE CLIENT] Firebase CDN scripts not loaded yet.");
+        console.warn("[SUPABASE] SDK not loaded yet");
     }
-} catch (e) {
-    console.error("[FIREBASE CLIENT] Firebase initialization error:", e);
+} catch(e) {
+    console.error("[SUPABASE] Init error:", e);
 }
+// ─────────────────────────────────────────────────────────────────────────────
 
-window.mapFirebaseError = function (code, defaultMsg) {
-    switch (code) {
-        case "auth/unauthorized-domain":
-            return "Domain unauthorized! Please add 'om123bansal-prepz-workspace.hf.space' in Firebase Console -> Authentication -> Settings -> Authorized domains.";
-        case "auth/operation-not-allowed":
-            return "Google Sign-In is not enabled! Please enable Google under Firebase Console -> Authentication -> Sign-in method.";
-        case "auth/email-already-in-use":
-            return "An account with this email address already exists. Please switch to the Log In tab.";
-        case "auth/invalid-email":
-            return "Please enter a valid email address.";
-        case "auth/weak-password":
-            return "Password is too weak. Please use at least 6 characters containing letters and numbers.";
-        case "auth/user-not-found":
-        case "auth/wrong-password":
-        case "auth/invalid-credential":
-            return "Invalid email or password. Please check your credentials and try again.";
-        case "auth/too-many-requests":
-            return "Too many failed attempts. Please wait a few minutes before trying again.";
-        case "auth/network-request-failed":
-            return "Network connection error. Please check your internet connection.";
-        case "auth/user-disabled":
-            return "This user account has been disabled. Please contact support.";
-        default:
-            return defaultMsg || "An error occurred during authentication. Please try again.";
-    }
-};
 
-window.executeInstantGoogleSignIn = function() {
-    if (typeof window.handleGoogleSignIn === "function") window.handleGoogleSignIn();
-};
-
-// Google OAuth client ID (extracted from Firebase project)
+// Google OAuth client ID
 var GOOGLE_CLIENT_ID = "585299422541-edqtcaaoljev3op2cffl98jfvr8asn56.apps.googleusercontent.com";
 
 window.handleGoogleSignIn = function(e) {
@@ -148,54 +87,51 @@ window.handleGoogleSignIn = function(e) {
     function showErr(msg) {
         if (authErrBox) { authErrBox.innerHTML = msg; authErrBox.classList.remove("hidden"); authErrBox.style.display = "block"; }
     }
-    function clearErr() {
-        if (authErrBox) { authErrBox.textContent = ""; authErrBox.classList.add("hidden"); }
-    }
-    clearErr();
 
-    // Use Google Identity Services — no Firebase popup/iframe needed
+    // ── PRIMARY: Supabase Google OAuth ─────────────────────────────────────
+    if (supabaseClient) {
+        console.log("[AUTH] Using Supabase Google OAuth");
+        supabaseClient.auth.signInWithOAuth({
+            provider: "google",
+            options: {
+                redirectTo: window.location.origin,
+                queryParams: { prompt: "select_account", access_type: "offline" }
+            }
+        }).then(function(result) {
+            if (result.error) {
+                console.error("[SUPABASE] OAuth error:", result.error.message);
+                showErr("Sign-in error: " + result.error.message);
+            }
+            // Supabase redirects the page — no further action needed here
+        }).catch(function(err) {
+            console.error("[SUPABASE] OAuth exception:", err);
+            showErr("Sign-in failed. Please try again.");
+        });
+        return;
+    }
+
+    // ── FALLBACK: GIS token client ─────────────────────────────────────────
     if (typeof google !== "undefined" && google.accounts && google.accounts.oauth2) {
-        console.log("[AUTH] Using Google Identity Services token client");
         var tokenClient = google.accounts.oauth2.initTokenClient({
             client_id: GOOGLE_CLIENT_ID,
             scope: "email profile openid",
             prompt: "select_account",
             callback: function(tokenResponse) {
-                if (tokenResponse.error) {
-                    console.error("[AUTH] GIS error:", tokenResponse.error);
-                    if (tokenResponse.error !== "access_denied") {
-                        showErr("Google Sign-In error: " + tokenResponse.error);
-                    }
-                    return;
-                }
-                console.log("[AUTH] GIS token received, verifying...");
-                // Verify token on backend and get user
+                if (tokenResponse.error) { showErr("Google error: " + tokenResponse.error); return; }
                 fetch("/api/auth/google-token", {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({ access_token: tokenResponse.access_token })
-                }).then(function(res) {
-                    return res.json();
-                }).then(function(data) {
-                    if (data.user && data.user.email) {
-                        console.log("[AUTH] Login success via GIS:", data.user.email);
-                        window.loginUser(data.user);
-                    } else {
-                        showErr("Could not get user info. Try again.");
-                    }
-                }).catch(function(err) {
-                    console.error("[AUTH] Token verify failed:", err);
-                    showErr("Sign-in failed. Please try again.");
-                });
+                }).then(function(res) { return res.json(); })
+                .then(function(data) { if (data.user && data.user.email) window.loginUser(data.user); })
+                .catch(function() { showErr("Sign-in failed. Try again."); });
             }
         });
         tokenClient.requestAccessToken();
         return;
     }
 
-    // Fallback: Firebase popup (if GIS not loaded yet)
-    console.warn("[AUTH] GIS not loaded, falling back to Firebase popup");
-    showErr("Loading... Please click again in 1 second.");
+    showErr("Auth loading... Please click again in 1 second.");
 };
 
 
