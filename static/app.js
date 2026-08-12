@@ -139,90 +139,106 @@ window.executeInstantGoogleSignIn = function() {
     }
 };
 
+// Show a visible toast anywhere on screen for auth debug
+function showAuthToast(msg, type) {
+    let toast = document.getElementById("auth-debug-toast");
+    if (!toast) {
+        toast = document.createElement("div");
+        toast.id = "auth-debug-toast";
+        toast.style.cssText = "position:fixed;top:20px;left:50%;transform:translateX(-50%);z-index:99999;padding:14px 24px;border-radius:12px;font-size:14px;font-weight:600;max-width:90vw;text-align:center;box-shadow:0 8px 32px rgba(0,0,0,0.3);transition:all 0.3s;";
+        document.body.appendChild(toast);
+    }
+    toast.textContent = msg;
+    toast.style.background = type === "error" ? "#FF4B4B" : type === "success" ? "#00C853" : "#1565C0";
+    toast.style.color = "#fff";
+    toast.style.display = "block";
+    clearTimeout(toast._hideTimer);
+    if (type !== "error") {
+        toast._hideTimer = setTimeout(() => { toast.style.display = "none"; }, 5000);
+    }
+}
+
 window.handleGoogleSignIn = async function(e) {
     if (e) {
         if (typeof e.preventDefault === "function") e.preventDefault();
         if (typeof e.stopPropagation === "function") e.stopPropagation();
     }
-    console.log('[AUTH] Real Google Sign-In initiated...');
+
+    showAuthToast("⏳ Starting Google Sign-In...", "info");
+    console.log('[AUTH] handleGoogleSignIn called. firebase:', typeof firebase, 'firebaseAuth:', !!firebaseAuth);
 
     const authErrBox = document.getElementById("auth-error-msg") || document.getElementById("error-msg");
-    if (authErrBox) {
-        authErrBox.textContent = "Opening Google Sign-In...";
-        authErrBox.className = "auth-error info";
-        authErrBox.classList.remove("hidden");
-        authErrBox.style.display = "block";
-    }
 
-    if (typeof firebase !== "undefined" && firebaseAuth) {
-        try {
-            const provider = new firebase.auth.GoogleAuthProvider();
-            provider.addScope('email');
-            provider.addScope('profile');
-            provider.setCustomParameters({ 
-                prompt: 'select_account',
-                redirect_uri: window.location.origin
-            });
-
-            // Try popup auth first
-            try {
-                const result = await firebaseAuth.signInWithPopup(provider);
-                if (result && result.user) {
-                    await processGoogleUserSync(result.user);
-                    return;
-                }
-            } catch (popupError) {
-                console.warn('[AUTH] Firebase Google popup notice:', popupError);
-                const errCode = popupError.code || "";
-                
-                if (errCode === "auth/unauthorized-domain") {
-                    const currentDomain = window.location.hostname;
-                    const domainMsg = "Domain '" + currentDomain + "' is not authorized in Firebase Console! Please add '" + currentDomain + "' under Firebase Console -> Authentication -> Settings -> Authorized domains.";
-                    console.error("[AUTH] " + domainMsg);
-                    if (authErrBox) {
-                        authErrBox.textContent = domainMsg;
-                        authErrBox.className = "auth-error error";
-                        authErrBox.classList.remove("hidden");
-                        authErrBox.style.display = "block";
-                    }
-                    return;
-                }
-
-                if (errCode === "auth/operation-not-allowed") {
-                    const opMsg = "Google Sign-In is disabled in Firebase Console! Please enable Google under Firebase Console -> Authentication -> Sign-in method.";
-                    console.error("[AUTH] " + opMsg);
-                    if (authErrBox) {
-                        authErrBox.textContent = opMsg;
-                        authErrBox.className = "auth-error error";
-                        authErrBox.classList.remove("hidden");
-                        authErrBox.style.display = "block";
-                    }
-                    return;
-                }
-
-                if (errCode === "auth/popup-blocked" || errCode === "auth/popup-closed-by-user" || (popupError.message && popupError.message.includes("iframe"))) {
-                    await firebaseAuth.signInWithRedirect(provider);
-                    return;
-                }
-
-                throw popupError;
-            }
-        } catch (authErr) {
-            console.error('[AUTH] Google Sign-In error:', authErr);
-            if (authErrBox) {
-                authErrBox.textContent = authErr.message || "Google Sign-In error. Please try again.";
-                authErrBox.className = "auth-error error";
-                authErrBox.classList.remove("hidden");
-                authErrBox.style.display = "block";
-            }
-        }
-    } else {
+    function showErr(msg) {
+        showAuthToast("❌ " + msg, "error");
+        console.error('[AUTH ERROR]', msg);
         if (authErrBox) {
-            authErrBox.textContent = "Firebase Auth SDK is initializing. Please refresh and click Google Sign-In again.";
+            authErrBox.textContent = msg;
             authErrBox.className = "auth-error error";
             authErrBox.classList.remove("hidden");
             authErrBox.style.display = "block";
         }
+    }
+
+    if (typeof firebase === "undefined") {
+        showErr("Firebase SDK not loaded. Refresh the page and try again.");
+        return;
+    }
+    if (!firebaseAuth) {
+        showErr("Firebase Auth not initialized. Refresh the page and try again.");
+        return;
+    }
+
+    try {
+        const provider = new firebase.auth.GoogleAuthProvider();
+        provider.addScope('email');
+        provider.addScope('profile');
+        provider.setCustomParameters({ prompt: 'select_account' });
+
+        // Detect if we're inside an iframe (HF Spaces embed)
+        const isInIframe = (function() {
+            try { return window.self !== window.top; } catch(e) { return true; }
+        })();
+
+        if (isInIframe) {
+            // Inside HF Spaces iframe - popup won't work, use redirect
+            showAuthToast("🔄 Redirecting to Google Sign-In...", "info");
+            console.log('[AUTH] iframe detected — using signInWithRedirect');
+            await firebaseAuth.signInWithRedirect(provider);
+            return;
+        }
+
+        // Direct tab: try popup first
+        showAuthToast("🔓 Opening Google popup...", "info");
+        try {
+            const result = await firebaseAuth.signInWithPopup(provider);
+            if (result && result.user) {
+                showAuthToast("✅ Signed in as " + result.user.email, "success");
+                await processGoogleUserSync(result.user);
+                return;
+            }
+        } catch (popupError) {
+            console.warn('[AUTH] Popup error:', popupError.code, popupError.message);
+            const errCode = popupError.code || "";
+
+            if (errCode === "auth/unauthorized-domain") {
+                showErr("Domain '" + window.location.hostname + "' not authorized in Firebase Console. Go to Firebase Console → Authentication → Settings → Authorized Domains and add: " + window.location.hostname);
+                return;
+            }
+            if (errCode === "auth/operation-not-allowed") {
+                showErr("Google Sign-In is disabled in Firebase Console. Enable it under Authentication → Sign-in method.");
+                return;
+            }
+            if (errCode === "auth/popup-blocked" || errCode === "auth/popup-closed-by-user") {
+                showAuthToast("🔄 Popup blocked — trying redirect...", "info");
+                await firebaseAuth.signInWithRedirect(provider);
+                return;
+            }
+            // Any other error — show it
+            showErr("[" + errCode + "] " + (popupError.message || "Unknown error"));
+        }
+    } catch (authErr) {
+        showErr("[" + (authErr.code || "unknown") + "] " + (authErr.message || "Google Sign-In failed."));
     }
 };
 
