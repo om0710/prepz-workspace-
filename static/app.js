@@ -175,20 +175,35 @@ window.handleGoogleSignIn = function(e) {
     auth.signInWithPopup(provider)
         .then(function(result) {
             var user = result.user;
+            console.log("[AUTH] signInWithPopup success!", user.email, user.uid);
             var providerId = (user.providerData && user.providerData[0]) ? user.providerData[0].providerId : "google";
             var avatarUrl = user.photoURL || ("https://api.dicebear.com/7.x/bottts/svg?seed=" + encodeURIComponent(user.email));
+            var fallbackUser = {
+                id: user.uid,
+                email: user.email,
+                name: user.displayName || user.email.split("@")[0],
+                provider: "google",
+                avatar_url: avatarUrl
+            };
             fetch("/api/firebase-sync", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ uid: user.uid, email: user.email, name: user.displayName || user.email.split("@")[0], provider: providerId.includes("google") ? "google" : "local", avatar_url: avatarUrl })
-            }).then(function(res) { return res.json().then(function(data) {
-                window.loginUser(res.ok && data.user ? data.user : { id: user.uid, email: user.email, name: user.displayName || user.email.split("@")[0], provider: providerId, avatar_url: avatarUrl });
-            }); }).catch(function() {
-                window.loginUser({ id: user.uid, email: user.email, name: user.displayName || user.email.split("@")[0], provider: providerId, avatar_url: avatarUrl });
+                body: JSON.stringify({ uid: user.uid, email: user.email, name: fallbackUser.name, provider: "google", avatar_url: avatarUrl })
+            }).then(function(res) {
+                return res.json().then(function(data) {
+                    console.log("[AUTH] firebase-sync response:", data);
+                    var syncedUser = (res.ok && data.user && data.user.email) ? data.user : fallbackUser;
+                    console.log("[AUTH] Calling loginUser with:", syncedUser.email);
+                    window.loginUser(syncedUser);
+                });
+            }).catch(function(err) {
+                console.warn("[AUTH] firebase-sync failed, using fallback:", err);
+                window.loginUser(fallbackUser);
             });
         })
         .catch(function(error) {
             var errCode = error.code || "unknown";
+            console.error("[AUTH] signInWithPopup error:", errCode, error.message);
             if (errCode === "auth/popup-blocked") {
                 try { auth.signInWithRedirect(provider); return; } catch(rErr) {}
                 showErr("Popup blocked. <a href=\"https://om123bansal-prepz-app.hf.space\" target=\"_blank\" style=\"color:#818cf8;\">Open Direct Link &rarr;</a>");
