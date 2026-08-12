@@ -71,9 +71,35 @@ try {
 // Google OAuth client ID
 var GOOGLE_CLIENT_ID = "585299422541-edqtcaaoljev3op2cffl98jfvr8asn56.apps.googleusercontent.com";
 
+// Check for auth_data on page load (from backend Google OAuth callback)
+(function() {
+    try {
+        var params = new URLSearchParams(window.location.search);
+        var authData = params.get("auth_data");
+        var authError = params.get("auth_error");
+        if (authData) {
+            var userData = JSON.parse(atob(authData));
+            window.history.replaceState({}, document.title, window.location.pathname);
+            console.log("[AUTH] Backend OAuth success:", userData.email);
+            // Wait for loginUser to be defined
+            var attempts = 0;
+            var waitLogin = setInterval(function() {
+                if (typeof window.loginUser === "function") {
+                    clearInterval(waitLogin);
+                    window.loginUser(userData);
+                } else if (++attempts > 20) { clearInterval(waitLogin); }
+            }, 100);
+        }
+        if (authError) {
+            window.history.replaceState({}, document.title, window.location.pathname);
+            console.warn("[AUTH] Backend OAuth error:", authError);
+        }
+    } catch(e) { console.error("[AUTH] auth_data parse error:", e); }
+})();
+
 window.handleGoogleSignIn = function(e) {
     if (e) { e.preventDefault(); e.stopPropagation(); }
-    console.log("[AUTH] Google Sign-In clicked");
+    console.log("[AUTH] Google Sign-In → backend OAuth");
 
     var isInIframe = false;
     try { isInIframe = (window.self !== window.top); } catch(err2) { isInIframe = true; }
@@ -82,105 +108,8 @@ window.handleGoogleSignIn = function(e) {
         return;
     }
 
-    var authErrBox = document.getElementById("auth-error-msg");
-    function showErr(msg) {
-        if (authErrBox) { authErrBox.innerHTML = msg; authErrBox.classList.remove("hidden"); authErrBox.style.display = "block"; }
-    }
-    function clearErr() {
-        if (authErrBox) { authErrBox.textContent = ""; authErrBox.classList.add("hidden"); }
-    }
-    clearErr();
-
-    // Handler called once we have a Google ID token or access token
-    function handleGoogleToken(tokenObj) {
-        // tokenObj = { id_token: "..." } or { access_token: "..." }
-        if (supabaseClient && tokenObj.id_token) {
-            // Try Supabase signInWithIdToken first
-            supabaseClient.auth.signInWithIdToken({ provider: "google", token: tokenObj.id_token })
-                .then(function(result) {
-                    if (result.error) {
-                        console.warn("[SUPABASE] signInWithIdToken failed, using backend fallback:", result.error.message);
-                        callBackend(tokenObj);
-                    } else {
-                        console.log("[SUPABASE] signInWithIdToken success!");
-                        // onAuthStateChange fires → loginUser called automatically
-                    }
-                }).catch(function() { callBackend(tokenObj); });
-        } else {
-            callBackend(tokenObj);
-        }
-    }
-
-    function callBackend(tokenObj) {
-        fetch("/api/auth/google-token", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(tokenObj)
-        }).then(function(r) { return r.json(); })
-        .then(function(data) {
-            if (data.user && data.user.email) {
-                console.log("[AUTH] Backend login success:", data.user.email);
-                window.loginUser(data.user);
-            } else {
-                showErr("Could not get user info. Try again.");
-            }
-        }).catch(function() { showErr("Sign-in failed. Check your connection."); });
-    }
-
-    function doGISAuth() {
-        var gis = typeof google !== "undefined" && google.accounts;
-        if (!gis) {
-            showErr("Google auth loading... Please click again.");
-            return;
-        }
-
-        // Method 1: Token client popup (most reliable)
-        if (google.accounts.oauth2) {
-            console.log("[AUTH] Using GIS token client popup");
-            var tokenClient = google.accounts.oauth2.initTokenClient({
-                client_id: GOOGLE_CLIENT_ID,
-                scope: "openid email profile",
-                callback: function(resp) {
-                    if (resp.error) { console.error("[GIS] Token error:", resp.error); if (resp.error !== "access_denied") showErr("Error: " + resp.error); return; }
-                    // Get ID token via userinfo
-                    fetch("https://www.googleapis.com/oauth2/v2/userinfo", {
-                        headers: { Authorization: "Bearer " + resp.access_token }
-                    }).then(function(r) { return r.json(); })
-                    .then(function(info) { callBackend({ access_token: resp.access_token }); })
-                    .catch(function() { callBackend({ access_token: resp.access_token }); });
-                }
-            });
-            tokenClient.requestAccessToken({ prompt: "select_account" });
-            return;
-        }
-
-        // Method 2: One Tap
-        if (google.accounts.id) {
-            google.accounts.id.initialize({
-                client_id: GOOGLE_CLIENT_ID,
-                callback: function(cr) { if (cr && cr.credential) handleGoogleToken({ id_token: cr.credential }); },
-                auto_select: false, use_fedcm_for_prompt: false
-            });
-            google.accounts.id.prompt(function(n) {
-                if (n.isNotDisplayed() || n.isSkippedMoment()) showErr("Sign-in pop-up blocked. Allow pop-ups for this site.");
-            });
-        }
-    }
-
-    // If GIS not loaded yet, retry up to 5x with 500ms delay
-    var retries = 0;
-    function tryAuth() {
-        if (typeof google !== "undefined" && google.accounts) {
-            doGISAuth();
-        } else if (retries < 5) {
-            retries++;
-            console.log("[AUTH] GIS not ready, retry", retries);
-            setTimeout(tryAuth, 500);
-        } else {
-            showErr("Google Sign-In unavailable. Please try refreshing the page.");
-        }
-    }
-    tryAuth();
+    // Full page redirect to backend → Google → callback → back here with user data
+    window.location.href = "/api/auth/google";
 };
 
 

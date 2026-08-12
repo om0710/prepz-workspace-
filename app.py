@@ -4,7 +4,8 @@ import uuid
 import shutil
 from typing import Optional
 from fastapi import FastAPI, UploadFile, File, HTTPException, Request
-from fastapi.responses import StreamingResponse, FileResponse, Response
+from fastapi.responses import StreamingResponse, FileResponse, Response, RedirectResponse
+import base64
 import httpx
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
@@ -562,6 +563,68 @@ class FirebaseSyncRequest(BaseModel):
     name: Optional[str] = None
     provider: Optional[str] = "firebase"
     avatar_url: Optional[str] = None
+
+# ── BACKEND GOOGLE OAUTH2 ── pure server-side, no CSP issues ─────────────────
+GOOGLE_CLIENT_ID_OAUTH = "585299422541-edqtcaaoljev3op2cffl98jfvr8asn56.apps.googleusercontent.com"
+GOOGLE_CLIENT_SECRET_OAUTH = "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"
+GOOGLE_REDIRECT_URI = "https://om123bansal-prepz-app.hf.space/api/auth/google/callback"
+
+@app.get("/api/auth/google")
+def google_auth_start():
+    from urllib.parse import urlencode
+    params = {
+        "client_id": GOOGLE_CLIENT_ID_OAUTH,
+        "redirect_uri": GOOGLE_REDIRECT_URI,
+        "response_type": "code",
+        "scope": "openid email profile",
+        "access_type": "online",
+        "prompt": "select_account"
+    }
+    url = "https://accounts.google.com/o/oauth2/v2/auth?" + urlencode(params)
+    print(f"[GOOGLE OAUTH] Redirecting to Google: {url[:80]}...")
+    return RedirectResponse(url)
+
+@app.get("/api/auth/google/callback")
+async def google_auth_callback(request: Request, code: str = None, error: str = None):
+    if error or not code:
+        print(f"[GOOGLE OAUTH] Error/cancelled: {error}")
+        return RedirectResponse("/?auth_error=" + (error or "cancelled"))
+    # Exchange code for access token
+    async with httpx.AsyncClient(timeout=10) as client:
+        token_resp = await client.post("https://oauth2.googleapis.com/token", data={
+            "code": code,
+            "client_id": GOOGLE_CLIENT_ID_OAUTH,
+            "client_secret": GOOGLE_CLIENT_SECRET_OAUTH,
+            "redirect_uri": GOOGLE_REDIRECT_URI,
+            "grant_type": "authorization_code"
+        })
+    tokens = token_resp.json()
+    access_token = tokens.get("access_token")
+    if not access_token:
+        print(f"[GOOGLE OAUTH] Token exchange failed: {tokens}")
+        return RedirectResponse("/?auth_error=token_failed")
+    # Get user info
+    async with httpx.AsyncClient(timeout=8) as client:
+        info_resp = await client.get(
+            "https://www.googleapis.com/oauth2/v2/userinfo",
+            headers={"Authorization": f"Bearer {access_token}"}
+        )
+    info = info_resp.json()
+    email = info.get("email", "").strip().lower()
+    if not email:
+        return RedirectResponse("/?auth_error=no_email")
+    name = info.get("name") or email.split("@")[0].title()
+    avatar_url = info.get("picture") or f"https://api.dicebear.com/7.x/bottts/svg?seed={email}"
+    print(f"[GOOGLE OAUTH] Authenticated: {email}")
+    user = get_user_by_email(email)
+    if not user:
+        user = create_user(name=name, email=email, password=None, provider="google", avatar_url=avatar_url, is_verified=True)
+    user = update_user_activity(email) or user
+    user_payload = {"id": user["id"], "name": user["name"], "email": user["email"], "provider": "google", "avatar_url": user["avatar_url"]}
+    encoded = base64.b64encode(json.dumps(user_payload).encode()).decode()
+    return RedirectResponse(f"/?auth_data={encoded}")
+# ────────────────────────────────────────────────────────────────────────────────
+
 
 @app.post("/api/auth/google-token")
 async def google_token_auth(request: Request):
