@@ -63,7 +63,14 @@ try {
             if (result && result.user) {
                 console.log('[FIREBASE REDIRECT SUCCESS]', result.user.email);
                 const user = result.user;
-                const providerId = (user.providerData && user.providerData[0]) ? user.providerData[0].providerId : "google";
+                const avatarUrl = user.photoURL || ('https://api.dicebear.com/7.x/bottts/svg?seed=' + encodeURIComponent(user.email));
+                const fallbackUser = {
+                    id: user.uid,
+                    email: user.email,
+                    name: user.displayName || user.email.split("@")[0],
+                    provider: "google",
+                    avatar_url: avatarUrl
+                };
                 try {
                     const res = await fetch("/api/firebase-sync", {
                         method: "POST",
@@ -71,28 +78,20 @@ try {
                         body: JSON.stringify({
                             uid: user.uid,
                             email: user.email,
-                            name: user.displayName || user.email.split("@")[0].replace(/[._-]/g, " "),
-                            provider: providerId.includes("google") ? "google" : "local",
-                            avatar_url: user.photoURL || `https://api.dicebear.com/7.x/bottts/svg?seed=${encodeURIComponent(user.email)}`
+                            name: fallbackUser.name,
+                            provider: "google",
+                            avatar_url: avatarUrl
                         })
                     });
                     const data = await res.json();
+                    console.log('[FIREBASE REDIRECT] sync response:', data);
                     if (typeof window.loginUser === "function") {
-                        window.loginUser(res.ok && data.user ? data.user : {
-                            id: user.uid,
-                            email: user.email,
-                            name: user.displayName || user.email.split("@")[0],
-                            provider: providerId
-                        });
+                        window.loginUser((res.ok && data.user && data.user.email) ? data.user : fallbackUser);
                     }
                 } catch(e) {
+                    console.warn('[FIREBASE REDIRECT] sync failed, using fallback');
                     if (typeof window.loginUser === "function") {
-                        window.loginUser({
-                            id: user.uid,
-                            email: user.email,
-                            name: user.displayName || user.email.split("@")[0],
-                            provider: providerId
-                        });
+                        window.loginUser(fallbackUser);
                     }
                 }
             }
@@ -143,7 +142,7 @@ window.handleGoogleSignIn = function(e) {
     if (e) { e.preventDefault(); e.stopPropagation(); }
     console.log("[AUTH] Google Sign-In clicked");
 
-    // Detect HF Spaces iframe - popup fails inside iframe
+    // Detect HF Spaces iframe
     var isInIframe = false;
     try { isInIframe = (window.self !== window.top); } catch(err2) { isInIframe = true; }
     if (isInIframe) {
@@ -172,41 +171,41 @@ window.handleGoogleSignIn = function(e) {
     provider.addScope("profile");
     provider.setCustomParameters({ prompt: "select_account" });
 
+    // HF Space has CSP that blocks Firebase popup iframe handler — use redirect instead
+    var isHFSpace = window.location.hostname.indexOf(".hf.space") !== -1;
+
+    if (isHFSpace) {
+        console.log("[AUTH] HF Space detected — using signInWithRedirect");
+        showErr("Redirecting to Google Sign-In... Please wait.");
+        if (authErrBox) { authErrBox.style.background = "#1565C0"; authErrBox.style.color = "#fff"; }
+        auth.signInWithRedirect(provider).catch(function(err) {
+            showErr("Redirect error: " + (err.message || err.code));
+        });
+        return;
+    }
+
+    // Non-HF: use popup
     auth.signInWithPopup(provider)
         .then(function(result) {
             var user = result.user;
-            console.log("[AUTH] signInWithPopup success!", user.email, user.uid);
-            var providerId = (user.providerData && user.providerData[0]) ? user.providerData[0].providerId : "google";
+            console.log("[AUTH] signInWithPopup success!", user.email);
             var avatarUrl = user.photoURL || ("https://api.dicebear.com/7.x/bottts/svg?seed=" + encodeURIComponent(user.email));
-            var fallbackUser = {
-                id: user.uid,
-                email: user.email,
-                name: user.displayName || user.email.split("@")[0],
-                provider: "google",
-                avatar_url: avatarUrl
-            };
+            var fallbackUser = { id: user.uid, email: user.email, name: user.displayName || user.email.split("@")[0], provider: "google", avatar_url: avatarUrl };
             fetch("/api/firebase-sync", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ uid: user.uid, email: user.email, name: fallbackUser.name, provider: "google", avatar_url: avatarUrl })
             }).then(function(res) {
                 return res.json().then(function(data) {
-                    console.log("[AUTH] firebase-sync response:", data);
-                    var syncedUser = (res.ok && data.user && data.user.email) ? data.user : fallbackUser;
-                    console.log("[AUTH] Calling loginUser with:", syncedUser.email);
-                    window.loginUser(syncedUser);
+                    window.loginUser((res.ok && data.user && data.user.email) ? data.user : fallbackUser);
                 });
-            }).catch(function(err) {
-                console.warn("[AUTH] firebase-sync failed, using fallback:", err);
-                window.loginUser(fallbackUser);
-            });
+            }).catch(function() { window.loginUser(fallbackUser); });
         })
         .catch(function(error) {
             var errCode = error.code || "unknown";
-            console.error("[AUTH] signInWithPopup error:", errCode, error.message);
+            console.error("[AUTH] signInWithPopup error:", errCode);
             if (errCode === "auth/popup-blocked") {
                 try { auth.signInWithRedirect(provider); return; } catch(rErr) {}
-                showErr("Popup blocked. <a href=\"https://om123bansal-prepz-app.hf.space\" target=\"_blank\" style=\"color:#818cf8;\">Open Direct Link &rarr;</a>");
             } else if (errCode === "auth/unauthorized-domain") {
                 showErr("Domain not authorized. Add <b>\"" + window.location.hostname + "\"</b> to Firebase Console &rarr; Authentication &rarr; Authorized domains.");
             } else if (errCode !== "auth/popup-closed-by-user" && errCode !== "auth/cancelled-popup-request") {
