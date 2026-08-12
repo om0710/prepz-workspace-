@@ -58,45 +58,34 @@ try {
             .then(() => console.log("[FIREBASE CLIENT] Persistence set to LOCAL"))
             .catch(err => console.warn("[FIREBASE CLIENT] Error setting persistence:", err));
         
-        // Handle Google Sign-In Redirect Result on Page Load
-        firebaseAuth.getRedirectResult().then(async (result) => {
-            if (result && result.user) {
-                console.log('[FIREBASE REDIRECT SUCCESS]', result.user.email);
-                const user = result.user;
-                const avatarUrl = user.photoURL || ('https://api.dicebear.com/7.x/bottts/svg?seed=' + encodeURIComponent(user.email));
-                const fallbackUser = {
-                    id: user.uid,
-                    email: user.email,
-                    name: user.displayName || user.email.split("@")[0],
-                    provider: "google",
-                    avatar_url: avatarUrl
-                };
-                try {
-                    const res = await fetch("/api/firebase-sync", {
-                        method: "POST",
-                        headers: { "Content-Type": "application/json" },
-                        body: JSON.stringify({
-                            uid: user.uid,
-                            email: user.email,
-                            name: fallbackUser.name,
-                            provider: "google",
-                            avatar_url: avatarUrl
-                        })
-                    });
-                    const data = await res.json();
-                    console.log('[FIREBASE REDIRECT] sync response:', data);
-                    if (typeof window.loginUser === "function") {
-                        window.loginUser((res.ok && data.user && data.user.email) ? data.user : fallbackUser);
-                    }
-                } catch(e) {
-                    console.warn('[FIREBASE REDIRECT] sync failed, using fallback');
-                    if (typeof window.loginUser === "function") {
-                        window.loginUser(fallbackUser);
-                    }
-                }
-            }
-        }).catch((err) => {
-            console.error('[FIREBASE REDIRECT ERROR]', err);
+        // onAuthStateChanged: PRIMARY login handler — fires on page load after redirect AND after popup
+        // This is more reliable than getRedirectResult alone
+        firebaseAuth.onAuthStateChanged(function(user) {
+            if (!user) return; // not logged in, do nothing
+            console.log('[FIREBASE] onAuthStateChanged — user:', user.email);
+            var avatarUrl = user.photoURL || ('https://api.dicebear.com/7.x/bottts/svg?seed=' + encodeURIComponent(user.email));
+            var fbUser = {
+                id: user.uid,
+                email: user.email,
+                name: user.displayName || user.email.split('@')[0],
+                provider: 'google',
+                avatar_url: avatarUrl
+            };
+            // Sync with backend, then log in
+            fetch('/api/firebase-sync', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ uid: user.uid, email: user.email, name: fbUser.name, provider: 'google', avatar_url: avatarUrl })
+            }).then(function(res) {
+                return res.json().then(function(data) {
+                    var syncedUser = (res.ok && data.user && data.user.email) ? data.user : fbUser;
+                    console.log('[FIREBASE] Logging in user:', syncedUser.email);
+                    if (typeof window.loginUser === 'function') window.loginUser(syncedUser);
+                });
+            }).catch(function() {
+                console.warn('[FIREBASE] Sync failed, using firebase user directly');
+                if (typeof window.loginUser === 'function') window.loginUser(fbUser);
+            });
         });
 
         console.log("[FIREBASE CLIENT] SDK Initialized Successfully!");
