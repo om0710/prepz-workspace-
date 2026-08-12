@@ -206,7 +206,7 @@ window.handleGoogleSignIn = async function(e) {
                 return;
             }
         } catch (authErr) {
-            console.warn('[AUTH] Firebase Google popup notice:', authErr);
+            console.warn('[AUTH] Firebase Google auth error:', authErr);
             const errCode = authErr.code || "";
             
             if (errCode === "auth/unauthorized-domain") {
@@ -219,7 +219,6 @@ window.handleGoogleSignIn = async function(e) {
                     authErrBox.classList.remove("hidden");
                     authErrBox.style.display = "block";
                 }
-                alert(domainMsg);
                 return;
             }
 
@@ -232,7 +231,6 @@ window.handleGoogleSignIn = async function(e) {
                     authErrBox.classList.remove("hidden");
                     authErrBox.style.display = "block";
                 }
-                alert(opMsg);
                 return;
             }
 
@@ -247,35 +245,21 @@ window.handleGoogleSignIn = async function(e) {
                     console.error('[AUTH] Redirect error:', redirErr);
                 }
             }
-        }
-    }
 
-    console.warn('[AUTH] Prompting user for real email/name if Firebase Auth is unreachable in iframe.');
-    const userEmail = prompt("Google Sign-In: Please enter your Google email address:", "");
-    if (!userEmail || !userEmail.trim()) {
+            if (authErrBox) {
+                authErrBox.textContent = authErr.message || "Google Sign-In error. Please try again.";
+                authErrBox.className = "auth-error error";
+                authErrBox.classList.remove("hidden");
+                authErrBox.style.display = "block";
+            }
+        }
+    } else {
         if (authErrBox) {
-            authErrBox.textContent = "Google Sign-In cancelled.";
+            authErrBox.textContent = "Firebase Auth SDK is initializing. Please refresh and click Google Sign-In again.";
             authErrBox.className = "auth-error error";
+            authErrBox.classList.remove("hidden");
             authErrBox.style.display = "block";
         }
-        return;
-    }
-    const userName = prompt("Please enter your Full Name:", userEmail.split("@")[0]);
-    const realUser = {
-        id: "user-" + Date.now(),
-        email: userEmail.trim(),
-        name: userName && userName.trim() ? userName.trim() : userEmail.split("@")[0],
-        provider: "google",
-        avatar_url: `https://api.dicebear.com/7.x/bottts/svg?seed=${encodeURIComponent(userEmail.trim())}`
-    };
-
-    if (authErrBox) {
-        authErrBox.textContent = "";
-        authErrBox.classList.add("hidden");
-        authErrBox.style.display = "none";
-    }
-    if (typeof window.loginUser === "function") {
-        window.loginUser(realUser);
     }
 };
 
