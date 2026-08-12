@@ -563,6 +563,35 @@ class FirebaseSyncRequest(BaseModel):
     provider: Optional[str] = "firebase"
     avatar_url: Optional[str] = None
 
+@app.post("/api/auth/google-token")
+async def google_token_auth(request: Request):
+    """Verify Google access token from GIS and return/create user."""
+    body = await request.json()
+    access_token = body.get("access_token", "")
+    if not access_token:
+        raise HTTPException(status_code=400, detail="access_token required")
+    # Verify with Google userinfo endpoint
+    async with httpx.AsyncClient(timeout=8) as client:
+        resp = await client.get(
+            "https://www.googleapis.com/oauth2/v2/userinfo",
+            headers={"Authorization": f"Bearer {access_token}"}
+        )
+    if resp.status_code != 200:
+        raise HTTPException(status_code=401, detail="Invalid Google token")
+    info = resp.json()
+    email = info.get("email", "").strip().lower()
+    if not email:
+        raise HTTPException(status_code=401, detail="Could not get email from Google")
+    name = info.get("name") or email.split("@")[0].title()
+    avatar_url = info.get("picture") or f"https://api.dicebear.com/7.x/bottts/svg?seed={email}"
+    google_id = info.get("id", email)
+    print(f"[GIS AUTH] Verified Google user: {email}")
+    user = get_user_by_email(email)
+    if not user:
+        user = create_user(name=name, email=email, password=None, provider="google", avatar_url=avatar_url, is_verified=True)
+    user = update_user_activity(email) or user
+    return {"user": {"id": user["id"], "name": user["name"], "email": user["email"], "provider": "google", "avatar_url": user["avatar_url"]}}
+
 @app.post("/api/firebase-sync")
 def firebase_sync(req: FirebaseSyncRequest):
     email = req.email.strip().lower() if req.email else ""

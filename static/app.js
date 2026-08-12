@@ -129,11 +129,14 @@ window.executeInstantGoogleSignIn = function() {
     if (typeof window.handleGoogleSignIn === "function") window.handleGoogleSignIn();
 };
 
+// Google OAuth client ID (extracted from Firebase project)
+var GOOGLE_CLIENT_ID = "585299422541-edqtcaaoljev3op2cffl98jfvr8asn56.apps.googleusercontent.com";
+
 window.handleGoogleSignIn = function(e) {
     if (e) { e.preventDefault(); e.stopPropagation(); }
     console.log("[AUTH] Google Sign-In clicked");
 
-    // Detect HF Spaces iframe
+    // If in HF embed iframe, open direct URL in new tab
     var isInIframe = false;
     try { isInIframe = (window.self !== window.top); } catch(err2) { isInIframe = true; }
     if (isInIframe) {
@@ -150,46 +153,49 @@ window.handleGoogleSignIn = function(e) {
     }
     clearErr();
 
-    if (typeof firebase === "undefined") { showErr("Loading Google Auth SDK... Please wait and click again."); return; }
-    if (!firebase.apps || !firebase.apps.length) { try { firebase.initializeApp(defaultFirebaseConfig); } catch(err3) {} }
-
-    var auth = firebaseAuth;
-    if (!auth && typeof firebase.auth === "function") { try { auth = firebase.auth(); } catch(err4) {} }
-    if (!auth) { showErr("Firebase Authentication initializing. Please click again."); return; }
-
-    var provider = new firebase.auth.GoogleAuthProvider();
-    provider.addScope("email");
-    provider.addScope("profile");
-    provider.setCustomParameters({ prompt: "select_account" });
-
-    // Use popup — Firebase auth iframe is now served from same origin via /__/auth/ proxy
-    auth.signInWithPopup(provider)
-        .then(function(result) {
-            var user = result.user;
-            console.log("[AUTH] signInWithPopup success!", user.email);
-            var avatarUrl = user.photoURL || ("https://api.dicebear.com/7.x/bottts/svg?seed=" + encodeURIComponent(user.email));
-            var fallbackUser = { id: user.uid, email: user.email, name: user.displayName || user.email.split("@")[0], provider: "google", avatar_url: avatarUrl };
-            fetch("/api/firebase-sync", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ uid: user.uid, email: user.email, name: fallbackUser.name, provider: "google", avatar_url: avatarUrl })
-            }).then(function(res) {
-                return res.json().then(function(data) {
-                    window.loginUser((res.ok && data.user && data.user.email) ? data.user : fallbackUser);
+    // Use Google Identity Services — no Firebase popup/iframe needed
+    if (typeof google !== "undefined" && google.accounts && google.accounts.oauth2) {
+        console.log("[AUTH] Using Google Identity Services token client");
+        var tokenClient = google.accounts.oauth2.initTokenClient({
+            client_id: GOOGLE_CLIENT_ID,
+            scope: "email profile openid",
+            prompt: "select_account",
+            callback: function(tokenResponse) {
+                if (tokenResponse.error) {
+                    console.error("[AUTH] GIS error:", tokenResponse.error);
+                    if (tokenResponse.error !== "access_denied") {
+                        showErr("Google Sign-In error: " + tokenResponse.error);
+                    }
+                    return;
+                }
+                console.log("[AUTH] GIS token received, verifying...");
+                // Verify token on backend and get user
+                fetch("/api/auth/google-token", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ access_token: tokenResponse.access_token })
+                }).then(function(res) {
+                    return res.json();
+                }).then(function(data) {
+                    if (data.user && data.user.email) {
+                        console.log("[AUTH] Login success via GIS:", data.user.email);
+                        window.loginUser(data.user);
+                    } else {
+                        showErr("Could not get user info. Try again.");
+                    }
+                }).catch(function(err) {
+                    console.error("[AUTH] Token verify failed:", err);
+                    showErr("Sign-in failed. Please try again.");
                 });
-            }).catch(function() { window.loginUser(fallbackUser); });
-        })
-        .catch(function(error) {
-            var errCode = error.code || "unknown";
-            console.error("[AUTH] signInWithPopup error:", errCode);
-            if (errCode === "auth/popup-blocked") {
-                try { auth.signInWithRedirect(provider); return; } catch(rErr) {}
-            } else if (errCode === "auth/unauthorized-domain") {
-                showErr("Domain not authorized. Add <b>\"" + window.location.hostname + "\"</b> to Firebase Console &rarr; Authentication &rarr; Authorized domains.");
-            } else if (errCode !== "auth/popup-closed-by-user" && errCode !== "auth/cancelled-popup-request") {
-                showErr("Google Sign-In error: " + errCode);
             }
         });
+        tokenClient.requestAccessToken();
+        return;
+    }
+
+    // Fallback: Firebase popup (if GIS not loaded yet)
+    console.warn("[AUTH] GIS not loaded, falling back to Firebase popup");
+    showErr("Loading... Please click again in 1 second.");
 };
 
 
