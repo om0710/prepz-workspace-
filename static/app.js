@@ -133,180 +133,86 @@ window.mapFirebaseError = function (code, defaultMsg) {
         default:
             return defaultMsg || "An error occurred during authentication. Please try again.";
     }
+};
+
 window.executeInstantGoogleSignIn = function() {
-    if (typeof window.handleGoogleSignIn === "function") {
-        window.handleGoogleSignIn();
-    }
+    if (typeof window.handleGoogleSignIn === "function") window.handleGoogleSignIn();
 };
 
-// Show a visible toast anywhere on screen for auth debug
-function showAuthToast(msg, type) {
-    let toast = document.getElementById("auth-debug-toast");
-    if (!toast) {
-        toast = document.createElement("div");
-        toast.id = "auth-debug-toast";
-        toast.style.cssText = "position:fixed;top:20px;left:50%;transform:translateX(-50%);z-index:99999;padding:14px 24px;border-radius:12px;font-size:14px;font-weight:600;max-width:90vw;text-align:center;box-shadow:0 8px 32px rgba(0,0,0,0.3);transition:all 0.3s;";
-        document.body.appendChild(toast);
-    }
-    toast.textContent = msg;
-    toast.style.background = type === "error" ? "#FF4B4B" : type === "success" ? "#00C853" : "#1565C0";
-    toast.style.color = "#fff";
-    toast.style.display = "block";
-    clearTimeout(toast._hideTimer);
-    if (type !== "error") {
-        toast._hideTimer = setTimeout(() => { toast.style.display = "none"; }, 5000);
-    }
-}
+window.handleGoogleSignIn = function(e) {
+    if (e) { e.preventDefault(); e.stopPropagation(); }
+    console.log("[AUTH] Google Sign-In clicked");
 
-window.handleGoogleSignIn = async function(e) {
-    if (e) {
-        if (typeof e.preventDefault === "function") e.preventDefault();
-        if (typeof e.stopPropagation === "function") e.stopPropagation();
+    // Detect HF Spaces iframe - popup fails inside iframe
+    var isInIframe = false;
+    try { isInIframe = (window.self !== window.top); } catch(err2) { isInIframe = true; }
+    if (isInIframe) {
+        window.open("https://om123bansal-prepz-app.hf.space", "_blank", "noopener,noreferrer");
+        return;
     }
 
-    showAuthToast("⏳ Starting Google Sign-In...", "info");
-    console.log('[AUTH] handleGoogleSignIn called. firebase:', typeof firebase, 'firebaseAuth:', !!firebaseAuth);
-
-    const authErrBox = document.getElementById("auth-error-msg") || document.getElementById("error-msg");
-
+    var authErrBox = document.getElementById("auth-error-msg");
     function showErr(msg) {
-        showAuthToast("❌ " + msg, "error");
-        console.error('[AUTH ERROR]', msg);
-        if (authErrBox) {
-            authErrBox.textContent = msg;
-            authErrBox.className = "auth-error error";
-            authErrBox.classList.remove("hidden");
-            authErrBox.style.display = "block";
-        }
+        if (authErrBox) { authErrBox.innerHTML = msg; authErrBox.classList.remove("hidden"); authErrBox.style.display = "block"; }
     }
-
-    if (typeof firebase === "undefined") {
-        showErr("Firebase SDK not loaded. Refresh the page and try again.");
-        return;
+    function clearErr() {
+        if (authErrBox) { authErrBox.textContent = ""; authErrBox.classList.add("hidden"); }
     }
-    if (!firebaseAuth) {
-        showErr("Firebase Auth not initialized. Refresh the page and try again.");
-        return;
-    }
+    clearErr();
 
-    try {
-        const provider = new firebase.auth.GoogleAuthProvider();
-        provider.addScope('email');
-        provider.addScope('profile');
-        provider.setCustomParameters({ prompt: 'select_account' });
+    if (typeof firebase === "undefined") { showErr("Loading Google Auth SDK... Please wait and click again."); return; }
+    if (!firebase.apps || !firebase.apps.length) { try { firebase.initializeApp(defaultFirebaseConfig); } catch(err3) {} }
 
-        // Detect if we're inside an iframe (HF Spaces embed)
-        const isInIframe = (function() {
-            try { return window.self !== window.top; } catch(e) { return true; }
-        })();
+    var auth = firebaseAuth;
+    if (!auth && typeof firebase.auth === "function") { try { auth = firebase.auth(); } catch(err4) {} }
+    if (!auth) { showErr("Firebase Authentication initializing. Please click again."); return; }
 
-        if (isInIframe) {
-            // HF Spaces iframe: open the direct app URL in a new tab automatically
-            const directAppUrl = "https://om123bansal-prepz-app.hf.space";
-            showAuthToast("🔗 Opening app in new tab for Google Sign-In...", "info");
-            window.open(directAppUrl, "_blank", "noopener,noreferrer");
-            return;
-        }
+    var provider = new firebase.auth.GoogleAuthProvider();
+    provider.addScope("email");
+    provider.addScope("profile");
+    provider.setCustomParameters({ prompt: "select_account" });
 
-        // Direct tab: try popup first
-        showAuthToast("🔓 Opening Google popup...", "info");
-        try {
-            const result = await firebaseAuth.signInWithPopup(provider);
-            if (result && result.user) {
-                showAuthToast("✅ Signed in as " + result.user.email, "success");
-                await processGoogleUserSync(result.user);
-                return;
+    auth.signInWithPopup(provider)
+        .then(function(result) {
+            var user = result.user;
+            var providerId = (user.providerData && user.providerData[0]) ? user.providerData[0].providerId : "google";
+            var avatarUrl = user.photoURL || ("https://api.dicebear.com/7.x/bottts/svg?seed=" + encodeURIComponent(user.email));
+            fetch("/api/firebase-sync", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ uid: user.uid, email: user.email, name: user.displayName || user.email.split("@")[0], provider: providerId.includes("google") ? "google" : "local", avatar_url: avatarUrl })
+            }).then(function(res) { return res.json().then(function(data) {
+                window.loginUser(res.ok && data.user ? data.user : { id: user.uid, email: user.email, name: user.displayName || user.email.split("@")[0], provider: providerId, avatar_url: avatarUrl });
+            }); }).catch(function() {
+                window.loginUser({ id: user.uid, email: user.email, name: user.displayName || user.email.split("@")[0], provider: providerId, avatar_url: avatarUrl });
+            });
+        })
+        .catch(function(error) {
+            var errCode = error.code || "unknown";
+            if (errCode === "auth/popup-blocked") {
+                try { auth.signInWithRedirect(provider); return; } catch(rErr) {}
+                showErr("Popup blocked. <a href=\"https://om123bansal-prepz-app.hf.space\" target=\"_blank\" style=\"color:#818cf8;\">Open Direct Link &rarr;</a>");
+            } else if (errCode === "auth/unauthorized-domain") {
+                showErr("Domain not authorized. Add <b>\"" + window.location.hostname + "\"</b> to Firebase Console &rarr; Authentication &rarr; Authorized domains.");
+            } else if (errCode !== "auth/popup-closed-by-user" && errCode !== "auth/cancelled-popup-request") {
+                showErr("Google Sign-In error: " + errCode);
             }
-        } catch (popupError) {
-            console.warn('[AUTH] Popup error:', popupError.code, popupError.message);
-            const errCode = popupError.code || "";
-
-            if (errCode === "auth/unauthorized-domain") {
-                showErr("Domain '" + window.location.hostname + "' not authorized in Firebase Console. Go to Firebase Console → Authentication → Settings → Authorized Domains and add: " + window.location.hostname);
-                return;
-            }
-            if (errCode === "auth/operation-not-allowed") {
-                showErr("Google Sign-In is disabled in Firebase Console. Enable it under Authentication → Sign-in method.");
-                return;
-            }
-            if (errCode === "auth/popup-blocked" || errCode === "auth/popup-closed-by-user") {
-                showAuthToast("🔄 Popup blocked — trying redirect...", "info");
-                await firebaseAuth.signInWithRedirect(provider);
-                return;
-            }
-            // Any other error — show it
-            showErr("[" + errCode + "] " + (popupError.message || "Unknown error"));
-        }
-    } catch (authErr) {
-        showErr("[" + (authErr.code || "unknown") + "] " + (authErr.message || "Google Sign-In failed."));
-    }
+        });
 };
 
-async function processGoogleUserSync(user) {
-    console.log('[AUTH] Google sign-in successful:', user.email);
-    const authErrBox = document.getElementById("auth-error-msg") || document.getElementById("error-msg");
-    
-    let appUser = {
-        id: user.uid,
-        email: user.email,
-        name: user.displayName || user.email.split('@')[0],
-        provider: 'google',
-        avatar_url: user.photoURL || `https://api.dicebear.com/7.x/bottts/svg?seed=${encodeURIComponent(user.email)}`
-    };
-
-    try {
-        const response = await fetch('/api/firebase-sync', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                uid: user.uid,
-                email: user.email,
-                name: appUser.name,
-                provider: 'google',
-                avatar_url: appUser.avatar_url
-            })
-        });
-        const data = await response.json();
-        if (response.ok && data.user) {
-            appUser = data.user;
-        }
-    } catch (err) {
-        console.warn('[AUTH] Firebase sync notice:', err);
-    }
-
-    if (authErrBox) {
-        authErrBox.textContent = "";
-        authErrBox.classList.add("hidden");
-        authErrBox.style.display = "none";
-    }
-
-    if (typeof window.loginUser === "function") {
-        window.loginUser(appUser);
-    }
-}
 
 window.handleGuestLogin = function(e) {
     if (e) e.preventDefault();
-    const guestEmail = prompt("Guest Sign-In: Please enter your Email address:", "");
-    if (!guestEmail || !guestEmail.trim()) return;
-    const guestName = prompt("Please enter your Full Name:", guestEmail.split("@")[0]);
-    const guestUser = {
-        id: "guest-" + Date.now(),
-        name: guestName && guestName.trim() ? guestName.trim() : guestEmail.split("@")[0],
-        email: guestEmail.trim(),
-        provider: "guest",
-        avatar_url: `https://api.dicebear.com/7.x/bottts/svg?seed=${encodeURIComponent(guestEmail.trim())}`
+    console.log("[AUTH] Guest Instant Demo Login triggered");
+    const demoUser = {
+        id: "demo-student-001",
+        name: "Demo Student",
+        email: "student@prepz.edu",
+        provider: "demo",
+        avatar_url: "https://api.dicebear.com/7.x/bottts/svg?seed=DemoStudent"
     };
-    window.loginUser(guestUser);
+    window.loginUser(demoUser);
 };
-
-// Top-Level Global View State Handlers (guaranteed available from page load)
-window.showLandingState = function() { if (typeof window._internalShowLandingState === "function") window._internalShowLandingState(); };
-window.showPinnedLibraryState = function() { if (typeof window._internalShowPinnedLibraryState === "function") window._internalShowPinnedLibraryState(); };
-window.showBrowseState = function() { if (typeof window._internalShowBrowseState === "function") window._internalShowBrowseState(); };
-window.showPredictorState = function() { if (typeof window._internalShowPredictorState === "function") window._internalShowPredictorState(); };
-window.showLeaderboardState = function() { if (typeof window._internalShowLeaderboardState === "function") window._internalShowLeaderboardState(); };
-window.showChatState = function() { if (typeof window._internalShowChatState === "function") window._internalShowChatState(); };
 
 // Top-Level Global Auth Controller & View Manager
 window.loginUser = function(user) {
@@ -316,23 +222,12 @@ window.loginUser = function(user) {
         window.syncAppCurrentUser(user);
     }
 
+    // Always overwrite — single key docpilot-user
     const userData = JSON.stringify(user);
     try {
+        localStorage.clear();
         localStorage.setItem("docpilot-user", userData);
-        if (user.token) {
-            localStorage.setItem("docpilot-token", user.token);
-        }
     } catch(e) {}
-
-    window.getAuthHeaders = function(headers = {}) {
-        const token = (window.currentUser && window.currentUser.token) || localStorage.getItem("docpilot-token");
-        const newHeaders = { ...headers };
-        if (token) {
-            newHeaders["Authorization"] = "Bearer " + token;
-            newHeaders["X-Access-Token"] = token;
-        }
-        return newHeaders;
-    };
 
     const landingPageView = document.getElementById("landing-page-view");
     const chatbotAppView = document.getElementById("chatbot-app-view");
@@ -347,22 +242,20 @@ window.loginUser = function(user) {
     const userEmailEls = document.querySelectorAll("#sidebar-user-email, .sidebar-user-email, #user-email, .header-user-email, #header-user-email, #dropdown-user-email");
 
     userAvatarEls.forEach(el => {
-        try {
-            if (el.tagName === "IMG") {
-                el.src = avatarUrl;
-            } else {
-                el.style.backgroundImage = `url('${avatarUrl}')`;
-                el.innerHTML = "";
-            }
-        } catch(e) {}
+        if (el.tagName === "IMG") {
+            el.src = avatarUrl;
+        } else {
+            el.style.backgroundImage = `url('${avatarUrl}')`;
+            el.innerHTML = "";
+        }
     });
 
-    userNameEls.forEach(el => { try { el.textContent = displayName; } catch(e) {} });
-    userEmailEls.forEach(el => { try { el.textContent = displayEmail; } catch(e) {} });
+    userNameEls.forEach(el => { el.textContent = displayName; });
+    userEmailEls.forEach(el => { el.textContent = displayEmail; });
 
     if (navPinnedLibrary) navPinnedLibrary.style.display = "flex";
 
-    // GUARANTEED VIEW SWITCH TO WORKSPACE DASHBOARD
+    // EXPLICIT VIEW SWITCH TO WORKSPACE DASHBOARD
     if (landingPageView) {
         landingPageView.classList.add("hidden");
         landingPageView.setAttribute("style", "display: none !important;");
@@ -372,43 +265,13 @@ window.loginUser = function(user) {
         chatbotAppView.setAttribute("style", "display: flex !important;");
     }
 
-    // Automatically initialize Home Workspace View (#landing-container)
-    if (typeof window.showLandingState === "function") {
-        window.showLandingState();
-    } else if (typeof window._internalShowLandingState === "function") {
-        window._internalShowLandingState();
-    } else {
-        const landingCont = document.getElementById("landing-container");
-        if (landingCont) {
-            landingCont.classList.remove("hidden");
-            landingCont.style.setProperty("display", "flex", "important");
-        }
-    }
-
-    try { if (typeof fetchThreads === "function") fetchThreads(); } catch(e) {}
-    try { if (typeof fetchIndexedFiles === "function") fetchIndexedFiles(); } catch(e) {}
-    try { if (typeof fetchUserStats === "function") fetchUserStats(); } catch(e) {}
-    try { if (typeof fetchLeaderboard === "function") fetchLeaderboard(); } catch(e) {}
-    try { if (typeof fetchSharedDocuments === "function") fetchSharedDocuments(); } catch(e) {}
+    if (typeof fetchThreads === "function") fetchThreads();
+    if (typeof fetchIndexedFiles === "function") fetchIndexedFiles();
+    if (typeof fetchUserStats === "function") fetchUserStats();
 };
 
 window.showLoginScreen = function() {
-    if (window.currentUser || localStorage.getItem("docpilot-user")) {
-        console.log("[AUTH] showLoginScreen() suppressed: active user session present.");
-        const landingPageView = document.getElementById("landing-page-view");
-        const chatbotAppView = document.getElementById("chatbot-app-view");
-        if (landingPageView) {
-            landingPageView.classList.add("hidden");
-            landingPageView.setAttribute("style", "display: none !important;");
-        }
-        if (chatbotAppView) {
-            chatbotAppView.classList.remove("hidden");
-            chatbotAppView.setAttribute("style", "display: flex !important;");
-        }
-        return;
-    }
-
-    console.log("[AUTH] showLoginScreen() executing");
+    console.log("[AUTH] showLoginScreen() called");
     window.currentUser = null;
     const landingPageView = document.getElementById("landing-page-view");
     const chatbotAppView = document.getElementById("chatbot-app-view");
@@ -568,9 +431,11 @@ window.handleLoginSubmit = async function (e) {
         return;
     }
 
-    console.log('[LOGIN CLICK]', 'Calling /api/login for email:', email);
+    console.log('[LOGIN CLICK]', 'Login button submitted for email:', email);
 
+    // Direct Backend API Login
     try {
+        console.log('[LOGIN API CALL STARTING]', 'Calling /api/login...');
         const res = await fetch("/api/login", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
@@ -581,26 +446,12 @@ window.handleLoginSubmit = async function (e) {
             console.log('[LOGIN SUCCESS]', data.user.email);
             window.loginUser(data.user);
         } else {
-            console.warn('[AUTH NOTICE] Login API response:', data.detail);
-            const userObj = {
-                id: "user-" + Date.now(),
-                email: email,
-                name: email.split("@")[0].replace(/[._-]/g, ' ').replace(/\b\w/g, c => c.toUpperCase()),
-                provider: "local",
-                avatar_url: `https://api.dicebear.com/7.x/bottts/svg?seed=${encodeURIComponent(email)}`
-            };
-            window.loginUser(userObj);
+            console.error('[ERROR]', 'Login API failed:', data.detail);
+            showAuthErrorMsg(data.detail || "Invalid email or password. Please check your credentials.");
         }
     } catch (err) {
-        console.warn('[AUTH NOTICE] Network fallback login:', err);
-        const userObj = {
-            id: "user-" + Date.now(),
-            email: email,
-            name: email.split("@")[0].replace(/[._-]/g, ' ').replace(/\b\w/g, c => c.toUpperCase()),
-            provider: "local",
-            avatar_url: `https://api.dicebear.com/7.x/bottts/svg?seed=${encodeURIComponent(email)}`
-        };
-        window.loginUser(userObj);
+        console.error('[ERROR]', 'Login connection error:', err);
+        showAuthErrorMsg("Connection error. Please check your network connection.");
     }
 };
 
@@ -1525,23 +1376,24 @@ function initializeDocPilotApp() {
         if (contentWrapper) {
             contentWrapper.classList.remove("landing-mode", "chat-mode", "library-mode", "browse-mode", "predictor-mode", "leaderboard-mode");
         }
-        ["landing-container", "chat-messages-container", "pinned-library-container", "browse-container", "predictor-container", "leaderboard-container", "input-panel-wrapper"].forEach(id => {
-            const el = document.getElementById(id);
-            if (el) {
-                el.classList.add("hidden");
-                el.style.setProperty("display", "none", "important");
-            }
-        });
+        if (landingContainer) { landingContainer.classList.add("hidden"); landingContainer.style.display = "none"; }
+        if (chatMessagesContainer) { chatMessagesContainer.classList.add("hidden"); chatMessagesContainer.style.display = "none"; }
+        if (pinnedLibraryContainer) { pinnedLibraryContainer.classList.add("hidden"); pinnedLibraryContainer.style.display = "none"; }
+        if (browseContainer) { browseContainer.classList.add("hidden"); browseContainer.style.display = "none"; }
+        if (predictorContainer) { predictorContainer.classList.add("hidden"); predictorContainer.style.display = "none"; }
+        if (leaderboardContainer) { leaderboardContainer.classList.add("hidden"); leaderboardContainer.style.display = "none"; }
+        if (inputPanelWrapper) { inputPanelWrapper.classList.add("hidden"); inputPanelWrapper.style.display = "none"; }
 
         const devFooter = document.querySelector(".landing-footer-nexa");
-        if (devFooter) { devFooter.classList.add("hidden"); devFooter.style.setProperty("display", "none", "important"); }
+        if (devFooter) { devFooter.classList.add("hidden"); devFooter.style.display = "none !important"; }
         const profileCard = document.getElementById("home-profile-card") || document.querySelector(".developer-profile-card");
-        if (profileCard) { profileCard.style.setProperty("display", "none", "important"); }
+        if (profileCard) { profileCard.style.display = "none"; }
 
-        ["nav-new-chat", "nav-pinned-library", "nav-browse-documents", "nav-exam-predictor", "nav-leaderboard"].forEach(id => {
-            const btn = document.getElementById(id);
-            if (btn) btn.classList.remove("active");
-        });
+        if (navNewChat) navNewChat.classList.remove("active");
+        if (navPinnedLibrary) navPinnedLibrary.classList.remove("active");
+        if (navBrowseDocuments) navBrowseDocuments.classList.remove("active");
+        if (navExamPredictor) navExamPredictor.classList.remove("active");
+        if (navLeaderboard) navLeaderboard.classList.remove("active");
     }
 
     function updateHeaderTitle(titleText, icon = "✨") {
@@ -1557,21 +1409,17 @@ function initializeDocPilotApp() {
         const contentWrapper = document.querySelector(".content-wrapper");
         if (contentWrapper) contentWrapper.classList.add("chat-mode");
 
-        const chatMessagesContainerEl = document.getElementById("chat-messages-container");
-        const inputPanelWrapperEl = document.getElementById("input-panel-wrapper");
-        const settingsContainerEl = document.getElementById("settings-container");
-
-        if (chatMessagesContainerEl) {
-            chatMessagesContainerEl.classList.remove("hidden");
-            chatMessagesContainerEl.style.setProperty("display", "flex", "important");
+        if (chatMessagesContainer) {
+            chatMessagesContainer.classList.remove("hidden");
+            chatMessagesContainer.style.display = "flex";
         }
-        if (inputPanelWrapperEl) {
-            inputPanelWrapperEl.classList.remove("hidden");
-            inputPanelWrapperEl.style.setProperty("display", "block", "important");
+        if (inputPanelWrapper) {
+            inputPanelWrapper.classList.remove("hidden");
+            inputPanelWrapper.style.display = "block";
         }
-        if (settingsContainerEl) {
-            settingsContainerEl.classList.remove("hidden");
-            settingsContainerEl.style.setProperty("display", "block", "important");
+        if (settingsContainer) {
+            settingsContainer.classList.remove("hidden");
+            settingsContainer.style.display = "block";
         }
         if (btnHeaderSettings) btnHeaderSettings.style.display = "flex";
         if (btnHeaderBack) btnHeaderBack.style.display = "flex";
@@ -1590,18 +1438,24 @@ function initializeDocPilotApp() {
         const contentWrapper = document.querySelector(".content-wrapper");
         if (contentWrapper) contentWrapper.classList.add("library-mode");
 
-        const pinnedLibraryContainerEl = document.getElementById("pinned-library-container");
-        if (pinnedLibraryContainerEl) {
-            pinnedLibraryContainerEl.classList.remove("hidden");
-            pinnedLibraryContainerEl.style.setProperty("display", "flex", "important");
+        if (pinnedLibraryContainer) {
+            pinnedLibraryContainer.classList.remove("hidden");
+            pinnedLibraryContainer.style.display = "flex";
+        }
+        if (inputPanelWrapper) {
+            inputPanelWrapper.classList.add("hidden");
+            inputPanelWrapper.style.display = "none";
+        }
+        if (settingsContainer) {
+            settingsContainer.classList.add("hidden");
+            settingsContainer.style.display = "none";
         }
 
-        const navPinnedLibraryEl = document.getElementById("nav-pinned-library");
-        if (navPinnedLibraryEl) navPinnedLibraryEl.classList.add("active");
+        if (navPinnedLibrary) navPinnedLibrary.classList.add("active");
         
-        try { if (typeof fetchIndexedFiles === "function") fetchIndexedFiles(); } catch(e) {}
-        try { if (typeof fetchUserStats === "function") fetchUserStats(); } catch(e) {}
-        try { if (typeof fetchMyDocuments === "function") fetchMyDocuments(); } catch(e) {}
+        fetchIndexedFiles();
+        fetchUserStats();
+        if (typeof fetchMyDocuments === "function") fetchMyDocuments();
     }
 
     function showBrowseState() {
@@ -1611,18 +1465,24 @@ function initializeDocPilotApp() {
         const contentWrapper = document.querySelector(".content-wrapper");
         if (contentWrapper) contentWrapper.classList.add("browse-mode");
 
-        const browseContainerEl = document.getElementById("browse-container");
-        if (browseContainerEl) {
-            browseContainerEl.classList.remove("hidden");
-            browseContainerEl.style.setProperty("display", "flex", "important");
+        if (browseContainer) {
+            browseContainer.classList.remove("hidden");
+            browseContainer.style.display = "flex";
+        }
+        if (inputPanelWrapper) {
+            inputPanelWrapper.classList.add("hidden");
+            inputPanelWrapper.style.display = "none";
+        }
+        if (settingsContainer) {
+            settingsContainer.classList.add("hidden");
+            settingsContainer.style.display = "none";
         }
 
-        const navBrowseDocumentsEl = document.getElementById("nav-browse-documents");
-        if (navBrowseDocumentsEl) navBrowseDocumentsEl.classList.add("active");
+        if (navBrowseDocuments) navBrowseDocuments.classList.add("active");
 
-        try { if (typeof updateBrowseSubjectOptions === "function") updateBrowseSubjectOptions(); } catch(e) {}
-        try { if (typeof renderBrowseTable === "function") renderBrowseTable(); } catch(e) {}
-        try { if (typeof fetchSharedDocuments === "function") fetchSharedDocuments(); } catch(e) {}
+        updateBrowseSubjectOptions();
+        renderBrowseTable();
+        if (typeof fetchSharedDocuments === "function") fetchSharedDocuments();
     }
 
     function showPredictorState() {
@@ -1636,16 +1496,22 @@ function initializeDocPilotApp() {
         const contentWrapper = document.querySelector(".content-wrapper");
         if (contentWrapper) contentWrapper.classList.add("predictor-mode");
 
-        const predictorContainerEl = document.getElementById("predictor-container");
-        if (predictorContainerEl) {
-            predictorContainerEl.classList.remove("hidden");
-            predictorContainerEl.style.setProperty("display", "flex", "important");
+        if (predictorContainer) {
+            predictorContainer.classList.remove("hidden");
+            predictorContainer.style.display = "flex";
+        }
+        if (inputPanelWrapper) {
+            inputPanelWrapper.classList.add("hidden");
+            inputPanelWrapper.style.display = "none";
+        }
+        if (settingsContainer) {
+            settingsContainer.classList.add("hidden");
+            settingsContainer.style.display = "none";
         }
 
-        const navExamPredictorEl = document.getElementById("nav-exam-predictor");
-        if (navExamPredictorEl) navExamPredictorEl.classList.add("active");
+        if (navExamPredictor) navExamPredictor.classList.add("active");
 
-        try { if (typeof updatePredictorSubjectOptions === "function") updatePredictorSubjectOptions(); } catch(e) {}
+        updatePredictorSubjectOptions();
     }
 
     function showLeaderboardState() {
@@ -1655,26 +1521,25 @@ function initializeDocPilotApp() {
         const contentWrapper = document.querySelector(".content-wrapper");
         if (contentWrapper) contentWrapper.classList.add("leaderboard-mode");
 
-        const leaderboardContainerEl = document.getElementById("leaderboard-container");
-        if (leaderboardContainerEl) {
-            leaderboardContainerEl.classList.remove("hidden");
-            leaderboardContainerEl.style.setProperty("display", "flex", "important");
+        if (leaderboardContainer) {
+            leaderboardContainer.classList.remove("hidden");
+            leaderboardContainer.style.display = "flex";
+        }
+        if (inputPanelWrapper) {
+            inputPanelWrapper.classList.add("hidden");
+            inputPanelWrapper.style.display = "none";
+        }
+        if (settingsContainer) {
+            settingsContainer.classList.add("hidden");
+            settingsContainer.style.display = "none";
         }
 
-        const navLeaderboardEl = document.getElementById("nav-leaderboard");
-        if (navLeaderboardEl) navLeaderboardEl.classList.add("active");
+        if (navLeaderboard) navLeaderboard.classList.add("active");
 
-        try { if (typeof fetchLeaderboard === "function") fetchLeaderboard(); } catch(e) {}
+        fetchLeaderboard();
     }
 
     // Expose view-switching functions to global window for inline onclick handlers and direct card clicks
-    window._internalShowChatState = showChatState;
-    window._internalShowLandingState = showLandingState;
-    window._internalShowPinnedLibraryState = showPinnedLibraryState;
-    window._internalShowBrowseState = showBrowseState;
-    window._internalShowPredictorState = showPredictorState;
-    window._internalShowLeaderboardState = showLeaderboardState;
-
     window.showChatState = showChatState;
     window.showLandingState = showLandingState;
     window.showPinnedLibraryState = showPinnedLibraryState;
@@ -2023,6 +1888,21 @@ function initializeDocPilotApp() {
                 <div class="chat-welcome-badge">BU Prepz AI Assistant</div>
                 <h2 class="chat-welcome-title">Welcome back, <span class="user-highlight-name">${userName}</span></h2>
                 <p class="chat-welcome-subtitle">Ask questions, summarize uploaded study notes, or solve engineering tutorial problems.</p>
+                
+                <div class="welcome-suggestions-grid">
+                    <button type="button" class="welcome-suggest-btn" onclick="sendQuickPrompt('Summarize key formulas, definitions, and PYQ exam questions from my uploaded notes.')">
+                        <span class="suggest-text">Exam Prep & Formulas Summary</span>
+                    </button>
+                    <button type="button" class="welcome-suggest-btn" onclick="sendQuickPrompt('Help me solve step-by-step tutorial sheet assignments and explain underlying equations.')">
+                        <span class="suggest-text">Assignment & Math Helper</span>
+                    </button>
+                    <button type="button" class="welcome-suggest-btn" onclick="sendQuickPrompt('Explain core concepts in Operating Systems, DBMS, DSA, and Networks with clear examples.')">
+                        <span class="suggest-text">Engineering Concept Explainer</span>
+                    </button>
+                    <button type="button" class="welcome-suggest-btn" onclick="sendQuickPrompt('Create a 5-minute quick revision cheat sheet and key takeaways from my uploaded PDF documents.')">
+                        <span class="suggest-text">5-Min Quick Revision Sheet</span>
+                    </button>
+                </div>
             </div>
         `;
     }
@@ -3055,13 +2935,13 @@ function initializeDocPilotApp() {
                     li.style.gap = "6px";
                     li.style.padding = "10px 12px";
                     li.innerHTML = `
-                        <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px; width: 100%;">
-                            <div style="display: flex; align-items: center; gap: 6px; overflow: hidden; flex: 1; min-width: 0;">
+                        <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px;">
+                            <div style="display: flex; align-items: center; gap: 6px; overflow: hidden; flex: 1;">
                                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0; color: #a78bfa;"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
-                                <span title="${filename}" style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 600; font-size: 12px; color: #f3f4f6; cursor: pointer; flex: 1; min-width: 0;">${filename}</span>
+                                <span title="${filename}" style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 600; font-size: 12px; color: #f3f4f6; cursor: pointer;">${filename}</span>
                             </div>
-                            <button type="button" class="btn-unpin-sidebar" data-filename="${filename}" title="Unpin from Sidebar" style="width: 22px !important; height: 22px !important; min-width: 22px !important; min-height: 22px !important; max-width: 22px !important; max-height: 22px !important; padding: 0 !important; border-radius: 50% !important; background: rgba(255, 255, 255, 0.12) !important; border: 1px solid rgba(255, 255, 255, 0.25) !important; color: #f4f4f5 !important; display: inline-flex !important; align-items: center !important; justify-content: center !important; cursor: pointer !important; flex-shrink: 0 !important; appearance: none !important; -webkit-appearance: none !important; box-shadow: none !important; outline: none !important; line-height: 1 !important; margin: 0 !important;">
-                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="display: block; pointer-events: none; width: 12px; height: 12px;"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                            <button type="button" class="btn-unpin-sidebar" data-filename="${filename}" title="Remove from Pinned Folders">
+                                X
                             </button>
                         </div>
                         <div class="meta-badges-row sidebar-badges-row">
