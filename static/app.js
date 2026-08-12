@@ -61,7 +61,7 @@ try {
         // onAuthStateChanged: PRIMARY login handler — fires on page load after redirect AND after popup
         // This is more reliable than getRedirectResult alone
         firebaseAuth.onAuthStateChanged(function(user) {
-            if (!user) return; // not logged in, do nothing
+            if (!user) return;
             console.log('[FIREBASE] onAuthStateChanged — user:', user.email);
             var avatarUrl = user.photoURL || ('https://api.dicebear.com/7.x/bottts/svg?seed=' + encodeURIComponent(user.email));
             var fbUser = {
@@ -71,20 +71,22 @@ try {
                 provider: 'google',
                 avatar_url: avatarUrl
             };
-            // Sync with backend, then log in
+            // LOGIN IMMEDIATELY — don't wait for backend sync
+            console.log('[FIREBASE] Logging in immediately:', fbUser.email);
+            if (typeof window.loginUser === 'function') window.loginUser(fbUser);
+            // Sync with backend in background (non-blocking)
             fetch('/api/firebase-sync', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ uid: user.uid, email: user.email, name: fbUser.name, provider: 'google', avatar_url: avatarUrl })
             }).then(function(res) {
                 return res.json().then(function(data) {
-                    var syncedUser = (res.ok && data.user && data.user.email) ? data.user : fbUser;
-                    console.log('[FIREBASE] Logging in user:', syncedUser.email);
-                    if (typeof window.loginUser === 'function') window.loginUser(syncedUser);
+                    if (res.ok && data.user && data.user.email && typeof window.syncAppCurrentUser === 'function') {
+                        window.syncAppCurrentUser(data.user);
+                    }
                 });
-            }).catch(function() {
-                console.warn('[FIREBASE] Sync failed, using firebase user directly');
-                if (typeof window.loginUser === 'function') window.loginUser(fbUser);
+            }).catch(function(e) {
+                console.warn('[FIREBASE] Background sync failed (login still works):', e);
             });
         });
 
