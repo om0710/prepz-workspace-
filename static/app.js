@@ -75,7 +75,6 @@ window.handleGoogleSignIn = function(e) {
     if (e) { e.preventDefault(); e.stopPropagation(); }
     console.log("[AUTH] Google Sign-In clicked");
 
-    // If in HF embed iframe, open direct URL in new tab
     var isInIframe = false;
     try { isInIframe = (window.self !== window.top); } catch(err2) { isInIframe = true; }
     if (isInIframe) {
@@ -88,50 +87,73 @@ window.handleGoogleSignIn = function(e) {
         if (authErrBox) { authErrBox.innerHTML = msg; authErrBox.classList.remove("hidden"); authErrBox.style.display = "block"; }
     }
 
-    // ── PRIMARY: Supabase Google OAuth ─────────────────────────────────────
-    if (supabaseClient) {
-        console.log("[AUTH] Using Supabase Google OAuth");
-        supabaseClient.auth.signInWithOAuth({
-            provider: "google",
-            options: {
-                redirectTo: window.location.origin,
-                queryParams: { prompt: "select_account", access_type: "offline" }
-            }
-        }).then(function(result) {
-            if (result.error) {
-                console.error("[SUPABASE] OAuth error:", result.error.message);
-                showErr("Sign-in error: " + result.error.message);
-            }
-            // Supabase redirects the page — no further action needed here
-        }).catch(function(err) {
-            console.error("[SUPABASE] OAuth exception:", err);
-            showErr("Sign-in failed. Please try again.");
-        });
-        return;
-    }
-
-    // ── FALLBACK: GIS token client ─────────────────────────────────────────
-    if (typeof google !== "undefined" && google.accounts && google.accounts.oauth2) {
-        var tokenClient = google.accounts.oauth2.initTokenClient({
+    // PRIMARY: GIS One Tap credential → Supabase signInWithIdToken
+    // This needs NO redirect_uri — works immediately!
+    if (typeof google !== "undefined" && google.accounts && google.accounts.id) {
+        console.log("[AUTH] Using GIS One Tap + Supabase signInWithIdToken");
+        google.accounts.id.initialize({
             client_id: GOOGLE_CLIENT_ID,
-            scope: "email profile openid",
-            prompt: "select_account",
-            callback: function(tokenResponse) {
-                if (tokenResponse.error) { showErr("Google error: " + tokenResponse.error); return; }
-                fetch("/api/auth/google-token", {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ access_token: tokenResponse.access_token })
-                }).then(function(res) { return res.json(); })
-                .then(function(data) { if (data.user && data.user.email) window.loginUser(data.user); })
-                .catch(function() { showErr("Sign-in failed. Try again."); });
+            callback: function(credentialResponse) {
+                if (!credentialResponse || !credentialResponse.credential) {
+                    showErr("Google sign-in was cancelled. Please try again.");
+                    return;
+                }
+                var idToken = credentialResponse.credential;
+                console.log("[AUTH] Got GIS ID token, signing in with Supabase...");
+
+                if (supabaseClient) {
+                    supabaseClient.auth.signInWithIdToken({
+                        provider: "google",
+                        token: idToken
+                    }).then(function(result) {
+                        if (result.error) {
+                            console.error("[SUPABASE] signInWithIdToken error:", result.error.message);
+                            showErr("Sign-in error: " + result.error.message);
+                        } else {
+                            console.log("[SUPABASE] signInWithIdToken success!");
+                            // onAuthStateChange will fire and call loginUser
+                        }
+                    }).catch(function(err) {
+                        console.error("[SUPABASE] signInWithIdToken exception:", err);
+                        showErr("Sign-in failed. Please try again.");
+                    });
+                } else {
+                    // Fallback: use our backend token verification
+                    fetch("/api/auth/google-token", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ id_token: idToken })
+                    }).then(function(r) { return r.json(); })
+                    .then(function(data) { if (data.user) window.loginUser(data.user); })
+                    .catch(function() { showErr("Sign-in failed. Try again."); });
+                }
+            },
+            auto_select: false,
+            cancel_on_tap_outside: true,
+            use_fedcm_for_prompt: false
+        });
+        google.accounts.id.prompt(function(notification) {
+            console.log("[GIS] Prompt notification:", notification.getMomentType());
+            if (notification.isNotDisplayed() || notification.isSkippedMoment()) {
+                // One Tap not shown — use popup button flow
+                console.log("[GIS] One Tap not shown, using renderButton flow");
+                google.accounts.id.disableAutoSelect();
+                // Trigger via button render in an invisible div
+                var tempDiv = document.createElement("div");
+                tempDiv.style.cssText = "position:fixed;top:-9999px;left:-9999px;opacity:0;pointer-events:none;";
+                document.body.appendChild(tempDiv);
+                google.accounts.id.renderButton(tempDiv, {
+                    type: "standard", size: "large", theme: "filled_blue"
+                });
+                var btn = tempDiv.querySelector("div[role=button]");
+                if (btn) btn.click();
+                setTimeout(function() { document.body.removeChild(tempDiv); }, 3000);
             }
         });
-        tokenClient.requestAccessToken();
         return;
     }
 
-    showErr("Auth loading... Please click again in 1 second.");
+    showErr("Google auth loading... Please click again in 1 second.");
 };
 
 

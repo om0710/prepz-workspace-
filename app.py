@@ -565,26 +565,36 @@ class FirebaseSyncRequest(BaseModel):
 
 @app.post("/api/auth/google-token")
 async def google_token_auth(request: Request):
-    """Verify Google access token from GIS and return/create user."""
+    """Verify Google token (access_token or id_token) from GIS and return/create user."""
     body = await request.json()
     access_token = body.get("access_token", "")
-    if not access_token:
-        raise HTTPException(status_code=400, detail="access_token required")
-    # Verify with Google userinfo endpoint
+    id_token = body.get("id_token", "")
+
     async with httpx.AsyncClient(timeout=8) as client:
-        resp = await client.get(
-            "https://www.googleapis.com/oauth2/v2/userinfo",
-            headers={"Authorization": f"Bearer {access_token}"}
-        )
-    if resp.status_code != 200:
-        raise HTTPException(status_code=401, detail="Invalid Google token")
-    info = resp.json()
+        if access_token:
+            resp = await client.get(
+                "https://www.googleapis.com/oauth2/v2/userinfo",
+                headers={"Authorization": f"Bearer {access_token}"}
+            )
+            if resp.status_code != 200:
+                raise HTTPException(status_code=401, detail="Invalid access token")
+            info = resp.json()
+        elif id_token:
+            resp = await client.get(
+                f"https://oauth2.googleapis.com/tokeninfo?id_token={id_token}"
+            )
+            if resp.status_code != 200:
+                raise HTTPException(status_code=401, detail="Invalid ID token")
+            raw = resp.json()
+            info = {"email": raw.get("email",""), "name": raw.get("name",""), "picture": raw.get("picture",""), "id": raw.get("sub","")}
+        else:
+            raise HTTPException(status_code=400, detail="access_token or id_token required")
+
     email = info.get("email", "").strip().lower()
     if not email:
         raise HTTPException(status_code=401, detail="Could not get email from Google")
     name = info.get("name") or email.split("@")[0].title()
     avatar_url = info.get("picture") or f"https://api.dicebear.com/7.x/bottts/svg?seed={email}"
-    google_id = info.get("id", email)
     print(f"[GIS AUTH] Verified Google user: {email}")
     user = get_user_by_email(email)
     if not user:
