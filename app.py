@@ -4,7 +4,8 @@ import uuid
 import shutil
 from typing import Optional
 from fastapi import FastAPI, UploadFile, File, HTTPException, Request
-from fastapi.responses import StreamingResponse, FileResponse
+from fastapi.responses import StreamingResponse, FileResponse, Response
+import httpx
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
@@ -34,6 +35,36 @@ async def add_cors_headers(request, call_next):
     # COOP must be unsafe-none so Firebase signInWithPopup can access popup.closed
     response.headers["Cross-Origin-Opener-Policy"] = "unsafe-none"
     return response
+
+# ── Firebase Auth Proxy ────────────────────────────────────────────────────────
+# HF Spaces CSP only allows frame-src 'self'. Firebase auth iframe normally
+# loads from prepz-workspace.firebaseapp.com (blocked). By proxying /__/auth/*
+# from our own hf.space origin, the iframe becomes same-origin → CSP allows it.
+FIREBASE_AUTH_ORIGIN = "https://prepz-workspace.firebaseapp.com"
+
+@app.api_route("/__/auth/{path:path}", methods=["GET", "POST", "OPTIONS"])
+async def firebase_auth_proxy(path: str, request: Request):
+    upstream = f"{FIREBASE_AUTH_ORIGIN}/__/auth/{path}"
+    qs = str(request.url.query)
+    if qs:
+        upstream += "?" + qs
+    try:
+        async with httpx.AsyncClient(follow_redirects=True, timeout=10) as client:
+            if request.method == "GET":
+                resp = await client.get(upstream, headers={"Accept": "*/*"})
+            else:
+                body = await request.body()
+                resp = await client.post(upstream, content=body,
+                                         headers={"Content-Type": request.headers.get("content-type", "")})
+        return Response(
+            content=resp.content,
+            status_code=resp.status_code,
+            media_type=resp.headers.get("content-type", "text/html"),
+            headers={"Cache-Control": "no-store", "Access-Control-Allow-Origin": "*"}
+        )
+    except Exception as e:
+        return Response(content=f"Proxy error: {e}", status_code=502)
+# ────────────────────────────────────────────────────────────────────────────────
 
 class ChatRequest(BaseModel):
     query: str

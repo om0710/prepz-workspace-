@@ -33,7 +33,7 @@ window.fetch = function (url, options = {}) {
 // To allow popup from hf.space, add hf.space to Firebase Console -> Auth -> Authorized Domains.
 const defaultFirebaseConfig = {
     apiKey: "AIzaSyAFe1P9Jss-J9EwfwLUOfnxv5BaVyuoGew",
-    authDomain: "prepz-workspace.firebaseapp.com",
+    authDomain: "om123bansal-prepz-app.hf.space",
     projectId: "prepz-workspace",
     storageBucket: "prepz-workspace.firebasestorage.app",
     messagingSenderId: "585299422541",
@@ -160,20 +160,7 @@ window.handleGoogleSignIn = function(e) {
     provider.addScope("profile");
     provider.setCustomParameters({ prompt: "select_account" });
 
-    // HF Space has CSP that blocks Firebase popup iframe handler — use redirect instead
-    var isHFSpace = window.location.hostname.indexOf(".hf.space") !== -1;
-
-    if (isHFSpace) {
-        console.log("[AUTH] HF Space detected — using signInWithRedirect");
-        showErr("Redirecting to Google Sign-In... Please wait.");
-        if (authErrBox) { authErrBox.style.background = "#1565C0"; authErrBox.style.color = "#fff"; }
-        auth.signInWithRedirect(provider).catch(function(err) {
-            showErr("Redirect error: " + (err.message || err.code));
-        });
-        return;
-    }
-
-    // Non-HF: use popup
+    // Use popup — Firebase auth iframe is now served from same origin via /__/auth/ proxy
     auth.signInWithPopup(provider)
         .then(function(result) {
             var user = result.user;
