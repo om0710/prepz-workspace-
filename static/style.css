@@ -1602,101 +1602,180 @@ button, a[role="button"], input[type="button"], input[type="submit"] {
 
 /* ADSPACE Chat Welcome Hero Banner */
 .chat-welcome-card {
-    background: linear-gradient(145deg, #0e1115 0%, #13171d 100%);
-    border: 1px solid rgba(255, 107, 0, 0.22);
-    border-radius: var(--radius-xl);
-    padding: 32px 30px;
+    background: rgba(14, 17, 22, 0.55);
+    backdrop-filter: blur(24px) saturate(160%);
+    -webkit-backdrop-filter: blur(24px) saturate(160%);
+    border: 1px solid rgba(255, 107, 0, 0.20);
+    border-radius: 20px;
+    padding: 36px 32px;
     text-align: left;
-    box-shadow: 0 12px 36px rgba(0, 0, 0, 0.65), 0 0 20px rgba(255, 107, 0, 0.1);
+    box-shadow:
+        0 24px 60px rgba(0, 0, 0, 0.6),
+        0 0 40px rgba(255, 107, 0, 0.07),
+        0 0 0 1px rgba(255, 255, 255, 0.04) inset;
     margin-bottom: 22px;
-    animation: fadeIn var(--transition-smooth);
+    animation: welcomeFadeUp 0.5s cubic-bezier(0.22, 1, 0.36, 1) both;
     position: relative;
     overflow: hidden;
+}
+
+@keyframes welcomeFadeUp {
+    from { opacity: 0; transform: translateY(18px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+
+/* Shimmer line at top */
+.chat-welcome-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 1px;
+    background: linear-gradient(90deg, transparent 0%, rgba(255, 107, 0, 0.5) 40%, rgba(255, 200, 100, 0.4) 60%, transparent 100%);
+    pointer-events: none;
+}
+
+/* Ambient glow blob */
+.chat-welcome-card::after {
+    content: '';
+    position: absolute;
+    top: -60px; right: -40px;
+    width: 240px; height: 240px;
+    background: radial-gradient(circle, rgba(255, 107, 0, 0.09) 0%, transparent 70%);
+    border-radius: 50%;
+    pointer-events: none;
+    animation: orbFloat 7s ease-in-out infinite;
 }
 
 .chat-welcome-badge {
     display: inline-flex;
     align-items: center;
     gap: 6px;
-    background: rgba(255, 107, 0, 0.1);
-    border: 1px solid rgba(255, 107, 0, 0.35);
+    background: rgba(255, 107, 0, 0.12);
+    backdrop-filter: blur(8px);
+    border: 1px solid rgba(255, 107, 0, 0.40);
     color: var(--accent-primary);
     font-family: var(--font-mono);
-    font-size: 11px;
+    font-size: 10.5px;
     font-weight: 700;
     text-transform: uppercase;
-    letter-spacing: 0.8px;
-    padding: 4px 14px;
+    letter-spacing: 1px;
+    padding: 5px 14px;
     border-radius: var(--radius-pill);
-    margin-bottom: 14px;
+    margin-bottom: 16px;
+    box-shadow: 0 0 12px rgba(255, 107, 0, 0.2);
+    position: relative;
+    z-index: 1;
+}
+
+.chat-welcome-badge::before {
+    content: '●';
+    font-size: 7px;
+    color: var(--accent-primary);
+    animation: pulse 2s ease-in-out infinite;
+}
+
+@keyframes pulse {
+    0%, 100% { opacity: 1; } 50% { opacity: 0.3; }
 }
 
 .chat-welcome-title {
     font-family: var(--font-heading);
-    font-size: 28px;
+    font-size: 30px;
     font-weight: 800;
     color: #ffffff;
     margin-bottom: 8px;
-    letter-spacing: -0.02em;
+    letter-spacing: -0.03em;
+    position: relative;
+    z-index: 1;
+    line-height: 1.2;
 }
 
 .user-highlight-name {
-    color: var(--accent-primary);
+    background: linear-gradient(135deg, #ff6b00 0%, #ffb347 50%, #ff6b00 100%);
+    background-size: 200% auto;
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    animation: shimmerName 3s linear infinite;
+}
+
+@keyframes shimmerName {
+    0% { background-position: 0% center; }
+    100% { background-position: 200% center; }
 }
 
 .chat-welcome-subtitle {
     font-size: 14.5px;
     color: var(--text-secondary);
-    margin-bottom: 24px;
-    line-height: 1.55;
+    margin-bottom: 26px;
+    line-height: 1.6;
+    position: relative;
+    z-index: 1;
 }
 
-.welcome-suggestions-grid,
-.suggestion-grid-nexa,
-.suggestion-pill,
-.suggestion-pill-nexa,
-.welcome-suggest-btn {
-    display: none !important;
+/* Show suggestion buttons — glass style */
+.welcome-suggestions-grid {
+    display: grid !important;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    position: relative;
+    z-index: 1;
 }
 
 .welcome-suggest-btn {
-    min-height: 52px;
-    background: #111418;
+    min-height: 48px;
+    background: rgba(255, 255, 255, 0.04);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
     border: 1px solid rgba(255, 107, 0, 0.12);
-    border-radius: var(--radius-md);
-    padding: 14px 18px;
+    border-radius: 12px;
+    padding: 12px 16px;
     display: flex;
     align-items: center;
-    gap: 14px;
+    gap: 10px;
     text-align: left;
-    color: #f4f4f5;
+    color: #d4d4d8;
     cursor: pointer;
-    transition: all var(--transition-fast);
-    box-shadow: var(--shadow-sm);
+    transition: all 0.22s ease;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.3);
+    position: relative;
+    overflow: hidden;
+}
+
+.welcome-suggest-btn::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(135deg, rgba(255, 107, 0, 0.08) 0%, transparent 60%);
+    opacity: 0;
+    transition: opacity 0.22s ease;
+    pointer-events: none;
+    border-radius: 12px;
 }
 
 .welcome-suggest-btn:hover {
-    background: #161a20;
-    border-color: var(--accent-primary);
+    background: rgba(255, 107, 0, 0.08);
+    border-color: rgba(255, 107, 0, 0.40);
     transform: translateY(-2px);
-    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.5), 0 0 16px rgba(255, 107, 0, 0.2);
+    box-shadow: 0 8px 24px rgba(0,0,0,0.4), 0 0 16px rgba(255, 107, 0, 0.15);
     color: #ffffff;
 }
 
-.suggest-icon {
-    font-size: 19px;
-    flex-shrink: 0;
+.welcome-suggest-btn:hover::before {
+    opacity: 1;
 }
 
 .suggest-text {
-    font-size: 13.5px;
+    font-size: 13px;
     font-weight: 500;
     line-height: 1.35;
-    color: #e4e4e7;
+    color: inherit;
+    position: relative;
+    z-index: 1;
 }
 
 .welcome-suggest-btn:hover .suggest-text {
-    color: var(--accent-primary);
+    color: rgba(255, 180, 80, 0.95);
 }
 
 /* --------------------------------------------------------------------------
@@ -1967,20 +2046,38 @@ button, a[role="button"], input[type="button"], input[type="submit"] {
 }
 
 .chat-input-box {
-    background: var(--bg-surface-elevated);
-    border: 1px solid var(--border-medium);
-    border-radius: var(--radius-xl);
-    padding: 14px 16px;
+    background: rgba(14, 16, 22, 0.65);
+    backdrop-filter: blur(24px) saturate(160%);
+    -webkit-backdrop-filter: blur(24px) saturate(160%);
+    border: 1px solid rgba(255, 107, 0, 0.18);
+    border-radius: 20px;
+    padding: 16px 18px;
     display: flex;
     flex-direction: column;
     gap: 10px;
-    box-shadow: var(--shadow-md);
-    transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
+    box-shadow:
+        0 20px 50px rgba(0, 0, 0, 0.55),
+        0 0 0 1px rgba(255, 255, 255, 0.04) inset;
+    transition: border-color 0.25s ease, box-shadow 0.25s ease;
+    position: relative;
+}
+
+.chat-input-box::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 20%; right: 20%;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, rgba(255, 107, 0, 0.3), transparent);
+    border-radius: 1px;
+    pointer-events: none;
 }
 
 .chat-input-box:focus-within {
-    border-color: var(--accent-primary);
-    box-shadow: 0 0 0 3px var(--accent-primary-light), var(--shadow-md);
+    border-color: rgba(255, 107, 0, 0.50);
+    box-shadow:
+        0 20px 50px rgba(0, 0, 0, 0.55),
+        0 0 0 3px rgba(255, 107, 0, 0.10),
+        0 0 30px rgba(255, 107, 0, 0.12);
 }
 
 .chat-input-box textarea {
@@ -2015,9 +2112,11 @@ button, a[role="button"], input[type="button"], input[type="submit"] {
 }
 
 .control-pill-nexa {
-    min-height: 32px;
-    background: var(--bg-input);
-    border: 1px solid var(--border-subtle);
+    min-height: 30px;
+    background: rgba(255, 255, 255, 0.05);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.09);
     border-radius: var(--radius-pill);
     color: var(--text-secondary);
     font-size: 12px;
@@ -2026,13 +2125,14 @@ button, a[role="button"], input[type="button"], input[type="submit"] {
     align-items: center;
     gap: 6px;
     padding: 4px 12px;
-    transition: all var(--transition-fast);
+    transition: all 0.2s ease;
 }
 
 .control-pill-nexa:hover {
-    background: var(--bg-card-hover);
-    color: var(--text-primary);
-    border-color: var(--border-hover);
+    background: rgba(255, 107, 0, 0.10);
+    color: var(--accent-primary);
+    border-color: rgba(255, 107, 0, 0.30);
+    box-shadow: 0 0 10px rgba(255, 107, 0, 0.12);
 }
 
 #btn-input-plus {
