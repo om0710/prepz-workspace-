@@ -424,26 +424,70 @@ async def chat_stream(request: ChatRequest):
 
     thread_id = request.thread_id or "default_thread"
     config = {"configurable": {"thread_id": thread_id}}
-    state = {"messages": [HumanMessage(content=request.query)]}
-    
+
+    # ── Intent Analysis ────────────────────────────────────────────────────────
+    try:
+        intent_result = analyze_user_intent(
+            query=request.query,
+            thread_id=thread_id,
+            user_email=request.user_email
+        )
+        print(f"[INTENT] {intent_result}")
+    except Exception as ie:
+        print(f"[INTENT] Analysis failed (ignored): {ie}")
+        intent_result = {"should_recommend_videos": False}
+
+    # Adjust prompt based on confusion level
+    query_text = request.query
+    if intent_result.get("intent") == "true_confusion":
+        query_text = (
+            f"[SYSTEM NOTE: The user has asked about '{intent_result.get('topic')}' "
+            f"{intent_result.get('topic_count', 1)} times and is struggling. "
+            f"Please explain at the most basic level possible using simple everyday analogies. "
+            f"Break into very small steps. Avoid jargon.] "
+            f"{request.query}"
+        )
+    elif intent_result.get("intent") == "clarification_needed":
+        query_text = (
+            f"[SYSTEM NOTE: The user asked about this before and needs a clearer explanation. "
+            f"Try a completely different angle — use a fresh analogy or visual description.] "
+            f"{request.query}"
+        )
+    # ──────────────────────────────────────────────────────────────────────────
+
+    state = {"messages": [HumanMessage(content=query_text)]}
+
     queue = asyncio.Queue()
     loop = asyncio.get_running_loop()
     handler = QueueCallbackHandler(queue, loop)
-    
+
     # Store handler in registry mapped to thread ID
     active_streams[thread_id] = handler
-    
+
     async def run_workflow():
         try:
             await run_in_threadpool(workflow.invoke, state, config=config)
+            # Emit video recommendation if needed
+            if intent_result.get("should_recommend_videos"):
+                topic    = intent_result.get("topic", "this topic")
+                diff     = intent_result.get("video_difficulty", "beginner")
+                strength = intent_result.get("recommendation_strength", "medium")
+                videos   = get_video_recommendations(topic, diff, limit=3)
+                rec_payload = json.dumps({
+                    "topic": topic,
+                    "strength": strength,
+                    "topic_count": intent_result.get("topic_count", 1),
+                    "videos": videos
+                })
+                await queue.put(f"__VIDEO_REC__:{rec_payload}")
         except Exception as e:
             await queue.put(f"__ERROR__:{str(e)}")
         finally:
             active_streams.pop(thread_id, None)
             await queue.put(None)
-            
+
     asyncio.create_task(run_workflow())
-    
+
     async def response_generator():
         while True:
             token = await queue.get()
@@ -456,9 +500,12 @@ async def chat_stream(request: ChatRequest):
             elif isinstance(token, str) and token.startswith("__STATUS__:"):
                 status_msg = token[len("__STATUS__:"):]
                 yield f"data: {json.dumps({'status': status_msg})}\n\n"
+            elif isinstance(token, str) and token.startswith("__VIDEO_REC__:"):
+                rec_json = token[len("__VIDEO_REC__:"):]
+                yield f"data: {json.dumps({'video_rec': json.loads(rec_json)})}\n\n"
             else:
                 yield f"data: {json.dumps({'text': token})}\n\n"
-            
+
     headers = {
         "Cache-Control": "no-cache, no-transform",
         "Connection": "keep-alive",
@@ -478,7 +525,8 @@ from database import (
     create_document, get_document_by_id, get_user_documents,
     get_shared_documents, update_document_record, delete_document_record,
     toggle_document_share_record, check_login_lockout, record_failed_login,
-    clear_failed_logins
+    clear_failed_logins,
+    analyze_user_intent, get_video_recommendations
 )
 from fastapi import Form
 from typing import Optional

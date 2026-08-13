@@ -230,9 +230,192 @@ def init_user_db():
     try: cursor.execute("ALTER TABLE documents ADD COLUMN updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP")
     except Exception: pass
 
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS conversation_contexts (
+            thread_id TEXT PRIMARY KEY,
+            user_email TEXT,
+            total_messages INTEGER DEFAULT 0,
+            topic_attempts TEXT DEFAULT '{}',
+            created_at TEXT DEFAULT (datetime('now')),
+            updated_at TEXT DEFAULT (datetime('now'))
+        )
+    """)
+
     conn.commit()
 
 init_user_db()
+
+# ── Conversation Context & Intent Analysis ─────────────────────────────────────
+
+import json as _json
+import re as _re
+from datetime import datetime as _dt
+
+# Common engineering/academic topics for keyword extraction
+_TOPIC_KEYWORDS = {
+    "thermodynamics": ["thermodynamics", "entropy", "enthalpy", "carnot", "heat engine", "rankine"],
+    "operating systems": ["operating system", "os", "process", "thread", "deadlock", "scheduling", "semaphore", "paging", "virtual memory"],
+    "data structures": ["data structure", "array", "linked list", "tree", "graph", "stack", "queue", "heap", "bst", "sorting", "searching"],
+    "dbms": ["database", "dbms", "sql", "normalization", "er diagram", "transaction", "acid", "join", "indexing"],
+    "computer networks": ["network", "tcp", "ip", "http", "dns", "routing", "osi", "protocol", "ethernet", "subnet"],
+    "algorithms": ["algorithm", "complexity", "big o", "dynamic programming", "greedy", "recursion", "backtracking", "divide and conquer"],
+    "machine learning": ["machine learning", "neural network", "deep learning", "regression", "classification", "clustering", "gradient descent"],
+    "digital electronics": ["logic gate", "flip flop", "counter", "register", "multiplexer", "boolean", "karnaugh"],
+    "signals systems": ["signal", "fourier", "laplace", "convolution", "filter", "sampling", "nyquist"],
+    "engineering mathematics": ["calculus", "differential equation", "matrix", "eigenvalue", "vector", "integral", "limit", "probability"],
+    "c programming": ["c language", "pointer", "malloc", "struct", "array", "function", "recursion in c"],
+    "object oriented": ["oop", "object oriented", "class", "inheritance", "polymorphism", "encapsulation", "abstraction"],
+    "computer architecture": ["processor", "cpu", "cache", "pipeline", "instruction set", "alu", "memory hierarchy"],
+    "software engineering": ["software engineering", "sdlc", "agile", "design pattern", "uml", "testing"],
+}
+
+_FRUSTRATION_SIGNALS = [
+    "still not", "still confused", "samjh nahi", "smjh nhi", "smjh nahi",
+    "confusing", "complicated", "too hard", "stuck", "not getting",
+    "explain again", "ek baar", "dubara", "fir se", "phir se", "once more",
+    "cant understand", "can't understand", "not getting it", "kuch samjh",
+    "pata nahi", "what", "huh", "unclear", "lost", "no idea"
+]
+
+_CLARIFICATION_SIGNALS = [
+    "explain", "what is", "how does", "why is", "difference between",
+    "meaning of", "means", "elaborate", "step by step", "example",
+    "simple", "basic", "easy way", "layman", "in simple words"
+]
+
+def _extract_topic(query: str) -> str:
+    """Extract main topic from query using keyword matching."""
+    q_lower = query.lower()
+    for topic, keywords in _TOPIC_KEYWORDS.items():
+        if any(kw in q_lower for kw in keywords):
+            return topic
+    # Fallback: extract first significant noun-like word (>4 chars, not stop word)
+    stop = {"what", "when", "where", "which", "this", "that", "with", "from",
+            "have", "does", "about", "explain", "please", "help", "understand"}
+    words = _re.findall(r'\b[a-zA-Z]{4,}\b', q_lower)
+    for w in words:
+        if w not in stop:
+            return w
+    return "general"
+
+def get_conversation_context(thread_id: str) -> dict:
+    """Get conversation context for a thread."""
+    try:
+        cursor = conn.cursor()
+        row = cursor.execute(
+            "SELECT total_messages, topic_attempts FROM conversation_contexts WHERE thread_id = ?",
+            (thread_id,)
+        ).fetchone()
+        if row:
+            return {"total_messages": row[0], "topic_attempts": _json.loads(row[1] or "{}")}
+        return {"total_messages": 0, "topic_attempts": {}}
+    except Exception as e:
+        print(f"[CONTEXT] get error: {e}")
+        return {"total_messages": 0, "topic_attempts": {}}
+
+def update_conversation_context(thread_id: str, user_email: str, topic: str):
+    """Update message count and topic attempts for a thread."""
+    def _do():
+        cursor = conn.cursor()
+        existing = cursor.execute(
+            "SELECT total_messages, topic_attempts FROM conversation_contexts WHERE thread_id = ?",
+            (thread_id,)
+        ).fetchone()
+        now = _dt.now().isoformat()
+        if existing:
+            total = (existing[0] or 0) + 1
+            attempts = _json.loads(existing[1] or "{}")
+            attempts[topic] = attempts.get(topic, 0) + 1
+            cursor.execute(
+                "UPDATE conversation_contexts SET total_messages=?, topic_attempts=?, updated_at=? WHERE thread_id=?",
+                (total, _json.dumps(attempts), now, thread_id)
+            )
+        else:
+            attempts = {topic: 1}
+            cursor.execute(
+                "INSERT INTO conversation_contexts (thread_id, user_email, total_messages, topic_attempts, created_at, updated_at) VALUES (?,?,1,?,?,?)",
+                (thread_id, user_email or "", _json.dumps(attempts), now, now)
+            )
+        conn.commit()
+    db_retry(_do)
+
+def analyze_user_intent(query: str, thread_id: str, user_email: str = None) -> dict:
+    """
+    Analyze user intent and confusion level.
+    Returns dict with should_recommend_videos, recommendation_strength, intent, video_difficulty.
+    """
+    context = get_conversation_context(thread_id)
+    topic = _extract_topic(query)
+    topic_count = context["topic_attempts"].get(topic, 0)  # attempts BEFORE this message
+    q_lower = query.lower()
+
+    is_frustrated  = any(p in q_lower for p in _FRUSTRATION_SIGNALS)
+    is_clarifying  = any(p in q_lower for p in _CLARIFICATION_SIGNALS)
+
+    result = {
+        "topic": topic,
+        "topic_count": topic_count + 1,
+        "should_recommend_videos": False,
+        "recommendation_strength": "none",
+        "intent": "initial",
+        "video_difficulty": "beginner"
+    }
+
+    if topic_count == 0:
+        # First time — no recommendation
+        result["intent"] = "initial"
+
+    elif topic_count >= 3 or (topic_count >= 2 and is_frustrated):
+        # Repeatedly asking — urgent
+        result.update({
+            "intent": "true_confusion",
+            "should_recommend_videos": True,
+            "recommendation_strength": "urgent",
+            "video_difficulty": "beginner"
+        })
+
+    elif topic_count >= 2 or (topic_count >= 1 and is_frustrated):
+        # Second+ ask or frustrated — medium
+        result.update({
+            "intent": "clarification_needed",
+            "should_recommend_videos": True,
+            "recommendation_strength": "medium",
+            "video_difficulty": "beginner"
+        })
+
+    elif is_clarifying and topic_count >= 1:
+        # Asking for clearer explanation — light suggestion
+        result.update({
+            "intent": "clarification_needed",
+            "should_recommend_videos": True,
+            "recommendation_strength": "light",
+            "video_difficulty": "beginner"
+        })
+
+    # Update context AFTER analysis (so current msg counts next time)
+    update_conversation_context(thread_id, user_email, topic)
+
+    return result
+
+def get_video_recommendations(topic: str, difficulty: str = "beginner", limit: int = 3) -> list:
+    """Return YouTube search links for topic at given difficulty."""
+    difficulty_label = {"beginner": "for beginners explained simply",
+                        "intermediate": "intermediate tutorial",
+                        "advanced": "advanced deep dive"}.get(difficulty, "explained")
+    from urllib.parse import quote_plus
+    base = "https://www.youtube.com/results?search_query="
+    queries = [
+        f"{topic} {difficulty_label}",
+        f"{topic} lecture tutorial",
+        f"{topic} examples explained"
+    ]
+    return [
+        {"title": f"{topic.title()} — {['Beginner Guide', 'Full Tutorial', 'With Examples'][i]}",
+         "url": base + quote_plus(q),
+         "difficulty": difficulty.title()}
+        for i, q in enumerate(queries[:limit])
+    ]
+
 
 COMMON_PASSWORDS_BLOCKLIST = {
     "password123", "12345678", "123456789", "123456", "qwerty", "password",

@@ -2372,26 +2372,27 @@ function initializeDocPilotApp() {
             const reader = response.body.getReader();
             const decoder = new TextDecoder("utf-8");
             let sseBuffer = "";
-            
+            let pendingVideoRec = null;
+
             while (true) {
                 const { value, done } = await reader.read();
                 if (done) break;
-                
+
                 sseBuffer += decoder.decode(value, { stream: true });
                 const lines = sseBuffer.split("\n");
-                
+
                 // Retain incomplete last line in chunk buffer
                 sseBuffer = lines.pop();
-                
+
                 for (const line of lines) {
                     const cleanLine = line.trim();
                     if (!cleanLine) continue;
-                    
+
                     if (cleanLine.startsWith("data: ")) {
                         try {
                             const dataText = cleanLine.substring(6).trim();
                             if (dataText === "[DONE]") continue;
-                                
+
                             const parsed = JSON.parse(dataText);
                             if (parsed.status && !accumulatedResponse) {
                                 const typingLabel = assistantBubble.querySelector(".typing-label");
@@ -2401,6 +2402,8 @@ function initializeDocPilotApp() {
                             } else if (parsed.text) {
                                 accumulatedResponse += parsed.text;
                                 startTypewriterLoop();
+                            } else if (parsed.video_rec) {
+                                pendingVideoRec = parsed.video_rec;
                             } else if (parsed.error) {
                                 if (renderTimer) clearInterval(renderTimer);
                                 assistantBubble.innerHTML = `<span style="color:#ef4444;">Error: ${parsed.error}</span>`;
@@ -2409,18 +2412,85 @@ function initializeDocPilotApp() {
                     }
                 }
             }
-            
+
             isStreamFinished = true;
             if (!renderTimer) {
                 updateBubbleUI(accumulatedResponse, true);
                 fetchThreads();
             }
+
+            // Render video recommendation card after stream
+            if (pendingVideoRec) {
+                setTimeout(() => renderVideoRecommendation(pendingVideoRec, assistantBubble), 300);
+            }
+
         } catch (err) {
             if (renderTimer) clearInterval(renderTimer);
             assistantBubble.innerHTML = `<span style="color:#ef4444;">Error connecting to BU Prepz.</span>`;
             console.error(err);
         }
     });
+
+    // ── Video Recommendation Card Renderer ────────────────────────────────────
+    function renderVideoRecommendation(rec, afterBubble) {
+        const strengthConfig = {
+            urgent: {
+                label: "🚨 You seem stuck — watch a video first!",
+                cls: "video-rec-urgent",
+                icon: "🎬"
+            },
+            medium: {
+                label: "💡 Want a visual explanation?",
+                cls: "video-rec-medium",
+                icon: "📺"
+            },
+            light: {
+                label: "✨ Optional: Video resources for this topic",
+                cls: "video-rec-light",
+                icon: "🎥"
+            }
+        };
+
+        const cfg = strengthConfig[rec.strength] || strengthConfig.medium;
+        const topicLabel = rec.topic ? rec.topic.replace(/\b\w/g, l => l.toUpperCase()) : "This Topic";
+        const attemptNote = rec.topic_count > 1
+            ? `<span class="rec-attempt-badge">Attempt #${rec.topic_count}</span>` : "";
+
+        const videosHtml = (rec.videos || []).map((v, i) => `
+            <a href="${v.url}" target="_blank" rel="noopener noreferrer" class="video-rec-item">
+                <div class="rec-item-icon">▶</div>
+                <div class="rec-item-info">
+                    <div class="rec-item-title">${v.title}</div>
+                    <div class="rec-item-meta">${v.difficulty} · YouTube Search</div>
+                </div>
+                <div class="rec-item-arrow">→</div>
+            </a>
+        `).join("");
+
+        const card = document.createElement("div");
+        card.className = `video-recommendation-card ${cfg.cls}`;
+        card.innerHTML = `
+            <div class="rec-header">
+                <span class="rec-header-icon">${cfg.icon}</span>
+                <span class="rec-header-label">${cfg.label}</span>
+                ${attemptNote}
+            </div>
+            <div class="rec-topic-row">Videos for: <strong>${topicLabel}</strong></div>
+            <div class="rec-videos-list">${videosHtml}</div>
+            <div class="rec-footer">After watching, come back and ask again! 💪</div>
+        `;
+
+        // Insert after the assistant bubble's parent message item
+        const msgItem = afterBubble.closest(".chat-message-item") || afterBubble.parentElement;
+        if (msgItem && msgItem.parentElement) {
+            msgItem.parentElement.insertBefore(card, msgItem.nextSibling);
+        } else {
+            const chatMessages = document.getElementById("chat-messages");
+            if (chatMessages) chatMessages.appendChild(card);
+        }
+        card.scrollIntoView({ behavior: "smooth", block: "nearest" });
+    }
+
 
     function uuidv4() {
         return ([1e7]+-1e3+-4e3+-8e3+-1e11).replace(/[018]/g, c =>
