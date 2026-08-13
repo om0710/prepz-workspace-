@@ -360,18 +360,25 @@ def _extract_topic_keywords(query: str) -> str:
 
 # ── Frustration / Clarification signals ──────────────────────────────────────
 _FRUSTRATION_SIGNALS = [
-    "still not", "still confused", "samjh nahi", "smjh nhi", "smjh nahi",
-    "confusing", "complicated", "too hard", "stuck", "not getting",
+    "still not", "still confused", "samjh nahi", "smjh nahi", "smjh nhi", "samjh nhi",
+    "confusing", "complicated", "too hard", "stuck", "not getting", "not getting it",
     "explain again", "ek baar", "dubara", "fir se", "phir se", "once more",
-    "cant understand", "can't understand", "not getting it", "kuch samjh",
-    "pata nahi", "unclear", "lost", "no idea", "phir bhi nahi",
-    "ab bhi nahi", "samjha nahi", "समझ नहीं"
+    "cant understand", "can't understand", "kuch samjh", "pata nahi", "unclear",
+    "lost", "no idea", "phir bhi nahi", "ab bhi nahi", "samjha nahi", "समझ नहीं",
+    "problem ho rahi", "tough", "help me understand", "give me videos", "suggest video",
+    "video recommendation", "video chahiye", "visual explanation"
+]
+
+_VIDEO_REQUEST_SIGNALS = [
+    "video", "videos", "youtube", "visual", "lecture", "playlist", "animation",
+    "watch", "dekho", "dekhna", "suggest video", "recommend video"
 ]
 
 _CLARIFICATION_SIGNALS = [
     "explain", "what is", "how does", "why is", "difference between",
     "meaning of", "elaborate", "step by step", "example",
-    "simple", "basic", "easy way", "layman", "in simple words", "again"
+    "simple", "basic", "easy way", "layman", "in simple words", "again",
+    "simpler words", "easy example", "simplest"
 ]
 
 # ── DB helpers ────────────────────────────────────────────────────────────────
@@ -398,7 +405,7 @@ def update_conversation_context(thread_id: str, user_email: str, topic: str, que
     def _do():
         cursor = conn.cursor()
         existing = cursor.execute(
-            "SELECT total_messages, topic_attempts, recent_queries FROM conversation_contexts WHERE thread_id = ?",
+            "SELECT total_messages, topic_attempts FROM conversation_contexts WHERE thread_id = ?",
             (thread_id,)
         ).fetchone()
         now = _dt.now().isoformat()
@@ -457,11 +464,12 @@ def analyze_user_intent(query: str, thread_id: str, user_email: str = None) -> d
         except Exception:
             pass
 
-    is_semantically_repeating = max_sim > 0.72  # ≥72% similarity = essentially same question
-    is_frustrated  = any(p in q_lower for p in _FRUSTRATION_SIGNALS)
-    is_clarifying  = any(p in q_lower for p in _CLARIFICATION_SIGNALS)
+    is_semantically_repeating = max_sim > 0.70  # ≥70% similarity = essentially same question
+    is_frustrated       = any(p in q_lower for p in _FRUSTRATION_SIGNALS)
+    is_video_requested  = any(p in q_lower for p in _VIDEO_REQUEST_SIGNALS)
+    is_clarifying       = any(p in q_lower for p in _CLARIFICATION_SIGNALS)
 
-    print(f"[NLP] topic='{topic}' count={topic_count} sim={max_sim:.2f} frustrated={is_frustrated} repeating={is_semantically_repeating}")
+    print(f"[NLP] topic='{topic}' count={topic_count} sim={max_sim:.2f} frustrated={is_frustrated} video_req={is_video_requested} repeating={is_semantically_repeating}")
 
     result = {
         "topic":                   topic,
@@ -473,8 +481,16 @@ def analyze_user_intent(query: str, thread_id: str, user_email: str = None) -> d
         "video_difficulty":        "beginner"
     }
 
-    # 3. Decision logic (most-specific first)
-    if is_semantically_repeating and topic_count >= 1:
+    # 3. Decision logic (prioritized from urgent down to light)
+    if is_video_requested:
+        # User explicitly asked for videos / visual explanation
+        result.update({
+            "intent":                  "video_requested",
+            "should_recommend_videos": True,
+            "recommendation_strength": "urgent" if (is_frustrated or topic_count >= 1) else "medium",
+            "video_difficulty":        "beginner"
+        })
+    elif is_semantically_repeating and topic_count >= 1:
         # Semantically same question asked again → urgent
         result.update({
             "intent":                  "true_confusion",
@@ -482,14 +498,16 @@ def analyze_user_intent(query: str, thread_id: str, user_email: str = None) -> d
             "recommendation_strength": "urgent",
             "video_difficulty":        "beginner"
         })
-    elif topic_count >= 3 or (topic_count >= 2 and is_frustrated):
+    elif topic_count >= 2 or (topic_count >= 1 and is_frustrated) or (topic_count == 0 and is_frustrated and ("stuck" in q_lower or "confusing" in q_lower or "smjh nhi" in q_lower or "samjh nahi" in q_lower)):
+        # Stuck / strongly frustrated even on first ask OR multiple attempts
         result.update({
             "intent":                  "true_confusion",
             "should_recommend_videos": True,
             "recommendation_strength": "urgent",
             "video_difficulty":        "beginner"
         })
-    elif topic_count >= 2 or (topic_count >= 1 and is_frustrated):
+    elif is_frustrated or (topic_count >= 1 and is_clarifying):
+        # Moderate confusion or asking clarification on 2nd attempt
         result.update({
             "intent":                  "clarification_needed",
             "should_recommend_videos": True,
@@ -497,6 +515,7 @@ def analyze_user_intent(query: str, thread_id: str, user_email: str = None) -> d
             "video_difficulty":        "beginner"
         })
     elif is_clarifying and topic_count >= 1:
+        # Light clarification
         result.update({
             "intent":                  "clarification_needed",
             "should_recommend_videos": True,
