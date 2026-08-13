@@ -245,175 +245,288 @@ def init_user_db():
 
 init_user_db()
 
-# ── Conversation Context & Intent Analysis ─────────────────────────────────────
+# ── NLP-based Conversation Context & Intent Analysis ──────────────────────────
 
 import json as _json
 import re as _re
+import os as _os
 from datetime import datetime as _dt
 
-# Common engineering/academic topics for keyword extraction
-_TOPIC_KEYWORDS = {
-    "thermodynamics": ["thermodynamics", "entropy", "enthalpy", "carnot", "heat engine", "rankine"],
-    "operating systems": ["operating system", "os", "process", "thread", "deadlock", "scheduling", "semaphore", "paging", "virtual memory"],
-    "data structures": ["data structure", "array", "linked list", "tree", "graph", "stack", "queue", "heap", "bst", "sorting", "searching"],
-    "dbms": ["database", "dbms", "sql", "normalization", "er diagram", "transaction", "acid", "join", "indexing"],
-    "computer networks": ["network", "tcp", "ip", "http", "dns", "routing", "osi", "protocol", "ethernet", "subnet"],
-    "algorithms": ["algorithm", "complexity", "big o", "dynamic programming", "greedy", "recursion", "backtracking", "divide and conquer"],
-    "machine learning": ["machine learning", "neural network", "deep learning", "regression", "classification", "clustering", "gradient descent"],
-    "digital electronics": ["logic gate", "flip flop", "counter", "register", "multiplexer", "boolean", "karnaugh"],
-    "signals systems": ["signal", "fourier", "laplace", "convolution", "filter", "sampling", "nyquist"],
-    "engineering mathematics": ["calculus", "differential equation", "matrix", "eigenvalue", "vector", "integral", "limit", "probability"],
-    "c programming": ["c language", "pointer", "malloc", "struct", "array", "function", "recursion in c"],
-    "object oriented": ["oop", "object oriented", "class", "inheritance", "polymorphism", "encapsulation", "abstraction"],
-    "computer architecture": ["processor", "cpu", "cache", "pipeline", "instruction set", "alu", "memory hierarchy"],
-    "software engineering": ["software engineering", "sdlc", "agile", "design pattern", "uml", "testing"],
-}
+# ── Lazy-load sentence-transformer embedding model ────────────────────────────
+_embed_model = None
 
+def _get_embed_model():
+    global _embed_model
+    if _embed_model is None:
+        try:
+            from sentence_transformers import SentenceTransformer
+            _embed_model = SentenceTransformer(
+                "sentence-transformers/all-MiniLM-L6-v2",
+                cache_folder="./.cache/sentence_transformers"
+            )
+            print("[NLP] Embedding model loaded: all-MiniLM-L6-v2")
+        except Exception as e:
+            print(f"[NLP] Embedding model load failed: {e}")
+    return _embed_model
+
+def _cosine_similarity(text1: str, text2: str) -> float:
+    """Semantic cosine similarity using sentence-transformers (0 to 1)."""
+    model = _get_embed_model()
+    if model is None:
+        return _jaccard_similarity(text1, text2)
+    try:
+        import numpy as np
+        embeddings = model.encode([text1, text2], convert_to_numpy=True)
+        a, b = embeddings[0], embeddings[1]
+        denom = (np.linalg.norm(a) * np.linalg.norm(b))
+        return float(np.dot(a, b) / denom) if denom > 1e-8 else 0.0
+    except Exception as e:
+        print(f"[NLP] Cosine sim error: {e}")
+        return _jaccard_similarity(text1, text2)
+
+def _jaccard_similarity(text1: str, text2: str) -> float:
+    """Fallback: Jaccard word overlap similarity."""
+    s1 = set(text1.lower().split())
+    s2 = set(text2.lower().split())
+    return len(s1 & s2) / len(s1 | s2) if s1 | s2 else 0.0
+
+# ── Groq-based topic extraction ───────────────────────────────────────────────
+_groq_client = None
+
+def _get_groq():
+    global _groq_client
+    if _groq_client is None:
+        try:
+            from groq import Groq
+            key = _os.environ.get("GROQ_API_KEY") or _os.environ.get("groq_api_key")
+            if key:
+                _groq_client = Groq(api_key=key)
+        except Exception as e:
+            print(f"[NLP] Groq client init failed: {e}")
+    return _groq_client
+
+def _extract_topic_nlp(query: str) -> str:
+    """Use Groq LLM to extract the main academic topic from query."""
+    try:
+        client = _get_groq()
+        if client is None:
+            return _extract_topic_keywords(query)
+        resp = client.chat.completions.create(
+            model="llama-3.3-70b-versatile",
+            messages=[{
+                "role": "system",
+                "content": "You extract the main academic or engineering topic from a student's question. Reply with ONLY the topic name in 1-3 lowercase words. No explanation, no punctuation."
+            }, {
+                "role": "user",
+                "content": query
+            }],
+            max_tokens=15,
+            temperature=0
+        )
+        topic = resp.choices[0].message.content.strip().lower()
+        topic = _re.sub(r'["\'\.\!\?\,]', '', topic).strip()
+        return topic if len(topic) > 2 else _extract_topic_keywords(query)
+    except Exception as e:
+        print(f"[NLP] Topic NLP failed, using keywords: {e}")
+        return _extract_topic_keywords(query)
+
+def _extract_topic_keywords(query: str) -> str:
+    """Keyword-based fallback topic extraction."""
+    TOPIC_KW = {
+        "thermodynamics": ["thermodynamics","entropy","enthalpy","carnot","rankine"],
+        "operating systems": ["operating system","deadlock","scheduling","semaphore","paging","virtual memory"],
+        "data structures": ["data structure","linked list","binary tree","heap","bst","sorting","searching"],
+        "dbms": ["database","dbms","sql","normalization","transaction","acid","join","indexing"],
+        "computer networks": ["network","tcp","ip","http","dns","routing","osi","ethernet","subnet"],
+        "algorithms": ["algorithm","complexity","big o","dynamic programming","greedy","backtracking"],
+        "machine learning": ["machine learning","neural network","deep learning","regression","gradient descent"],
+        "digital electronics": ["logic gate","flip flop","counter","multiplexer","boolean","karnaugh"],
+        "signals systems": ["fourier","laplace","convolution","filter","sampling","nyquist"],
+        "engineering mathematics": ["calculus","differential equation","eigenvalue","integral","probability"],
+        "c programming": ["pointer","malloc","struct","recursion in c"],
+        "object oriented": ["oop","object oriented","inheritance","polymorphism","encapsulation"],
+        "computer architecture": ["processor","cpu","cache","pipeline","instruction set","alu"],
+        "software engineering": ["sdlc","agile","design pattern","uml"],
+    }
+    q = query.lower()
+    for topic, kws in TOPIC_KW.items():
+        if any(kw in q for kw in kws):
+            return topic
+    stop = {"what","when","where","which","this","that","with","from","have","does","about","explain","please","help","understand"}
+    for w in _re.findall(r'\b[a-zA-Z]{4,}\b', q):
+        if w not in stop:
+            return w
+    return "general"
+
+# ── Frustration / Clarification signals ──────────────────────────────────────
 _FRUSTRATION_SIGNALS = [
     "still not", "still confused", "samjh nahi", "smjh nhi", "smjh nahi",
     "confusing", "complicated", "too hard", "stuck", "not getting",
     "explain again", "ek baar", "dubara", "fir se", "phir se", "once more",
     "cant understand", "can't understand", "not getting it", "kuch samjh",
-    "pata nahi", "what", "huh", "unclear", "lost", "no idea"
+    "pata nahi", "unclear", "lost", "no idea", "phir bhi nahi",
+    "ab bhi nahi", "samjha nahi", "समझ नहीं"
 ]
 
 _CLARIFICATION_SIGNALS = [
     "explain", "what is", "how does", "why is", "difference between",
-    "meaning of", "means", "elaborate", "step by step", "example",
-    "simple", "basic", "easy way", "layman", "in simple words"
+    "meaning of", "elaborate", "step by step", "example",
+    "simple", "basic", "easy way", "layman", "in simple words", "again"
 ]
 
-def _extract_topic(query: str) -> str:
-    """Extract main topic from query using keyword matching."""
-    q_lower = query.lower()
-    for topic, keywords in _TOPIC_KEYWORDS.items():
-        if any(kw in q_lower for kw in keywords):
-            return topic
-    # Fallback: extract first significant noun-like word (>4 chars, not stop word)
-    stop = {"what", "when", "where", "which", "this", "that", "with", "from",
-            "have", "does", "about", "explain", "please", "help", "understand"}
-    words = _re.findall(r'\b[a-zA-Z]{4,}\b', q_lower)
-    for w in words:
-        if w not in stop:
-            return w
-    return "general"
-
+# ── DB helpers ────────────────────────────────────────────────────────────────
 def get_conversation_context(thread_id: str) -> dict:
-    """Get conversation context for a thread."""
     try:
         cursor = conn.cursor()
         row = cursor.execute(
-            "SELECT total_messages, topic_attempts FROM conversation_contexts WHERE thread_id = ?",
+            "SELECT total_messages, topic_attempts, recent_queries FROM conversation_contexts WHERE thread_id = ?",
             (thread_id,)
         ).fetchone()
         if row:
-            return {"total_messages": row[0], "topic_attempts": _json.loads(row[1] or "{}")}
-        return {"total_messages": 0, "topic_attempts": {}}
+            return {
+                "total_messages": row[0],
+                "topic_attempts": _json.loads(row[1] or "{}"),
+                "recent_queries":  _json.loads(row[2] or "[]")
+            }
+        return {"total_messages": 0, "topic_attempts": {}, "recent_queries": []}
     except Exception as e:
         print(f"[CONTEXT] get error: {e}")
-        return {"total_messages": 0, "topic_attempts": {}}
+        return {"total_messages": 0, "topic_attempts": {}, "recent_queries": []}
 
-def update_conversation_context(thread_id: str, user_email: str, topic: str):
-    """Update message count and topic attempts for a thread."""
+def update_conversation_context(thread_id: str, user_email: str, topic: str, query: str = ""):
+    """Update message count, topic attempts and recent queries for a thread."""
     def _do():
         cursor = conn.cursor()
         existing = cursor.execute(
-            "SELECT total_messages, topic_attempts FROM conversation_contexts WHERE thread_id = ?",
+            "SELECT total_messages, topic_attempts, recent_queries FROM conversation_contexts WHERE thread_id = ?",
             (thread_id,)
         ).fetchone()
         now = _dt.now().isoformat()
         if existing:
-            total = (existing[0] or 0) + 1
+            total    = (existing[0] or 0) + 1
             attempts = _json.loads(existing[1] or "{}")
+            recent   = _json.loads(existing[2] or "[]")
             attempts[topic] = attempts.get(topic, 0) + 1
+            if query:
+                recent.append(query)
+                recent = recent[-6:]  # keep last 6 queries
             cursor.execute(
-                "UPDATE conversation_contexts SET total_messages=?, topic_attempts=?, updated_at=? WHERE thread_id=?",
-                (total, _json.dumps(attempts), now, thread_id)
+                "UPDATE conversation_contexts SET total_messages=?, topic_attempts=?, recent_queries=?, updated_at=? WHERE thread_id=?",
+                (total, _json.dumps(attempts), _json.dumps(recent), now, thread_id)
             )
         else:
             attempts = {topic: 1}
+            recent   = [query] if query else []
             cursor.execute(
-                "INSERT INTO conversation_contexts (thread_id, user_email, total_messages, topic_attempts, created_at, updated_at) VALUES (?,?,1,?,?,?)",
-                (thread_id, user_email or "", _json.dumps(attempts), now, now)
+                "INSERT INTO conversation_contexts (thread_id, user_email, total_messages, topic_attempts, recent_queries, created_at, updated_at) VALUES (?,?,1,?,?,?,?)",
+                (thread_id, user_email or "", _json.dumps(attempts), _json.dumps(recent), now, now)
             )
         conn.commit()
     db_retry(_do)
 
+# ── Migration: add recent_queries column if missing ───────────────────────────
+try:
+    conn.execute("ALTER TABLE conversation_contexts ADD COLUMN recent_queries TEXT DEFAULT '[]'")
+    conn.commit()
+except Exception:
+    pass  # column already exists
+
+# ── Main intent analysis (NLP-powered) ───────────────────────────────────────
 def analyze_user_intent(query: str, thread_id: str, user_email: str = None) -> dict:
     """
-    Analyze user intent and confusion level.
-    Returns dict with should_recommend_videos, recommendation_strength, intent, video_difficulty.
+    NLP-powered intent analysis:
+    - Topic extracted via Groq LLM (fallback: keyword matching)
+    - Repetition detected via sentence-transformer cosine similarity
+    - Confusion level inferred from topic_count + semantic similarity + frustration signals
     """
     context = get_conversation_context(thread_id)
-    topic = _extract_topic(query)
-    topic_count = context["topic_attempts"].get(topic, 0)  # attempts BEFORE this message
-    q_lower = query.lower()
+    recent_queries = context.get("recent_queries", [])
 
+    # 1. NLP topic extraction (Groq)
+    topic = _extract_topic_nlp(query)
+
+    topic_count = context["topic_attempts"].get(topic, 0)
+    q_lower     = query.lower()
+
+    # 2. Semantic similarity — is user repeating a previous question?
+    max_sim = 0.0
+    if recent_queries:
+        try:
+            sims = [_cosine_similarity(query, prev) for prev in recent_queries[-5:]]
+            max_sim = max(sims) if sims else 0.0
+        except Exception:
+            pass
+
+    is_semantically_repeating = max_sim > 0.72  # ≥72% similarity = essentially same question
     is_frustrated  = any(p in q_lower for p in _FRUSTRATION_SIGNALS)
     is_clarifying  = any(p in q_lower for p in _CLARIFICATION_SIGNALS)
 
+    print(f"[NLP] topic='{topic}' count={topic_count} sim={max_sim:.2f} frustrated={is_frustrated} repeating={is_semantically_repeating}")
+
     result = {
-        "topic": topic,
-        "topic_count": topic_count + 1,
+        "topic":                   topic,
+        "topic_count":             topic_count + 1,
+        "semantic_similarity":     round(max_sim, 3),
         "should_recommend_videos": False,
         "recommendation_strength": "none",
-        "intent": "initial",
-        "video_difficulty": "beginner"
+        "intent":                  "initial",
+        "video_difficulty":        "beginner"
     }
 
-    if topic_count == 0:
-        # First time — no recommendation
-        result["intent"] = "initial"
-
-    elif topic_count >= 3 or (topic_count >= 2 and is_frustrated):
-        # Repeatedly asking — urgent
+    # 3. Decision logic (most-specific first)
+    if is_semantically_repeating and topic_count >= 1:
+        # Semantically same question asked again → urgent
         result.update({
-            "intent": "true_confusion",
+            "intent":                  "true_confusion",
             "should_recommend_videos": True,
             "recommendation_strength": "urgent",
-            "video_difficulty": "beginner"
+            "video_difficulty":        "beginner"
         })
-
-    elif topic_count >= 2 or (topic_count >= 1 and is_frustrated):
-        # Second+ ask or frustrated — medium
+    elif topic_count >= 3 or (topic_count >= 2 and is_frustrated):
         result.update({
-            "intent": "clarification_needed",
+            "intent":                  "true_confusion",
+            "should_recommend_videos": True,
+            "recommendation_strength": "urgent",
+            "video_difficulty":        "beginner"
+        })
+    elif topic_count >= 2 or (topic_count >= 1 and is_frustrated):
+        result.update({
+            "intent":                  "clarification_needed",
             "should_recommend_videos": True,
             "recommendation_strength": "medium",
-            "video_difficulty": "beginner"
+            "video_difficulty":        "beginner"
         })
-
     elif is_clarifying and topic_count >= 1:
-        # Asking for clearer explanation — light suggestion
         result.update({
-            "intent": "clarification_needed",
+            "intent":                  "clarification_needed",
             "should_recommend_videos": True,
             "recommendation_strength": "light",
-            "video_difficulty": "beginner"
+            "video_difficulty":        "beginner"
         })
 
-    # Update context AFTER analysis (so current msg counts next time)
-    update_conversation_context(thread_id, user_email, topic)
+    # 4. Update context with current query (AFTER analysis so it counts next time)
+    update_conversation_context(thread_id, user_email, topic, query)
 
     return result
 
 def get_video_recommendations(topic: str, difficulty: str = "beginner", limit: int = 3) -> list:
-    """Return YouTube search links for topic at given difficulty."""
-    difficulty_label = {"beginner": "for beginners explained simply",
-                        "intermediate": "intermediate tutorial",
-                        "advanced": "advanced deep dive"}.get(difficulty, "explained")
+    """Return curated YouTube search links for topic at given difficulty."""
+    labels = {
+        "beginner":     "for beginners explained simply",
+        "intermediate": "intermediate tutorial",
+        "advanced":     "advanced in depth"
+    }
+    label = labels.get(difficulty, "explained")
     from urllib.parse import quote_plus
     base = "https://www.youtube.com/results?search_query="
-    queries = [
-        f"{topic} {difficulty_label}",
-        f"{topic} lecture tutorial",
-        f"{topic} examples explained"
+    configs = [
+        (f"{topic} {label}",           f"{topic.title()} — Beginner Guide"),
+        (f"{topic} lecture tutorial",   f"{topic.title()} — Full Lecture"),
+        (f"{topic} solved examples",    f"{topic.title()} — Solved Examples"),
     ]
     return [
-        {"title": f"{topic.title()} — {['Beginner Guide', 'Full Tutorial', 'With Examples'][i]}",
-         "url": base + quote_plus(q),
-         "difficulty": difficulty.title()}
-        for i, q in enumerate(queries[:limit])
+        {"title": title, "url": base + quote_plus(q), "difficulty": difficulty.title()}
+        for q, title in configs[:limit]
     ]
 
 
