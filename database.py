@@ -358,54 +358,112 @@ def _extract_topic_keywords(query: str) -> str:
             return w
     return "general"
 
-# ── Frustration / Clarification signals ──────────────────────────────────────
+# ── Frustration / Clarification / Video signals (with typo tolerance) ──────────
 _FRUSTRATION_SIGNALS = [
     "still not", "still confused", "samjh nahi", "smjh nahi", "smjh nhi", "samjh nhi",
+    "nhi smj", "nhi samj", "nhi smjh", "nhi aaya", "nahi aaya", "smj nahi aaya",
+    "smj aaya", "samj aaya", "smjh aaya", "kuch nahi aaya", "kuch smjh",
     "confusing", "complicated", "too hard", "stuck", "not getting", "not getting it",
     "explain again", "ek baar", "dubara", "fir se", "phir se", "once more",
     "cant understand", "can't understand", "kuch samjh", "pata nahi", "unclear",
     "lost", "no idea", "phir bhi nahi", "ab bhi nahi", "samjha nahi", "समझ नहीं",
     "problem ho rahi", "tough", "help me understand", "give me videos", "suggest video",
-    "video recommendation", "video chahiye", "visual explanation"
+    "video recommendation", "video chahiye", "visual explanation", "bhai nhi", "nhi bhai"
 ]
 
 _VIDEO_REQUEST_SIGNALS = [
-    "video", "videos", "youtube", "visual", "lecture", "playlist", "animation",
-    "watch", "dekho", "dekhna", "suggest video", "recommend video"
+    "video", "videos", "youtube", "visual", "lecture", "lectures", "playlist",
+    "animation", "animations", "tutorial", "tutorials", "tutorilas", "tutoria",
+    "watch", "dekho", "dekhna", "suggest video", "recommend video", "video link", "video links"
 ]
 
 _CLARIFICATION_SIGNALS = [
     "explain", "what is", "how does", "why is", "difference between",
     "meaning of", "elaborate", "step by step", "example",
     "simple", "basic", "easy way", "layman", "in simple words", "again",
-    "simpler words", "easy example", "simplest"
+    "simpler words", "easy example", "simplest", "batao", "samjhao"
 ]
+
+# ── Groq topic extraction with topic memory ──────────────────────────────────
+def _extract_topic_nlp(query: str, last_topic: str = "", recent_queries: list = None) -> str:
+    """Use Groq LLM or keyword fallback to extract main topic, inheriting last_topic if follow-up."""
+    q_clean = query.strip().lower()
+    
+    # 1. If query is a short follow-up or purely frustration/video request, reuse last_topic
+    follow_up_tokens = {
+        "bhai", "nhi", "nahi", "smj", "samj", "samjh", "smjh", "aaya", "aya",
+        "video", "videos", "tutorial", "tutorials", "tutorilas", "some", "again",
+        "fir", "se", "please", "help", "kuch", "stuck", "what", "how", "why"
+    }
+    words = [w for w in _re.findall(r'\b[a-zA-Z]{2,}\b', q_clean)]
+    is_mostly_followup = len(words) <= 5 and all(w in follow_up_tokens for w in words)
+    
+    if (is_mostly_followup or len(q_clean) < 25) and last_topic and last_topic != "general":
+        print(f"[NLP TOPIC] Reusing last_topic '{last_topic}' for short follow-up: '{query}'")
+        return last_topic
+
+    # 2. Check keyword dictionary first
+    kw_topic = _extract_topic_keywords(query)
+    if kw_topic != "general":
+        return kw_topic
+
+    # 3. Call Groq for zero-shot topic extraction
+    try:
+        client = _get_groq()
+        if client:
+            context_hint = f"Previous topic was: {last_topic}. " if last_topic else ""
+            resp = client.chat.completions.create(
+                model="llama-3.3-70b-versatile",
+                messages=[{
+                    "role": "system",
+                    "content": (
+                        "You extract the core academic or engineering subject/topic from a student's message. "
+                        f"{context_hint}"
+                        "If the user is asking a follow-up or asking for video/explanation of the previous topic, output the previous topic name. "
+                        "Reply with ONLY 1 to 4 lowercase words naming the academic topic. No punctuation."
+                    )
+                }, {
+                    "role": "user",
+                    "content": query
+                }],
+                max_tokens=15,
+                temperature=0
+            )
+            topic = resp.choices[0].message.content.strip().lower()
+            topic = _re.sub(r'["\'\.\!\?\,]', '', topic).strip()
+            if topic and len(topic) > 2 and topic not in {"none", "general", "no topic", "n/a"}:
+                return topic
+    except Exception as e:
+        print(f"[NLP] Topic Groq error: {e}")
+
+    return last_topic if (last_topic and last_topic != "general") else kw_topic
 
 # ── DB helpers ────────────────────────────────────────────────────────────────
 def get_conversation_context(thread_id: str) -> dict:
     try:
         cursor = conn.cursor()
         row = cursor.execute(
-            "SELECT total_messages, topic_attempts, recent_queries FROM conversation_contexts WHERE thread_id = ?",
+            "SELECT total_messages, topic_attempts, recent_queries, last_topic FROM conversation_contexts WHERE thread_id = ?",
             (thread_id,)
         ).fetchone()
         if row:
             return {
-                "total_messages": row[0],
+                "total_messages": row[0] or 0,
                 "topic_attempts": _json.loads(row[1] or "{}"),
-                "recent_queries":  _json.loads(row[2] or "[]")
+                "recent_queries":  _json.loads(row[2] or "[]"),
+                "last_topic":      row[3] or ""
             }
-        return {"total_messages": 0, "topic_attempts": {}, "recent_queries": []}
+        return {"total_messages": 0, "topic_attempts": {}, "recent_queries": [], "last_topic": ""}
     except Exception as e:
         print(f"[CONTEXT] get error: {e}")
-        return {"total_messages": 0, "topic_attempts": {}, "recent_queries": []}
+        return {"total_messages": 0, "topic_attempts": {}, "recent_queries": [], "last_topic": ""}
 
 def update_conversation_context(thread_id: str, user_email: str, topic: str, query: str = ""):
-    """Update message count, topic attempts and recent queries for a thread."""
+    """Update message count, topic attempts, recent queries and last_topic for a thread."""
     def _do():
         cursor = conn.cursor()
         existing = cursor.execute(
-            "SELECT total_messages, topic_attempts FROM conversation_contexts WHERE thread_id = ?",
+            "SELECT total_messages, topic_attempts, recent_queries, last_topic FROM conversation_contexts WHERE thread_id = ?",
             (thread_id,)
         ).fetchone()
         now = _dt.now().isoformat()
@@ -413,49 +471,54 @@ def update_conversation_context(thread_id: str, user_email: str, topic: str, que
             total    = (existing[0] or 0) + 1
             attempts = _json.loads(existing[1] or "{}")
             recent   = _json.loads(existing[2] or "[]")
-            attempts[topic] = attempts.get(topic, 0) + 1
+            if topic and topic != "general":
+                attempts[topic] = attempts.get(topic, 0) + 1
+                active_topic = topic
+            else:
+                active_topic = existing[3] or topic
             if query:
                 recent.append(query)
                 recent = recent[-6:]  # keep last 6 queries
             cursor.execute(
-                "UPDATE conversation_contexts SET total_messages=?, topic_attempts=?, recent_queries=?, updated_at=? WHERE thread_id=?",
-                (total, _json.dumps(attempts), _json.dumps(recent), now, thread_id)
+                "UPDATE conversation_contexts SET total_messages=?, topic_attempts=?, recent_queries=?, last_topic=?, updated_at=? WHERE thread_id=?",
+                (total, _json.dumps(attempts), _json.dumps(recent), active_topic, now, thread_id)
             )
         else:
-            attempts = {topic: 1}
+            attempts = {topic: 1} if (topic and topic != "general") else {}
             recent   = [query] if query else []
             cursor.execute(
-                "INSERT INTO conversation_contexts (thread_id, user_email, total_messages, topic_attempts, recent_queries, created_at, updated_at) VALUES (?,?,1,?,?,?,?)",
-                (thread_id, user_email or "", _json.dumps(attempts), _json.dumps(recent), now, now)
+                "INSERT INTO conversation_contexts (thread_id, user_email, total_messages, topic_attempts, recent_queries, last_topic, created_at, updated_at) VALUES (?,?,1,?,?,?,?,?)",
+                (thread_id, user_email or "", _json.dumps(attempts), _json.dumps(recent), topic, now, now)
             )
         conn.commit()
     db_retry(_do)
 
-# ── Migration: add recent_queries column if missing ───────────────────────────
+# ── Migration: ensure last_topic column exists ─────────────────────────────────
 try:
-    conn.execute("ALTER TABLE conversation_contexts ADD COLUMN recent_queries TEXT DEFAULT '[]'")
+    conn.execute("ALTER TABLE conversation_contexts ADD COLUMN last_topic TEXT DEFAULT ''")
     conn.commit()
 except Exception:
-    pass  # column already exists
+    pass
 
 # ── Main intent analysis (NLP-powered) ───────────────────────────────────────
 def analyze_user_intent(query: str, thread_id: str, user_email: str = None) -> dict:
     """
     NLP-powered intent analysis:
-    - Topic extracted via Groq LLM (fallback: keyword matching)
+    - Topic extracted via Groq LLM + thread-level memory
     - Repetition detected via sentence-transformer cosine similarity
-    - Confusion level inferred from topic_count + semantic similarity + frustration signals
+    - Confusion / Video Request detection with adaptive strength
     """
     context = get_conversation_context(thread_id)
     recent_queries = context.get("recent_queries", [])
+    last_topic = context.get("last_topic", "")
 
-    # 1. NLP topic extraction (Groq)
-    topic = _extract_topic_nlp(query)
+    # 1. NLP topic extraction (with thread topic memory)
+    topic = _extract_topic_nlp(query, last_topic=last_topic, recent_queries=recent_queries)
 
     topic_count = context["topic_attempts"].get(topic, 0)
     q_lower     = query.lower()
 
-    # 2. Semantic similarity — is user repeating a previous question?
+    # 2. Semantic similarity vs recent queries in this thread
     max_sim = 0.0
     if recent_queries:
         try:
@@ -464,15 +527,15 @@ def analyze_user_intent(query: str, thread_id: str, user_email: str = None) -> d
         except Exception:
             pass
 
-    is_semantically_repeating = max_sim > 0.70  # ≥70% similarity = essentially same question
+    is_semantically_repeating = max_sim > 0.70  # ≥70% similarity
     is_frustrated       = any(p in q_lower for p in _FRUSTRATION_SIGNALS)
     is_video_requested  = any(p in q_lower for p in _VIDEO_REQUEST_SIGNALS)
     is_clarifying       = any(p in q_lower for p in _CLARIFICATION_SIGNALS)
 
-    print(f"[NLP] topic='{topic}' count={topic_count} sim={max_sim:.2f} frustrated={is_frustrated} video_req={is_video_requested} repeating={is_semantically_repeating}")
+    print(f"[NLP INTENT] topic='{topic}' last_topic='{last_topic}' count={topic_count} sim={max_sim:.2f} frustrated={is_frustrated} video_req={is_video_requested}")
 
     result = {
-        "topic":                   topic,
+        "topic":                   topic or last_topic or "engineering fundamentals",
         "topic_count":             topic_count + 1,
         "semantic_similarity":     round(max_sim, 3),
         "should_recommend_videos": False,
@@ -481,33 +544,25 @@ def analyze_user_intent(query: str, thread_id: str, user_email: str = None) -> d
         "video_difficulty":        "beginner"
     }
 
-    # 3. Decision logic (prioritized from urgent down to light)
-    if is_video_requested:
-        # User explicitly asked for videos / visual explanation
+    # 3. Comprehensive Decision Logic
+    if is_video_requested or (is_frustrated and (topic_count >= 1 or len(recent_queries) >= 1)):
+        # Video specifically asked OR user frustrated on 2nd+ turn in thread
         result.update({
-            "intent":                  "video_requested",
+            "intent":                  "true_confusion" if is_frustrated else "video_requested",
             "should_recommend_videos": True,
-            "recommendation_strength": "urgent" if (is_frustrated or topic_count >= 1) else "medium",
+            "recommendation_strength": "urgent",
             "video_difficulty":        "beginner"
         })
-    elif is_semantically_repeating and topic_count >= 1:
-        # Semantically same question asked again → urgent
+    elif is_frustrated or is_semantically_repeating:
+        # Frustration on turn 1 or repeat question
         result.update({
             "intent":                  "true_confusion",
             "should_recommend_videos": True,
             "recommendation_strength": "urgent",
             "video_difficulty":        "beginner"
         })
-    elif topic_count >= 2 or (topic_count >= 1 and is_frustrated) or (topic_count == 0 and is_frustrated and ("stuck" in q_lower or "confusing" in q_lower or "smjh nhi" in q_lower or "samjh nahi" in q_lower)):
-        # Stuck / strongly frustrated even on first ask OR multiple attempts
-        result.update({
-            "intent":                  "true_confusion",
-            "should_recommend_videos": True,
-            "recommendation_strength": "urgent",
-            "video_difficulty":        "beginner"
-        })
-    elif is_frustrated or (topic_count >= 1 and is_clarifying):
-        # Moderate confusion or asking clarification on 2nd attempt
+    elif (topic_count >= 2) or (topic_count >= 1 and is_clarifying) or (len(recent_queries) >= 2 and is_clarifying):
+        # 2nd/3rd question on same topic or asking for clarification
         result.update({
             "intent":                  "clarification_needed",
             "should_recommend_videos": True,
@@ -515,7 +570,6 @@ def analyze_user_intent(query: str, thread_id: str, user_email: str = None) -> d
             "video_difficulty":        "beginner"
         })
     elif is_clarifying and topic_count >= 1:
-        # Light clarification
         result.update({
             "intent":                  "clarification_needed",
             "should_recommend_videos": True,
@@ -523,10 +577,11 @@ def analyze_user_intent(query: str, thread_id: str, user_email: str = None) -> d
             "video_difficulty":        "beginner"
         })
 
-    # 4. Update context with current query (AFTER analysis so it counts next time)
+    # 4. Update context with current query & topic
     update_conversation_context(thread_id, user_email, topic, query)
 
     return result
+
 
 def get_video_recommendations(topic: str, difficulty: str = "beginner", limit: int = 3) -> list:
     """Return curated YouTube search links for topic at given difficulty."""

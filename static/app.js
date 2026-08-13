@@ -2480,15 +2480,19 @@ function initializeDocPilotApp() {
             <div class="rec-footer">After watching, come back and ask again! 💪</div>
         `;
 
+        console.log("[PREPZ VIDEO REC RENDER]", rec);
         // Insert after the assistant bubble's parent message item
-        const msgItem = afterBubble.closest(".chat-message-item") || afterBubble.parentElement;
+        const msgItem = afterBubble.closest ? afterBubble.closest(".chat-message-item") : (afterBubble.parentElement || null);
+        const chatContainer = document.getElementById("chat-messages");
         if (msgItem && msgItem.parentElement) {
             msgItem.parentElement.insertBefore(card, msgItem.nextSibling);
-        } else {
-            const chatMessages = document.getElementById("chat-messages");
-            if (chatMessages) chatMessages.appendChild(card);
+        } else if (chatContainer) {
+            chatContainer.appendChild(card);
         }
-        card.scrollIntoView({ behavior: "smooth", block: "nearest" });
+        setTimeout(() => {
+            scrollToBottom();
+            card.scrollIntoView({ behavior: "smooth", block: "nearest" });
+        }, 50);
     }
 
 
