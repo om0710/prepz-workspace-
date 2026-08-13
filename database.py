@@ -389,20 +389,27 @@ def _extract_topic_nlp(query: str, last_topic: str = "", recent_queries: list = 
     """Use Groq LLM or keyword fallback to extract main topic, inheriting last_topic if follow-up."""
     q_clean = query.strip().lower()
     
-    # 1. If query is a short follow-up or purely frustration/video request, reuse last_topic
+    # 1. Expanded follow-up tokens & phrases (e.g. 'suggest some video for it', 'bhai video do', 'isko explain karo')
     follow_up_tokens = {
         "bhai", "nhi", "nahi", "smj", "samj", "samjh", "smjh", "aaya", "aya",
         "video", "videos", "tutorial", "tutorials", "tutorilas", "some", "again",
-        "fir", "se", "please", "help", "kuch", "stuck", "what", "how", "why"
+        "fir", "se", "please", "help", "kuch", "stuck", "what", "how", "why",
+        "suggest", "suggested", "suggestions", "for", "it", "this", "that", "give",
+        "show", "recommend", "links", "link", "karo", "do", "batao", "dekhna", "dekh",
+        "dekho", "courses", "lecture", "online", "playlist", "youtube", "samjhao", "isko", "iska"
     }
     words = [w for w in _re.findall(r'\b[a-zA-Z]{2,}\b', q_clean)]
-    is_mostly_followup = len(words) <= 5 and all(w in follow_up_tokens for w in words)
+    is_mostly_followup = len(words) > 0 and all(w in follow_up_tokens for w in words)
     
-    if (is_mostly_followup or len(q_clean) < 25) and last_topic and last_topic != "general":
-        print(f"[NLP TOPIC] Reusing last_topic '{last_topic}' for short follow-up: '{query}'")
+    # If the user is asking for videos, or is frustrated, or query is mostly follow-up words: REUSE last_topic!
+    has_video_word = any(v in q_clean for v in ["video", "tutorial", "youtube", "lecture", "playlist", "animation"])
+    has_frustration_word = any(f in q_clean for f in ["smj", "samj", "nhi", "nahi", "stuck", "confusing", "again", "fir"])
+    
+    if (is_mostly_followup or (has_video_word and ("it" in q_clean or "this" in q_clean or len(words) <= 6)) or (has_frustration_word and len(words) <= 6)) and last_topic and last_topic != "general":
+        print(f"[NLP TOPIC] Reusing last_topic '{last_topic}' for query: '{query}'")
         return last_topic
 
-    # 2. Check keyword dictionary first
+    # 2. Check keyword dictionary
     kw_topic = _extract_topic_keywords(query)
     if kw_topic != "general":
         return kw_topic
@@ -411,7 +418,7 @@ def _extract_topic_nlp(query: str, last_topic: str = "", recent_queries: list = 
     try:
         client = _get_groq()
         if client:
-            context_hint = f"Previous topic was: {last_topic}. " if last_topic else ""
+            context_hint = f"Previous active academic topic was: '{last_topic}'. " if last_topic else ""
             resp = client.chat.completions.create(
                 model="llama-3.3-70b-versatile",
                 messages=[{
@@ -419,7 +426,7 @@ def _extract_topic_nlp(query: str, last_topic: str = "", recent_queries: list = 
                     "content": (
                         "You extract the core academic or engineering subject/topic from a student's message. "
                         f"{context_hint}"
-                        "If the user is asking a follow-up or asking for video/explanation of the previous topic, output the previous topic name. "
+                        "If the user is asking a follow-up like 'suggest some video for it' or 'samjh nahi aaya', output the previous active topic name. "
                         "Reply with ONLY 1 to 4 lowercase words naming the academic topic. No punctuation."
                     )
                 }, {
@@ -431,7 +438,7 @@ def _extract_topic_nlp(query: str, last_topic: str = "", recent_queries: list = 
             )
             topic = resp.choices[0].message.content.strip().lower()
             topic = _re.sub(r'["\'\.\!\?\,]', '', topic).strip()
-            if topic and len(topic) > 2 and topic not in {"none", "general", "no topic", "n/a"}:
+            if topic and len(topic) > 2 and topic not in {"none", "general", "no topic", "n/a", "video", "videos", "suggest"}:
                 return topic
     except Exception as e:
         print(f"[NLP] Topic Groq error: {e}")

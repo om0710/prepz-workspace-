@@ -2352,6 +2352,11 @@ function initializeDocPilotApp() {
                     renderTimer = null;
                     updateBubbleUI(accumulatedResponse, true);
                     fetchThreads();
+                    if (pendingVideoRec) {
+                        const recToRender = pendingVideoRec;
+                        pendingVideoRec = null;
+                        setTimeout(() => renderVideoRecommendation(recToRender, assistantBubble), 100);
+                    }
                 }
             }, 20);
         }
@@ -2404,6 +2409,7 @@ function initializeDocPilotApp() {
                                 startTypewriterLoop();
                             } else if (parsed.video_rec) {
                                 pendingVideoRec = parsed.video_rec;
+                                console.log("[SSE VIDEO REC RECEIVED]", pendingVideoRec);
                             } else if (parsed.error) {
                                 if (renderTimer) clearInterval(renderTimer);
                                 assistantBubble.innerHTML = `<span style="color:#ef4444;">Error: ${parsed.error}</span>`;
@@ -2417,11 +2423,11 @@ function initializeDocPilotApp() {
             if (!renderTimer) {
                 updateBubbleUI(accumulatedResponse, true);
                 fetchThreads();
-            }
-
-            // Render video recommendation card after stream
-            if (pendingVideoRec) {
-                setTimeout(() => renderVideoRecommendation(pendingVideoRec, assistantBubble), 300);
+                if (pendingVideoRec) {
+                    const recToRender = pendingVideoRec;
+                    pendingVideoRec = null;
+                    setTimeout(() => renderVideoRecommendation(recToRender, assistantBubble), 100);
+                }
             }
 
         } catch (err) {
