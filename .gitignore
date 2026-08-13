@@ -14,8 +14,9 @@ __pycache__/
 # Chroma DB
 chroma_db/
 
-# Uploads
-uploads/
+# Uploads - tracked via Git LFS (do NOT ignore)
+# uploads/ ← removed, files committed via LFS
+uploads/The_GALE_ENCYCLOPEDIA_of_MEDICINE_SECOND.pdf
 
 # macOS
 .DS_Store
