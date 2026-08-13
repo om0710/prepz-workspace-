@@ -1262,23 +1262,39 @@ def get_file(filename: str):
 @app.get("/download/{filename}")
 @app.get("/api/download/{filename}")
 def download_file_route(filename: str, disposition: Optional[str] = "inline"):
-    filename, file_path = get_sanitized_upload_file_path(filename)
-    if not os.path.exists(file_path):
-        raise HTTPException(status_code=404, detail="File not found.")
-    
-    # Award +2 contribution points to original uploader
-    meta = get_upload_by_filename(filename)
-    if meta and meta.get("user_email"):
-        uploader_email = meta["user_email"]
-        if uploader_email and uploader_email != "anonymous@college.edu":
-            add_contribution_points(uploader_email, 2)
+    try:
+        filename, file_path = get_sanitized_upload_file_path(filename)
+        if not os.path.exists(file_path):
+            # Try absolute path fallback
+            abs_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "uploads", filename)
+            if os.path.exists(abs_path):
+                file_path = abs_path
+            else:
+                print(f"[DOWNLOAD] File not found: {file_path}")
+                raise HTTPException(status_code=404, detail=f"File '{filename}' not found.")
 
-    disp = "attachment" if disposition == "attachment" else "inline"
-    return FileResponse(
-        file_path,
-        media_type=get_media_type(filename),
-        headers={"Content-Disposition": f'{disp}; filename="{quote(filename)}"'}
-    )
+        # Award contribution points (non-blocking)
+        try:
+            meta = get_upload_by_filename(filename)
+            if meta and meta.get("user_email"):
+                uploader_email = meta["user_email"]
+                if uploader_email and uploader_email != "anonymous@college.edu":
+                    add_contribution_points(uploader_email, 2)
+        except Exception as cp_err:
+            print(f"[DOWNLOAD] Contribution points error (ignored): {cp_err}")
+
+        disp = "attachment" if disposition == "attachment" else "inline"
+        print(f"[DOWNLOAD] Serving: {file_path} as {disp}")
+        return FileResponse(
+            file_path,
+            media_type=get_media_type(filename),
+            headers={"Content-Disposition": f'{disp}; filename="{quote(filename)}"'}
+        )
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"[DOWNLOAD] Unexpected error for '{filename}': {e}")
+        raise HTTPException(status_code=500, detail=f"Download failed: {str(e)}")
 
 @app.get("/files")
 def list_files(user_email: Optional[str] = None):
