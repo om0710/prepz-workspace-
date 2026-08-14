@@ -2502,10 +2502,10 @@ function initializeDocPilotApp() {
                     </div>
                     
                     <div class="video-actions-row">
-                        <a href="${playlistUrl}" target="_blank" rel="noopener noreferrer" class="btn-watch-inapp">
-                            <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
-                            <span>Play Video Lecture</span>
-                        </a>
+                        <button type="button" class="btn-watch-inapp btn-launch-inapp" data-url="${playlistUrl}" data-title="${(v.topic || topicLabel)}" data-channel="${channelName}">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
+                            <span>In-App Player</span>
+                        </button>
                         <a href="${playlistUrl}" target="_blank" rel="noopener noreferrer" class="btn-watch-yt">
                             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
                             <span>YouTube ↗</span>
@@ -2537,6 +2537,19 @@ function initializeDocPilotApp() {
             <div class="videos-grid">${videosHtml}</div>
             ${nextActionHtml}
         `;
+
+        // Attach reliable click listeners for In-App Player
+        card.querySelectorAll('.btn-launch-inapp').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                e.preventDefault();
+                const url = btn.getAttribute('data-url');
+                const title = btn.getAttribute('data-title');
+                const channel = btn.getAttribute('data-channel');
+                if (window.openYtPlayerModal) {
+                    window.openYtPlayerModal(url, title, channel);
+                }
+            });
+        });
 
         console.log("[PREPZ VIDEO REC RENDERED]", rec);
         const bubbleCard = (afterBubble && afterBubble.closest) ? afterBubble.closest(".msg-bubble-card") : null;
