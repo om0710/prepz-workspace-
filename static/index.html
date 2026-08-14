@@ -309,9 +309,9 @@
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"></path><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"></path><path d="M4 22h16"></path><path d="M10 14.66V17c0 .55-.45 1-1 1H7c-.55 0-1-.45-1-1v-2.34"></path><path d="M14 14.66V17c0 .55.45 1 1 1h2c.55 0 1-.45 1-1v-2.34"></path><path d="M18 2H6v7a6 6 0 0 0 12 0V2z"></path></svg>
                     <span>Leaderboard</span>
                 </button>
-                <button id="nav-new-chat-btn" class="sidebar-link" onclick="if(window.showChatState){window.showChatState();}">
+                <button id="nav-new-chat-btn" class="sidebar-link" title="Knowledge Builder" onclick="if(window.showChatState){window.showChatState();}">
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14" stroke-linecap="round"/></svg>
-                    <span>New Chat</span>
+                    <span>Knowledge Builder</span>
                 </button>
 
                 <!-- Search Input Field directly in sidebar nav -->
@@ -337,7 +337,7 @@
                 <div class="sidebar-section">
                     <div class="sidebar-section-header">
                         <span>Chats</span>
-                        <button id="btn-header-new-chat" class="btn-section-add" title="New Chat">+</button>
+                        <button id="btn-header-new-chat" class="btn-section-add" title="Knowledge Builder">+</button>
                     </div>
                     <ul id="threads-list" class="threads-list">
                         <!-- Loaded dynamically from fetchThreads() -->

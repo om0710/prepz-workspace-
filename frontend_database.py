@@ -36,7 +36,7 @@ with st.sidebar:
 
     st.title(" Chats")
 
-    if st.button(" New Chat"):
+    if st.button("➕ Knowledge Builder"):
 
         new_thread = str(uuid.uuid4())
 

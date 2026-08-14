@@ -458,7 +458,7 @@ with st.sidebar:
         unsafe_allow_html=True
     )
     
-    if st.button(" New Chat", type="primary", use_container_width=True):
+    if st.button("➕ Knowledge Builder", type="primary", use_container_width=True):
         new_thread = str(uuid.uuid4())
         st.session_state.thread_id = new_thread
         st.session_state.current_chat = new_thread

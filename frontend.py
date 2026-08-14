@@ -33,7 +33,7 @@ with st.sidebar:
 
     st.title(" Chats")
 
-    if st.button(" New Chat"):
+    if st.button("➕ Knowledge Builder"):
 
         chat_no = len(st.session_state.threads) + 1
 
