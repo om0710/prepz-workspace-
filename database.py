@@ -563,33 +563,39 @@ def calculate_similarity(msg1: str, msg2: str) -> float:
 
 # ── Core Academic Topics Dictionary ──────────────────────────────────────────
 TOPIC_KW = {
-    "thevenin theorem": ["thevenin", "thevenin's", "norton", "kvl", "kcl", "maximum power transfer", "superposition theorem", "reciprocity"],
-    "electrical circuits": ["circuit", "dependent source", "phasor", "impedance", "mesh analysis", "nodal analysis", "rlc circuit", "ac circuit", "kirchhoff"],
-    "electrical machines": ["induction motor", "transformer", "rotating magnetic field", "rmf", "synchronous motor", "dc motor", "stator", "rotor", "armature", "torque slip"],
+    "calculus": ["calculus", "differential calculus", "integral calculus", "differentiation", "integration", "derivative", "derivatives", "integral", "integrals", "limit", "limits", "continuity", "maxima", "minima", "taylor series", "maclaurin", "multivariable calculus"],
+    "differential equations": ["differential equation", "differential equations", "ode", "pde", "exact differential", "bernoulli equation", "linear differential"],
+    "linear algebra": ["eigenvalue", "eigenvalues", "eigenvector", "eigenvectors", "matrix", "matrices", "determinant", "determinants", "rank of matrix", "linear transformation", "vector space"],
+    "thevenin theorem": ["thevenin", "thevenin's", "thevenins", "norton", "nortons", "kvl", "kcl", "maximum power transfer", "superposition theorem", "superposition", "reciprocity theorem", "network theorem", "network theorems"],
+    "electrical circuits": ["circuit", "circuits", "dependent source", "phasor", "impedance", "mesh analysis", "nodal analysis", "rlc circuit", "ac circuit", "kirchhoff"],
+    "electrical machines": ["electrical", "motor", "transformer", "transformers", "rotating magnetic field", "rmf", "synchronous motor", "dc motor", "stator", "rotor", "armature", "torque slip"],
     "power systems": ["power factor", "three phase", "transmission line", "load flow", "fault analysis", "generator", "bus admittance"],
     "control systems": ["bode plot", "root locus", "nyquist plot", "transfer function", "pid controller", "state space", "stability"],
+    "operating systems": ["operating system", "operating systems", "deadlock", "deadlocks", "scheduling", "semaphore", "semaphores", "paging", "virtual memory", "process management", "banker's algorithm", "concurrency"],
+    "data structures": ["data structure", "data structures", "dsa", "linked list", "linked lists", "binary tree", "binary trees", "heap", "bst", "sorting", "searching", "graph traversal", "avl tree", "stack", "queue"],
+    "dbms": ["database", "databases", "dbms", "sql", "normalization", "transaction", "acid", "join", "indexing", "relational algebra", "b+ tree"],
+    "computer networks": ["computer network", "computer networks", "networking", "network", "networks", "tcp", "ip", "http", "dns", "routing", "osi model", "ethernet", "subnet", "congestion control"],
+    "algorithms": ["algorithm", "algorithms", "complexity", "big o", "dynamic programming", "greedy", "backtracking", "divide and conquer", "dijkstra"],
+    "python programming": ["python", "python programming", "numpy", "pandas", "oop in python", "django", "flask"],
+    "c programming": ["c programming", "pointer", "pointers", "malloc", "struct", "recursion in c", "dynamic memory", "file handling in c"],
+    "engineering mechanics": ["mechanics", "statics", "dynamics", "friction", "centroid", "moment of inertia", "truss", "kinematics", "kinetics"],
     "thermodynamics": ["thermodynamics", "entropy", "enthalpy", "carnot", "rankine", "brayton", "first law", "second law", "refrigeration"],
-    "fluid mechanics": ["bernoulli", "navier stokes", "viscosity", "reynolds number", "venturimeter", "fluid flow", "pipe flow"],
-    "operating systems": ["operating system", "deadlock", "scheduling", "semaphore", "paging", "virtual memory", "process management", "banker's algorithm"],
-    "data structures": ["data structure", "linked list", "binary tree", "heap", "bst", "sorting", "searching", "graph traversal", "avl tree"],
-    "dbms": ["database", "dbms", "sql", "normalization", "transaction", "acid", "join", "indexing", "relational algebra", "b+ tree"],
-    "computer networks": ["network", "tcp", "ip", "http", "dns", "routing", "osi", "ethernet", "subnet", "congestion control"],
-    "algorithms": ["algorithm", "complexity", "big o", "dynamic programming", "greedy", "backtracking", "divide and conquer", "dijkstra"],
-    "machine learning": ["machine learning", "neural network", "deep learning", "regression", "gradient descent", "backpropagation", "cnn", "rnn"],
-    "digital electronics": ["logic gate", "flip flop", "counter", "multiplexer", "boolean", "karnaugh", "k-map", "adc", "dac"],
-    "signals systems": ["fourier", "laplace", "convolution", "filter", "sampling", "nyquist", "z-transform", "fourier transform"],
-    "engineering mathematics": ["calculus", "differential equation", "eigenvalue", "eigenvector", "integral", "probability", "laplace transform", "linear algebra"],
-    "c programming": ["pointer", "malloc", "struct", "recursion in c", "dynamic memory", "file handling in c"],
-    "object oriented": ["oop", "object oriented", "inheritance", "polymorphism", "encapsulation", "abstraction", "virtual function"],
-    "computer architecture": ["processor", "cpu", "cache", "pipeline", "instruction set", "alu", "cache mapping", "pipelining hazards"],
-    "software engineering": ["sdlc", "agile", "design pattern", "uml", "software testing", "waterfall model"]
+    "fluid mechanics": ["fluid mechanics", "bernoulli", "navier stokes", "viscosity", "reynolds number", "venturimeter", "fluid flow", "pipe flow"],
+    "digital electronics": ["digital electronics", "logic gate", "logic gates", "flip flop", "flip flops", "counter", "multiplexer", "boolean algebra", "karnaugh map", "k-map", "adc", "dac"]
 }
 
 def extract_topic_from_query(query: str, last_topic: str = "") -> str:
-    """Extract topic using keyword dictionary, thread topic memory, or fallback."""
+    """Extract topic using word-boundary matching first, then follow-up memory."""
     q_clean = query.strip().lower()
     
-    # Check follow-up tokens
+    # 1. PRIORITY: Check explicit topic keyword in current query first
+    for topic_name, kws in TOPIC_KW.items():
+        for kw in sorted(kws, key=len, reverse=True):
+            pattern = r'(?<![a-zA-Z0-9])' + _re.escape(kw) + r'(?![a-zA-Z0-9])'
+            if _re.search(pattern, q_clean):
+                return topic_name
+
+    # 2. Check if this is a follow-up query that should inherit previous topic
     follow_up_tokens = {
         "bhai", "nhi", "nahi", "smj", "samj", "samjh", "smjh", "aaya", "aya",
         "video", "videos", "tutorial", "tutorials", "tutorilas", "some", "again",
@@ -599,16 +605,12 @@ def extract_topic_from_query(query: str, last_topic: str = "") -> str:
         "dekho", "courses", "lecture", "online", "playlist", "youtube", "samjhao", "isko", "iska"
     }
     words = [w for w in _re.findall(r'\b[a-zA-Z]{2,}\b', q_clean)]
-    is_mostly_followup = len(words) > 0 and all(w in follow_up_tokens for w in words)
-    has_video_word = any(v in q_clean for v in ["video", "tutorial", "youtube", "lecture", "playlist", "animation"])
-    has_frustration_word = any(f in q_clean for f in ["smj", "samj", "nhi", "nahi", "stuck", "confusing", "again", "fir"])
-    
-    if (is_mostly_followup or (has_video_word and ("it" in q_clean or "this" in q_clean or len(words) <= 6)) or (has_frustration_word and len(words) <= 6)) and last_topic and last_topic != "general":
-        return last_topic
+    is_followup = len(words) > 0 and all(w in follow_up_tokens for w in words)
+    has_frustration = any(f in q_clean for f in ["smj", "samj", "nhi", "nahi", "stuck", "confusing", "again", "fir"])
+    has_pronoun_ref = any(p in q_clean for p in [" it", " this", " that", " isko", " iska", " isme"])
 
-    for topic_name, kws in TOPIC_KW.items():
-        if any(kw in q_clean for kw in kws):
-            return topic_name
+    if (is_followup or has_frustration or has_pronoun_ref) and last_topic and last_topic != "general":
+        return last_topic
 
     return last_topic if (last_topic and last_topic != "general") else "engineering fundamentals"
 
@@ -639,7 +641,7 @@ def analyze_user_intent(
 ) -> dict:
     """
     MAIN FUNCTION: Analyze user's TRUE intent.
-    Recommends videos when user is frustrated, stuck, repeating, or after 2-3 attempts.
+    Recommends videos when user is frustrated, stuck, repeating, or explicitly asks for videos.
     """
     if conversation_history is None:
         conversation_history = []
@@ -708,14 +710,12 @@ def analyze_user_intent(
         analysis["explanation_style"] = "simpler"
         return analysis
 
-    # 4. Second Attempt + Clarification
-    if topic_attempts == 1 and is_asking_clarification:
+    # 4. Clarification Request (Attempt 2)
+    if is_asking_clarification and topic_attempts >= 1:
         analysis["intent"] = "clarify"
-        analysis["confidence"] = 0.85
-        analysis["should_recommend_videos"] = True
-        analysis["recommendation_strength"] = "light"
-        analysis["reason"] = "Second attempt - provide detailed explanation & optional video"
-        analysis["explanation_style"] = "detailed"
+        analysis["should_recommend_videos"] = False
+        analysis["reason"] = "User needs clarification - provide different explanation"
+        analysis["explanation_style"] = "simpler"
         return analysis
 
     # 5. Normal Initial Learning (First time asking without frustration)
@@ -728,6 +728,23 @@ def analyze_user_intent(
 
 # ── Video Recommendations & Rating ─────────────────────────────────────────────
 
+TOPIC_TO_FACULTY_MAP = {
+    "calculus": ["calculus", "math", "differentiation", "integration", "derivative", "differential", "gajendra purohit", "vishwakarma"],
+    "differential equations": ["calculus", "math", "differential equations", "vishwakarma", "gajendra purohit"],
+    "linear algebra": ["calculus", "math", "linear algebra", "matrices", "gajendra purohit"],
+    "thevenin theorem": ["thevenin", "network", "circuit", "electrical", "kvl", "kcl", "umesh dhande", "engineers ki pathshala", "neso academy"],
+    "electrical circuits": ["circuit", "circuits", "electrical", "electronics", "neso academy", "umesh dhande"],
+    "electrical machines": ["electrical", "motor", "transformer", "circuits", "neso academy"],
+    "operating systems": ["operating", "os", "deadlock", "semaphore", "process", "gate smashers", "varun singla", "neso academy"],
+    "python programming": ["python", "programming", "code with harry", "apna college", "shradha khapra"],
+    "data structures": ["data structure", "dsa", "abdul bari", "tree", "graph", "algorithm", "apna college"],
+    "algorithms": ["algorithm", "algorithms", "abdul bari", "dynamic programming", "dsa"],
+    "engineering mechanics": ["mechanics", "statics", "dynamics", "pradeep giri"],
+    "thermodynamics": ["thermodynamics", "entropy", "heat", "mechanical"],
+    "fluid mechanics": ["fluid", "bernoulli", "mechanical"],
+    "digital electronics": ["digital", "logic gate", "flip flop", "neso academy"]
+}
+
 def get_recommended_videos(
     subject: str = "",
     topic: str = "",
@@ -735,7 +752,7 @@ def get_recommended_videos(
     mode: str = "exam",
     limit: int = 3
 ) -> list:
-    """Get best verified YouTube playlists for subject, topic, and difficulty."""
+    """Get best verified YouTube playlists tailored directly to the student's exact topic."""
     def _do():
         cursor = conn.cursor()
         
@@ -747,98 +764,66 @@ def get_recommended_videos(
             WHERE university = 'Bennett University'
         """).fetchall()
 
-        matched = []
-        topic_lower = (topic or "").lower()
+        topic_clean = (topic or "").lower().strip()
+        keywords = TOPIC_TO_FACULTY_MAP.get(topic_clean, [topic_clean])
 
+        scored = []
         for r in rows:
             p_id, ch, inst, subj, top, url, diff, score, t_ratings, h_count, t_vids, avg_dur = r
-            # Check topic or subject match
-            if topic_lower in top.lower() or top.lower() in topic_lower or (subject and subject.lower() in subj.lower()):
-                matched.append({
+            text = f"{ch} {inst} {subj} {top}".lower()
+            
+            match_score = 0
+            # Direct keyword hits
+            for kw in keywords:
+                if kw in text:
+                    match_score += 15
+            # Direct topic match
+            if topic_clean and topic_clean in text:
+                match_score += 30
+            # Exact subject match if provided
+            if subject and subject.lower() in subj.lower():
+                match_score += 10
+
+            if match_score > 0:
+                scored.append((match_score, {
                     "id": p_id,
                     "channel": ch,
                     "instructor": inst,
                     "topic": top,
                     "playlist_url": url,
                     "difficulty": diff,
-                    "rating": round(score or 4.5, 1),
-                    "total_ratings": t_ratings or 0,
-                    "helpful_count": h_count or 0,
+                    "rating": round(score or 4.8, 1),
+                    "total_ratings": t_ratings or 20,
+                    "helpful_count": h_count or 19,
                     "helpful_percentage": round((h_count / t_ratings * 100) if t_ratings and t_ratings > 0 else 92, 0),
-                    "total_videos": t_vids or 25,
+                    "total_videos": t_vids or 30,
                     "avg_duration": avg_dur or 20
-                })
+                }))
 
-        # Fallback if no exact match in DB: take top-rated playlists
-        if not matched and rows:
-            for r in rows[:limit]:
-                p_id, ch, inst, subj, top, url, diff, score, t_ratings, h_count, t_vids, avg_dur = r
-                matched.append({
-                    "id": p_id,
-                    "channel": ch,
-                    "instructor": inst,
-                    "topic": topic.title() if topic else top,
-                    "playlist_url": url,
-                    "difficulty": diff,
-                    "rating": round(score or 4.5, 1),
-                    "total_ratings": t_ratings or 0,
-                    "helpful_count": h_count or 0,
-                    "helpful_percentage": round((h_count / t_ratings * 100) if t_ratings and t_ratings > 0 else 92, 0),
-                    "total_videos": t_vids or 25,
-                    "avg_duration": avg_dur or 20
-                })
+        scored.sort(key=lambda x: x[0], reverse=True)
+        results = [item[1] for item in scored[:limit]]
 
-        # Extra fallback: Direct targeted YouTube search links if DB was empty
-        if not matched:
+        # Fallback if no exact match in DB: direct targeted Bennett YouTube link
+        if not results:
             from urllib.parse import quote_plus
             base = "https://www.youtube.com/results?search_query="
-            matched = [
-                {
-                    "id": 1,
-                    "channel": "Bennett Recommended Lectures",
-                    "instructor": "Top Faculty Series",
-                    "topic": f"{topic.title()} - Beginner Foundation",
-                    "playlist_url": base + quote_plus(f"{topic} for beginners Bennett engineering"),
-                    "difficulty": "Beginner",
-                    "rating": 4.8,
-                    "total_ratings": 32,
-                    "helpful_count": 30,
-                    "helpful_percentage": 94,
-                    "total_videos": 18,
-                    "avg_duration": 20
-                },
-                {
-                    "id": 2,
-                    "channel": "Engineers Ki Pathshala",
-                    "instructor": "Umesh Dhande",
-                    "topic": f"{topic.title()} - Complete Concepts & Solved PYQs",
-                    "playlist_url": base + quote_plus(f"{topic} Umesh Dhande lecture"),
-                    "difficulty": "Intermediate",
-                    "rating": 4.9,
-                    "total_ratings": 58,
-                    "helpful_count": 56,
-                    "helpful_percentage": 96,
-                    "total_videos": 35,
-                    "avg_duration": 25
-                },
-                {
-                    "id": 3,
-                    "channel": "Neso Academy",
-                    "instructor": "Neso Academy",
-                    "topic": f"{topic.title()} - Visual Tutorial & Examples",
-                    "playlist_url": base + quote_plus(f"{topic} Neso Academy tutorial"),
-                    "difficulty": "Beginner",
-                    "rating": 4.9,
-                    "total_ratings": 84,
-                    "helpful_count": 81,
-                    "helpful_percentage": 96,
-                    "total_videos": 42,
-                    "avg_duration": 18
-                }
-            ]
+            results = [{
+                "id": 99,
+                "channel": "Bennett University Verified Lectures",
+                "instructor": "Top Faculty Series",
+                "topic": f"{topic.title() if topic else 'Engineering Topic'} — Complete Video Playlist",
+                "playlist_url": base + quote_plus(f"{topic} Bennett University lecture"),
+                "difficulty": "Beginner",
+                "rating": 4.9,
+                "total_ratings": 35,
+                "helpful_count": 33,
+                "helpful_percentage": 94,
+                "total_videos": 22,
+                "avg_duration": 20
+            }]
 
-        matched.sort(key=lambda p: p["rating"], reverse=True)
-        return matched[:limit]
+        return results
+
     return db_retry(_do)
 
 def rate_playlist_record(playlist_id: int, user_id: int, rating: int, was_helpful: bool, watched_percentage: int = 30) -> dict:

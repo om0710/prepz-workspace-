@@ -522,7 +522,7 @@ async def chat_stream(request: ChatRequest):
             print(f"[STREAM] Checking video rec: should={intent_result.get('should_recommend_videos')} strength={intent_result.get('recommendation_strength')} topic='{detected_topic}'")
             if intent_result.get("should_recommend_videos"):
                 videos = get_recommended_videos(
-                    subject="Introduction to Electrical & Electronics",
+                    subject="",
                     topic=detected_topic,
                     difficulty_level=intent_result.get("video_difficulty", "Beginner"),
                     mode="exam",
