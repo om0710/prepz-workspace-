@@ -2517,14 +2517,15 @@ function initializeDocPilotApp() {
                     ${instructorName}
                     <p class="topic">${v.topic || topicLabel}</p>
                     
-                    <a href="${playlistUrl}" onclick="window.playVideoInApp(this, '${v.id || i}'); return false;" class="video-poster-box" data-url="${playlistUrl}" data-title="${(v.topic || topicLabel)}" data-channel="${channelName}" style="display: block; position: relative; width: 100%; padding-bottom: 56.25%; border-radius: 10px; overflow: hidden; background: #000 url('${thumbUrl}') center/cover no-repeat; margin: 10px 0; box-shadow: 0 4px 14px rgba(0,0,0,0.5); cursor: pointer; text-decoration: none;">
-                        <div style="position: absolute; inset: 0; background: linear-gradient(180deg, rgba(0,0,0,0.2) 0%, rgba(0,0,0,0.7) 100%); display: flex; flex-direction: column; align-items: center; justify-content: center;">
-                            <div style="width: 50px; height: 50px; border-radius: 50%; background: #ef4444; color: #fff; display: flex; align-items: center; justify-content: center; box-shadow: 0 0 20px rgba(239, 68, 68, 0.8);">
+                    <div class="video-poster-box" onclick="window.playVideoInApp(this, '${v.id || i}')" data-url="${playlistUrl}" data-title="${(v.topic || topicLabel)}" data-channel="${channelName}" style="position: relative; width: 100%; height: 165px; border-radius: 12px; overflow: hidden; background: #121519; margin: 10px 0; cursor: pointer; border: 1px solid rgba(255, 107, 0, 0.25);">
+                        <img src="${thumbUrl}" alt="${channelName}" style="width: 100%; height: 100%; object-fit: cover;" onerror="this.onerror=null; this.src='https://images.unsplash.com/photo-1516321318423-f06f85e504b3?w=600&auto=format&fit=crop&q=80';">
+                        <div style="position: absolute; inset: 0; background: linear-gradient(180deg, rgba(0,0,0,0.15) 0%, rgba(0,0,0,0.75) 100%); display: flex; flex-direction: column; align-items: center; justify-content: center;">
+                            <div style="width: 50px; height: 50px; border-radius: 50%; background: #ef4444; color: #fff; display: flex; align-items: center; justify-content: center; box-shadow: 0 0 22px rgba(239, 68, 68, 0.85);">
                                 <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
                             </div>
-                            <span style="position: absolute; bottom: 8px; right: 8px; background: rgba(0,0,0,0.8); color: #fff; padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 600;">⏱️ ${avgDur} min</span>
+                            <span style="position: absolute; bottom: 8px; right: 8px; background: rgba(0,0,0,0.85); color: #fff; padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 600;">⏱️ ${avgDur} min</span>
                         </div>
-                    </a>
+                    </div>
 
                     <div class="video-stats">
                         <span class="rating">⭐ ${ratingScore}/5 (${totalR} ratings)</span>
@@ -2599,25 +2600,22 @@ function initializeDocPilotApp() {
         const title = btn.getAttribute("data-title") || btn.dataset.title || "Bennett Verified Lecture";
         const channel = btn.getAttribute("data-channel") || btn.dataset.channel || "Faculty Lecture Series";
         
-        let videoId = "3d6DsjIBzJ4";
+        let targetUrl = url;
         try {
             const parsed = new URL(url);
             const listId = parsed.searchParams.get("list");
             const vid = parsed.searchParams.get("v");
             if (listId && KNOWN_PLAYLIST_FIRST_VIDEOS[listId]) {
-                videoId = KNOWN_PLAYLIST_FIRST_VIDEOS[listId];
+                const firstVid = KNOWN_PLAYLIST_FIRST_VIDEOS[listId];
+                targetUrl = `https://www.youtube.com/watch?v=${firstVid}&list=${listId}`;
             } else if (vid) {
-                videoId = vid;
+                targetUrl = `https://www.youtube.com/watch?v=${vid}`;
             }
         } catch (e) {}
 
-        const embedPlayerUrl = `https://www.youtube.com/embed/${videoId}?autoplay=1&playsinline=1&rel=0`;
-        
-        // Open dedicated popup player window (bypasses Hugging Face parent iframe CSP)
-        const win = window.open(embedPlayerUrl, "BU_Prepz_Video_Player", "width=860,height=520,menubar=no,toolbar=no,location=no,status=no,resizable=yes");
-        if (!win || win.closed || typeof win.closed === 'undefined') {
-            // If popup was blocked by browser, open YouTube directly
-            window.open(url, "_blank");
+        const win = window.open(targetUrl, "_blank", "noopener,noreferrer");
+        if (win) {
+            win.focus();
         }
     };
 
