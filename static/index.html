@@ -1084,12 +1084,9 @@
                     <p id="yt-player-channel">Faculty Lecture Series</p>
                 </div>
                 <div class="yt-player-actions">
-                    <button type="button" onclick="window.openYtFloatingWindow()" class="btn-yt-external" style="background: rgba(239, 68, 68, 0.22); border-color: #ef4444; color: #ffffff;" title="Open in Floating Window (Always works without embed restrictions)">
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
-                        <span>⚡ Floating Player</span>
-                    </button>
                     <a id="yt-player-external-link" href="#" target="_blank" rel="noopener noreferrer" class="btn-yt-external" title="Open directly on YouTube">
-                        <span>YouTube ↗</span>
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+                        <span>Open on YouTube ↗</span>
                     </a>
                     <button type="button" onclick="window.toggleYtMiniPlayer()" class="btn-yt-pip" title="Picture-in-Picture mode">
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><rect x="12" y="12" width="7" height="7" rx="1"/></svg>
@@ -1098,11 +1095,10 @@
                 </div>
             </div>
             <div class="yt-iframe-container">
-                <iframe id="yt-player-iframe" src="" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share; fullscreen" allowfullscreen sandbox="allow-scripts allow-same-origin allow-presentation allow-popups allow-popups-to-escape-sandbox allow-forms allow-top-navigation-by-user-activation" referrerpolicy="strict-origin-when-cross-origin"></iframe>
+                <iframe id="yt-player-iframe" src="" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe>
             </div>
-            <div class="yt-player-footer" style="display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap;">
-                <span class="yt-player-tip">💡 Pro-tip: If embedded playback is blocked by your browser/host, click <strong>⚡ Floating Player</strong> above to watch side-by-side!</span>
-                <button type="button" onclick="window.openYtFloatingWindow()" class="btn-helpful" style="padding: 4px 10px; font-size: 11px; cursor: pointer; border-radius: 6px;">⚡ Launch Floating Window</button>
+            <div class="yt-player-footer">
+                <span class="yt-player-tip">💡 Pro-tip: You can toggle Picture-in-Picture to chat with BU Prepz AI while watching the lecture!</span>
             </div>
         </div>
     </div>

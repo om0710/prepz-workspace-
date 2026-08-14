@@ -2507,13 +2507,15 @@ function initializeDocPilotApp() {
                         <span>⏱️ ${avgDur} min avg</span>
                     </div>
                     
-                    <div style="display: flex; gap: 6px; margin-top: 6px;">
-                        <button type="button" onclick="window.openYtPlayerModal('${playlistUrl}', '${(v.topic || topicLabel).replace(/'/g, "\\'")}', '${channelName.replace(/'/g, "\\'")}')" class="watch-btn" style="flex: 1; border: none; cursor: pointer; padding: 9px 8px; font-size: 12.5px;">
-                            ▶️ In-App Player
+                    <div class="video-actions-row">
+                        <button type="button" onclick="window.openYtPlayerModal('${playlistUrl}', '${(v.topic || topicLabel).replace(/'/g, "\\'")}', '${channelName.replace(/'/g, "\\'")}')" class="btn-watch-inapp">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
+                            <span>In-App Player</span>
                         </button>
-                        <button type="button" onclick="window.openYtFloatingWindow('${playlistUrl}')" class="watch-btn" style="background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.18); color: #ffffff; padding: 9px 12px; cursor: pointer; font-size: 12px;" title="Open in Floating Window (Bypasses all iframe restrictions)">
-                            ⚡ Floating
-                        </button>
+                        <a href="${playlistUrl}" target="_blank" rel="noopener noreferrer" class="btn-watch-yt">
+                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+                            <span>YouTube ↗</span>
+                        </a>
                     </div>
                     
                     <div class="rate-buttons" id="rate-btns-${v.id || i}">
@@ -2643,15 +2645,6 @@ function initializeDocPilotApp() {
         modal.style.display = "flex";
         if (playerCard) playerCard.classList.remove("pip-mode");
         modal.classList.remove("has-pip");
-    };
-
-    window.openYtFloatingWindow = function(url) {
-        const targetUrl = url || window.currentYtUrl || "https://www.youtube.com";
-        const width = 960;
-        const height = 560;
-        const left = Math.max(0, (window.screen.width - width) / 2);
-        const top = Math.max(0, (window.screen.height - height) / 2);
-        window.open(targetUrl, 'BUPrepzPlayer', `width=${width},height=${height},left=${left},top=${top},resizable=yes,scrollbars=yes,status=no,toolbar=no,menubar=no,location=no`);
     };
 
     window.closeYtPlayerModal = function() {
