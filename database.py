@@ -231,11 +231,81 @@ def init_user_db():
     except Exception: pass
 
     cursor.execute("""
+        CREATE TABLE IF NOT EXISTS conversation_context (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL DEFAULT 1,
+            session_id TEXT UNIQUE NOT NULL,
+            subject TEXT,
+            messages TEXT DEFAULT '[]',
+            topics_discussed TEXT DEFAULT '[]',
+            topic_attempts TEXT DEFAULT '{}',
+            understanding_level TEXT DEFAULT 'beginner',
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            last_activity TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    """)
+
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS message_analysis (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            conversation_id INTEGER NOT NULL,
+            message_index INTEGER,
+            user_message TEXT,
+            user_intent TEXT,
+            confidence REAL,
+            topic TEXT,
+            question_count_for_topic INTEGER,
+            is_frustrated INTEGER DEFAULT 0,
+            is_repeating_question INTEGER DEFAULT 0,
+            is_clarifying INTEGER DEFAULT 0,
+            should_recommend_videos INTEGER DEFAULT 0,
+            recommendation_strength TEXT,
+            reason TEXT,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    """)
+
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS youtube_playlist (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            channel_name TEXT NOT NULL,
+            instructor TEXT NOT NULL,
+            subject TEXT NOT NULL,
+            topic TEXT NOT NULL,
+            playlist_url TEXT NOT NULL,
+            difficulty TEXT DEFAULT 'Beginner',
+            university TEXT DEFAULT 'Bennett University',
+            semester INTEGER DEFAULT 1,
+            helpfulness_score REAL DEFAULT 4.5,
+            total_ratings INTEGER DEFAULT 12,
+            helpful_count INTEGER DEFAULT 11,
+            total_videos INTEGER DEFAULT 35,
+            avg_duration INTEGER DEFAULT 22,
+            best_for TEXT DEFAULT '["exam prep", "foundation"]',
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    """)
+
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS playlist_rating (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL,
+            playlist_id INTEGER NOT NULL,
+            rating INTEGER NOT NULL,
+            was_helpful INTEGER NOT NULL,
+            watched_percentage INTEGER DEFAULT 30,
+            timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    """)
+
+    cursor.execute("""
         CREATE TABLE IF NOT EXISTS conversation_contexts (
             thread_id TEXT PRIMARY KEY,
             user_email TEXT,
             total_messages INTEGER DEFAULT 0,
             topic_attempts TEXT DEFAULT '{}',
+            recent_queries TEXT DEFAULT '[]',
+            last_topic TEXT DEFAULT '',
             created_at TEXT DEFAULT (datetime('now')),
             updated_at TEXT DEFAULT (datetime('now'))
         )
@@ -245,90 +315,592 @@ def init_user_db():
 
 init_user_db()
 
-# ── NLP-based Conversation Context & Intent Analysis ──────────────────────────
+# ── Bennett University Pre-Seeded Channels ─────────────────────────────────────
 
 import json as _json
 import re as _re
 import os as _os
+import secrets as _secrets
 from datetime import datetime as _dt
 
-# ── Lazy-load sentence-transformer embedding model ────────────────────────────
-_embed_model = None
+BENNETT_CHANNELS = [
+    {
+        "channel_name": "Engineers Ki Pathshala",
+        "instructor": "Umesh Dhande",
+        "subject": "Introduction to Electrical & Electronics",
+        "topic": "Thevenin Theorem & Network Theorems",
+        "playlist_url": "https://youtube.com/playlist?list=PL9RcWoqXmzaLTYUdnzKhF4bYug3GjGcEc",
+        "difficulty": "Beginner",
+        "best_for": ["exam prep", "foundation"],
+        "avg_duration": 25,
+        "total_videos": 45,
+        "helpfulness_score": 4.8,
+        "total_ratings": 34,
+        "helpful_count": 32
+    },
+    {
+        "channel_name": "NESO Academy",
+        "instructor": "NESO Academy",
+        "subject": "Introduction to Electrical & Electronics",
+        "topic": "Electrical Engineering Basics & Circuits",
+        "playlist_url": "https://www.youtube.com/@nesoacademy/playlists",
+        "difficulty": "Intermediate",
+        "best_for": ["deep learning", "exam prep"],
+        "avg_duration": 20,
+        "total_videos": 38,
+        "helpfulness_score": 4.9,
+        "total_ratings": 56,
+        "helpful_count": 54
+    },
+    {
+        "channel_name": "Gajendra Purohit",
+        "instructor": "Dr. Gajendra Purohit",
+        "subject": "Engineering Calculus",
+        "topic": "Differentiation & Integration",
+        "playlist_url": "https://www.youtube.com/playlist?list=PLU6SqdYcYsfIJRl8mo2Rv1MpdvmVD0YyI",
+        "difficulty": "Beginner",
+        "best_for": ["exam prep", "foundation"],
+        "avg_duration": 18,
+        "total_videos": 52,
+        "helpfulness_score": 4.9,
+        "total_ratings": 89,
+        "helpful_count": 87
+    },
+    {
+        "channel_name": "Bhagwan Singh Vishwakarma",
+        "instructor": "Bhagwan Singh Vishwakarma",
+        "subject": "Engineering Calculus",
+        "topic": "Advanced Calculus & Differential Equations",
+        "playlist_url": "https://www.youtube.com/playlist?list=PLdM-WZokR4tbCBA4mkvfk2vOH12eRPT2Y",
+        "difficulty": "Advanced",
+        "best_for": ["deep learning", "competitive exams"],
+        "avg_duration": 25,
+        "total_videos": 48,
+        "helpfulness_score": 4.7,
+        "total_ratings": 42,
+        "helpful_count": 39
+    },
+    {
+        "channel_name": "Apna College",
+        "instructor": "Shradha Khapra",
+        "subject": "Python Programming",
+        "topic": "Python Basics to Advanced",
+        "playlist_url": "https://youtube.com/playlist?list=PLGjplNEQ1it8-0CmoljS5yeV-GlKSUEt0",
+        "difficulty": "Beginner",
+        "best_for": ["exam prep", "foundation", "projects"],
+        "avg_duration": 30,
+        "total_videos": 102,
+        "helpfulness_score": 4.9,
+        "total_ratings": 120,
+        "helpful_count": 118
+    },
+    {
+        "channel_name": "Code With Harry",
+        "instructor": "Harry Jain",
+        "subject": "Python Programming",
+        "topic": "Python Full Course & DSA",
+        "playlist_url": "https://youtube.com/playlist?list=PLu0W_9lII9agwh1XjRt242xIpHhPT2llg",
+        "difficulty": "Beginner",
+        "best_for": ["exam prep", "projects"],
+        "avg_duration": 35,
+        "total_videos": 78,
+        "helpfulness_score": 4.8,
+        "total_ratings": 95,
+        "helpful_count": 91
+    },
+    {
+        "channel_name": "Pradeep Giri Academy",
+        "instructor": "Pradeep Giri",
+        "subject": "Engineering Mechanics",
+        "topic": "Statics & Dynamics",
+        "playlist_url": "https://youtube.com/playlist?list=PLT3bOBUU3L9hADhGPsZjSddwAC3BvJDnl",
+        "difficulty": "Intermediate",
+        "best_for": ["exam prep", "deep learning"],
+        "avg_duration": 22,
+        "total_videos": 62,
+        "helpfulness_score": 4.6,
+        "total_ratings": 38,
+        "helpful_count": 35
+    },
+    {
+        "channel_name": "NESO Academy",
+        "instructor": "NESO Academy",
+        "subject": "Operating Systems",
+        "topic": "Deadlock & Process Management",
+        "playlist_url": "https://www.youtube.com/playlist?list=PLBlnK6fEyqRitWLDxMrzVQK8813oqG797",
+        "difficulty": "Beginner",
+        "best_for": ["exam prep", "foundation"],
+        "avg_duration": 18,
+        "total_videos": 65,
+        "helpfulness_score": 4.9,
+        "total_ratings": 84,
+        "helpful_count": 82
+    },
+    {
+        "channel_name": "Gate Smashers",
+        "instructor": "Varun Singla",
+        "subject": "Operating Systems",
+        "topic": "OS Concurrency, Semaphores & Memory",
+        "playlist_url": "https://www.youtube.com/playlist?list=PLxCzCOWd7aiGz9donHRrE9I3Mwn6XdP8p",
+        "difficulty": "Intermediate",
+        "best_for": ["exam prep", "short notes"],
+        "avg_duration": 15,
+        "total_videos": 80,
+        "helpfulness_score": 4.9,
+        "total_ratings": 110,
+        "helpful_count": 108
+    },
+    {
+        "channel_name": "Abdul Bari",
+        "instructor": "Abdul Bari",
+        "subject": "Data Structures & Algorithms",
+        "topic": "Trees, Graphs & Dynamic Programming",
+        "playlist_url": "https://www.youtube.com/playlist?list=PLDN4rrl48XKpZkf03iYFl-O29szjTrs_O",
+        "difficulty": "Beginner",
+        "best_for": ["deep learning", "foundation"],
+        "avg_duration": 28,
+        "total_videos": 72,
+        "helpfulness_score": 5.0,
+        "total_ratings": 210,
+        "helpful_count": 208
+    }
+]
 
-def _get_embed_model():
-    global _embed_model
-    if _embed_model is None:
-        try:
-            from sentence_transformers import SentenceTransformer
-            _embed_model = SentenceTransformer(
-                "sentence-transformers/all-MiniLM-L6-v2",
-                cache_folder="./.cache/sentence_transformers"
-            )
-            print("[NLP] Embedding model loaded: all-MiniLM-L6-v2")
-        except Exception as e:
-            print(f"[NLP] Embedding model load failed: {e}")
-    return _embed_model
+def seed_bennett_channels_if_needed():
+    """Populate database with Bennett University recommended channels if table empty."""
+    def _do():
+        cursor = conn.cursor()
+        count = cursor.execute("SELECT COUNT(*) FROM youtube_playlist").fetchone()[0]
+        if count == 0:
+            for ch in BENNETT_CHANNELS:
+                cursor.execute("""
+                    INSERT INTO youtube_playlist (
+                        channel_name, instructor, subject, topic, playlist_url,
+                        difficulty, university, semester, helpfulness_score,
+                        total_ratings, helpful_count, total_videos, avg_duration, best_for
+                    ) VALUES (?, ?, ?, ?, ?, ?, 'Bennett University', 1, ?, ?, ?, ?, ?, ?)
+                """, (
+                    ch["channel_name"], ch["instructor"], ch["subject"], ch["topic"], ch["playlist_url"],
+                    ch["difficulty"], ch.get("helpfulness_score", 4.5), ch.get("total_ratings", 20),
+                    ch.get("helpful_count", 19), ch.get("total_videos", 40), ch.get("avg_duration", 20),
+                    _json.dumps(ch.get("best_for", ["exam prep", "foundation"]))
+                ))
+            conn.commit()
+            print(f"[SEED] Seeded {len(BENNETT_CHANNELS)} Bennett University channels.")
+    db_retry(_do)
 
-def _cosine_similarity(text1: str, text2: str) -> float:
-    """Semantic cosine similarity using sentence-transformers (0 to 1)."""
-    model = _get_embed_model()
-    if model is None:
-        return _jaccard_similarity(text1, text2)
-    try:
-        import numpy as np
-        embeddings = model.encode([text1, text2], convert_to_numpy=True)
-        a, b = embeddings[0], embeddings[1]
-        denom = (np.linalg.norm(a) * np.linalg.norm(b))
-        return float(np.dot(a, b) / denom) if denom > 1e-8 else 0.0
-    except Exception as e:
-        print(f"[NLP] Cosine sim error: {e}")
-        return _jaccard_similarity(text1, text2)
+seed_bennett_channels_if_needed()
 
-def _jaccard_similarity(text1: str, text2: str) -> float:
-    """Fallback: Jaccard word overlap similarity."""
-    s1 = set(text1.lower().split())
-    s2 = set(text2.lower().split())
-    return len(s1 & s2) / len(s1 | s2) if s1 | s2 else 0.0
+# ── Part 2: Database Utility Functions ────────────────────────────────────────
 
-# ── Groq-based topic extraction ───────────────────────────────────────────────
-_groq_client = None
-
-def _get_groq():
-    global _groq_client
-    if _groq_client is None:
-        try:
-            from groq import Groq
-            key = _os.environ.get("GROQ_API_KEY") or _os.environ.get("groq_api_key")
-            if key:
-                _groq_client = Groq(api_key=key)
-        except Exception as e:
-            print(f"[NLP] Groq client init failed: {e}")
-    return _groq_client
-
-def _extract_topic_nlp(query: str) -> str:
-    """Use Groq LLM to extract the main academic topic from query."""
-    try:
-        client = _get_groq()
-        if client is None:
-            return _extract_topic_keywords(query)
-        resp = client.chat.completions.create(
-            model="llama-3.3-70b-versatile",
-            messages=[{
-                "role": "system",
-                "content": "You extract the main academic or engineering topic from a student's question. Reply with ONLY the topic name in 1-3 lowercase words. No explanation, no punctuation."
-            }, {
-                "role": "user",
-                "content": query
-            }],
-            max_tokens=15,
-            temperature=0
+def get_or_create_conversation(user_id: int = 1, session_id: str = None, subject: str = "General") -> dict:
+    """Get existing conversation or create new one in conversation_context."""
+    if not session_id:
+        session_id = _secrets.token_urlsafe(16)
+    
+    def _do():
+        cursor = conn.cursor()
+        row = cursor.execute(
+            "SELECT id, user_id, session_id, subject, messages, topics_discussed, topic_attempts, understanding_level FROM conversation_context WHERE session_id = ?",
+            (session_id,)
+        ).fetchone()
+        
+        if row:
+            return {
+                "id": row[0],
+                "user_id": row[1],
+                "session_id": row[2],
+                "subject": row[3],
+                "messages": _json.loads(row[4] or "[]"),
+                "topics_discussed": _json.loads(row[5] or "[]"),
+                "topic_attempts": _json.loads(row[6] or "{}"),
+                "understanding_level": row[7] or "beginner"
+            }
+        
+        # Create new
+        now = _dt.now().isoformat()
+        cursor.execute(
+            "INSERT INTO conversation_context (user_id, session_id, subject, messages, topics_discussed, topic_attempts, understanding_level, created_at, last_activity) VALUES (?, ?, ?, '[]', '[]', '{}', 'beginner', ?, ?)",
+            (user_id or 1, session_id, subject, now, now)
         )
-        topic = resp.choices[0].message.content.strip().lower()
-        topic = _re.sub(r'["\'\.\!\?\,]', '', topic).strip()
-        return topic if len(topic) > 2 else _extract_topic_keywords(query)
+        conn.commit()
+        new_id = cursor.lastrowid
+        return {
+            "id": new_id,
+            "user_id": user_id or 1,
+            "session_id": session_id,
+            "subject": subject,
+            "messages": [],
+            "topics_discussed": [],
+            "topic_attempts": {},
+            "understanding_level": "beginner"
+        }
+    return db_retry(_do)
+
+def get_recent_messages(conversation_id: int, limit: int = 10) -> list:
+    """Get recent messages from conversation"""
+    try:
+        cursor = conn.cursor()
+        row = cursor.execute("SELECT messages FROM conversation_context WHERE id = ?", (conversation_id,)).fetchone()
+        if row and row[0]:
+            msgs = _json.loads(row[0])
+            return msgs[-limit:] if msgs else []
+        return []
     except Exception as e:
-        print(f"[NLP] Topic NLP failed, using keywords: {e}")
-        return _extract_topic_keywords(query)
+        print(f"[CONTEXT] get_recent_messages error: {e}")
+        return []
+
+def calculate_similarity(msg1: str, msg2: str) -> float:
+    """Calculate word overlap similarity between two messages (0-1)"""
+    if not msg1 or not msg2:
+        return 0.0
+    msg1_words = set(msg1.lower().split())
+    msg2_words = set(msg2.lower().split())
+    if not msg1_words or not msg2_words:
+        return 0.0
+    common = len(msg1_words & msg2_words)
+    total = len(msg1_words | msg2_words)
+    return common / total if total > 0 else 0.0
+
+# ── Core Academic Topics Dictionary ──────────────────────────────────────────
+TOPIC_KW = {
+    "thevenin theorem": ["thevenin", "thevenin's", "norton", "kvl", "kcl", "maximum power transfer", "superposition theorem", "reciprocity"],
+    "electrical circuits": ["circuit", "dependent source", "phasor", "impedance", "mesh analysis", "nodal analysis", "rlc circuit", "ac circuit", "kirchhoff"],
+    "electrical machines": ["induction motor", "transformer", "rotating magnetic field", "rmf", "synchronous motor", "dc motor", "stator", "rotor", "armature", "torque slip"],
+    "power systems": ["power factor", "three phase", "transmission line", "load flow", "fault analysis", "generator", "bus admittance"],
+    "control systems": ["bode plot", "root locus", "nyquist plot", "transfer function", "pid controller", "state space", "stability"],
+    "thermodynamics": ["thermodynamics", "entropy", "enthalpy", "carnot", "rankine", "brayton", "first law", "second law", "refrigeration"],
+    "fluid mechanics": ["bernoulli", "navier stokes", "viscosity", "reynolds number", "venturimeter", "fluid flow", "pipe flow"],
+    "operating systems": ["operating system", "deadlock", "scheduling", "semaphore", "paging", "virtual memory", "process management", "banker's algorithm"],
+    "data structures": ["data structure", "linked list", "binary tree", "heap", "bst", "sorting", "searching", "graph traversal", "avl tree"],
+    "dbms": ["database", "dbms", "sql", "normalization", "transaction", "acid", "join", "indexing", "relational algebra", "b+ tree"],
+    "computer networks": ["network", "tcp", "ip", "http", "dns", "routing", "osi", "ethernet", "subnet", "congestion control"],
+    "algorithms": ["algorithm", "complexity", "big o", "dynamic programming", "greedy", "backtracking", "divide and conquer", "dijkstra"],
+    "machine learning": ["machine learning", "neural network", "deep learning", "regression", "gradient descent", "backpropagation", "cnn", "rnn"],
+    "digital electronics": ["logic gate", "flip flop", "counter", "multiplexer", "boolean", "karnaugh", "k-map", "adc", "dac"],
+    "signals systems": ["fourier", "laplace", "convolution", "filter", "sampling", "nyquist", "z-transform", "fourier transform"],
+    "engineering mathematics": ["calculus", "differential equation", "eigenvalue", "eigenvector", "integral", "probability", "laplace transform", "linear algebra"],
+    "c programming": ["pointer", "malloc", "struct", "recursion in c", "dynamic memory", "file handling in c"],
+    "object oriented": ["oop", "object oriented", "inheritance", "polymorphism", "encapsulation", "abstraction", "virtual function"],
+    "computer architecture": ["processor", "cpu", "cache", "pipeline", "instruction set", "alu", "cache mapping", "pipelining hazards"],
+    "software engineering": ["sdlc", "agile", "design pattern", "uml", "software testing", "waterfall model"]
+}
+
+def extract_topic_from_query(query: str, last_topic: str = "") -> str:
+    """Extract topic using keyword dictionary, thread topic memory, or fallback."""
+    q_clean = query.strip().lower()
+    
+    # Check follow-up tokens
+    follow_up_tokens = {
+        "bhai", "nhi", "nahi", "smj", "samj", "samjh", "smjh", "aaya", "aya",
+        "video", "videos", "tutorial", "tutorials", "tutorilas", "some", "again",
+        "fir", "se", "please", "help", "kuch", "stuck", "what", "how", "why",
+        "suggest", "suggested", "suggestions", "for", "it", "this", "that", "give",
+        "show", "recommend", "links", "link", "karo", "do", "batao", "dekhna", "dekh",
+        "dekho", "courses", "lecture", "online", "playlist", "youtube", "samjhao", "isko", "iska"
+    }
+    words = [w for w in _re.findall(r'\b[a-zA-Z]{2,}\b', q_clean)]
+    is_mostly_followup = len(words) > 0 and all(w in follow_up_tokens for w in words)
+    has_video_word = any(v in q_clean for v in ["video", "tutorial", "youtube", "lecture", "playlist", "animation"])
+    has_frustration_word = any(f in q_clean for f in ["smj", "samj", "nhi", "nahi", "stuck", "confusing", "again", "fir"])
+    
+    if (is_mostly_followup or (has_video_word and ("it" in q_clean or "this" in q_clean or len(words) <= 6)) or (has_frustration_word and len(words) <= 6)) and last_topic and last_topic != "general":
+        return last_topic
+
+    for topic_name, kws in TOPIC_KW.items():
+        if any(kw in q_clean for kw in kws):
+            return topic_name
+
+    return last_topic if (last_topic and last_topic != "general") else "engineering fundamentals"
+
+# ── Main Intent Analysis ───────────────────────────────────────────────────────
+
+CLARIFICATION_PHRASES = [
+    "explain again", "clearer", "i don't understand", "samjh nahi aa", "samjh nahi",
+    "smjh nahi", "smjh nhi", "nhi smj", "nhi aaya", "confusing", "can you explain",
+    "one more time", "simple words", "differently", "another way", "step by step",
+    "detailed", "explain better", "iska matlab", "kya matlab", "explain karo", "samjhao",
+    "batao", "easy example", "simpler words", "elaborate"
+]
+
+FRUSTRATION_PHRASES = [
+    "still not", "still confused", "yrr", "bhai", "frustrated", "frustrat",
+    "help", "what's wrong", "why", "can't understand", "cant understand", "too hard",
+    "stuck", "not making sense", "this is hard", "aise kaise", "kuch samjh nahi",
+    "yaar", "haan", "bhaii", "kuch nahi aaya", "problem ho rahi", "tough"
+]
+
+def analyze_user_intent(
+    current_message: str,
+    conversation_history: list = None,
+    topic: str = "",
+    topic_attempts: int = 0
+) -> dict:
+    """
+    MAIN FUNCTION: Analyze user's TRUE intent.
+    Recommends videos only when truly needed (after 2-3 attempts or frustration).
+    """
+    if conversation_history is None:
+        conversation_history = []
+
+    analysis = {
+        "intent": "initial",  # "initial", "clarify", "confused"
+        "confidence": 0.95,
+        "should_recommend_videos": False,
+        "recommendation_strength": "none",  # "none", "light", "medium", "urgent"
+        "reason": "",
+        "video_difficulty": "beginner",
+        "explanation_style": "normal",
+        "topic": topic or "engineering fundamentals",
+        "topic_attempts": topic_attempts
+    }
+
+    q_lower = current_message.lower()
+
+    # ===== CHECK 1: IS FIRST TIME? =====
+    # If topic_attempts is 0 (first time ever asking), explanation only
+    if topic_attempts == 0:
+        analysis["intent"] = "initial"
+        analysis["confidence"] = 0.95
+        analysis["should_recommend_videos"] = False
+        analysis["reason"] = "First time asking - provide explanation only"
+        analysis["explanation_style"] = "normal"
+        return analysis
+
+    # ===== CHECK 2: IS ASKING CLARIFICATION? =====
+    is_asking_clarification = any(phrase in q_lower for phrase in CLARIFICATION_PHRASES)
+
+    # ===== CHECK 3: IS FRUSTRATED? =====
+    is_frustrated = any(phrase in q_lower for phrase in FRUSTRATION_PHRASES)
+
+    # ===== CHECK 4: IS EXPLICIT VIDEO REQUEST? =====
+    is_video_requested = any(v in q_lower for v in ["video", "videos", "youtube", "lecture", "tutorial", "tutorials", "tutorilas", "playlist", "watch"])
+
+    # ===== CHECK 5: IS REPEATING SAME QUESTION? =====
+    is_repeating = False
+    previous_messages = []
+    if conversation_history:
+        for i in range(len(conversation_history) - 1, max(0, len(conversation_history) - 10), -1):
+            msg = conversation_history[i]
+            if isinstance(msg, dict) and "user" in msg:
+                previous_messages.append(msg["user"])
+            elif isinstance(msg, str):
+                previous_messages.append(msg)
+        
+        if previous_messages:
+            similarities = [calculate_similarity(current_message, prev) for prev in previous_messages]
+            max_similarity = max(similarities) if similarities else 0
+            is_repeating = max_similarity > 0.60  # 60% match = same question
+
+    # ===== DECISION LOGIC =====
+
+    # Scenario 0: User specifically asked for videos
+    if is_video_requested:
+        analysis["intent"] = "clarify" if topic_attempts <= 2 else "confused"
+        analysis["confidence"] = 0.95
+        analysis["should_recommend_videos"] = True
+        analysis["recommendation_strength"] = "urgent" if (is_frustrated or topic_attempts >= 2) else "medium"
+        analysis["reason"] = "User explicitly requested video support"
+        analysis["explanation_style"] = "simpler"
+        return analysis
+
+    # Scenario 1: Second attempt (topic_attempts == 1)
+    if topic_attempts == 1:
+        if is_frustrated or is_repeating:
+            analysis["intent"] = "clarify"
+            analysis["confidence"] = 0.85
+            analysis["should_recommend_videos"] = True
+            analysis["recommendation_strength"] = "medium"
+            analysis["reason"] = "Second attempt, frustrated or repeating - recommend videos"
+            analysis["explanation_style"] = "detailed"
+        elif is_asking_clarification:
+            analysis["intent"] = "clarify"
+            analysis["confidence"] = 0.85
+            analysis["should_recommend_videos"] = True
+            analysis["recommendation_strength"] = "light"
+            analysis["reason"] = "Second attempt - provide detailed explanation & optional video"
+            analysis["explanation_style"] = "detailed"
+        else:
+            analysis["intent"] = "clarify"
+            analysis["should_recommend_videos"] = False
+            analysis["reason"] = "Second attempt - provide better explanation"
+            analysis["explanation_style"] = "detailed"
+        return analysis
+
+    # Scenario 2: Third+ attempt (topic_attempts >= 2)
+    if topic_attempts >= 2:
+        analysis["intent"] = "confused"
+        analysis["confidence"] = 0.95
+        analysis["should_recommend_videos"] = True
+        
+        if is_frustrated or is_repeating:
+            analysis["recommendation_strength"] = "urgent"
+            analysis["reason"] = f"Attempt #{topic_attempts + 1}, frustrated/repeating - videos NEEDED"
+            analysis["explanation_style"] = "basic"
+        else:
+            analysis["recommendation_strength"] = "medium"
+            analysis["reason"] = f"Attempt #{topic_attempts + 1} - recommend videos"
+            analysis["explanation_style"] = "simpler"
+        return analysis
+
+    return analysis
+
+# ── Video Recommendations & Rating ─────────────────────────────────────────────
+
+def get_recommended_videos(
+    subject: str = "",
+    topic: str = "",
+    difficulty_level: str = "Beginner",
+    mode: str = "exam",
+    limit: int = 3
+) -> list:
+    """Get best verified YouTube playlists for subject, topic, and difficulty."""
+    def _do():
+        cursor = conn.cursor()
+        
+        # 1. Fetch from youtube_playlist table
+        rows = cursor.execute("""
+            SELECT id, channel_name, instructor, subject, topic, playlist_url, difficulty,
+                   helpfulness_score, total_ratings, helpful_count, total_videos, avg_duration
+            FROM youtube_playlist
+            WHERE university = 'Bennett University'
+        """).fetchall()
+
+        matched = []
+        topic_lower = (topic or "").lower()
+
+        for r in rows:
+            p_id, ch, inst, subj, top, url, diff, score, t_ratings, h_count, t_vids, avg_dur = r
+            # Check topic or subject match
+            if topic_lower in top.lower() or top.lower() in topic_lower or (subject and subject.lower() in subj.lower()):
+                matched.append({
+                    "id": p_id,
+                    "channel": ch,
+                    "instructor": inst,
+                    "topic": top,
+                    "playlist_url": url,
+                    "difficulty": diff,
+                    "rating": round(score or 4.5, 1),
+                    "total_ratings": t_ratings or 0,
+                    "helpful_count": h_count or 0,
+                    "helpful_percentage": round((h_count / t_ratings * 100) if t_ratings and t_ratings > 0 else 92, 0),
+                    "total_videos": t_vids or 25,
+                    "avg_duration": avg_dur or 20
+                })
+
+        # Fallback if no exact match in DB: take top-rated playlists
+        if not matched and rows:
+            for r in rows[:limit]:
+                p_id, ch, inst, subj, top, url, diff, score, t_ratings, h_count, t_vids, avg_dur = r
+                matched.append({
+                    "id": p_id,
+                    "channel": ch,
+                    "instructor": inst,
+                    "topic": topic.title() if topic else top,
+                    "playlist_url": url,
+                    "difficulty": diff,
+                    "rating": round(score or 4.5, 1),
+                    "total_ratings": t_ratings or 0,
+                    "helpful_count": h_count or 0,
+                    "helpful_percentage": round((h_count / t_ratings * 100) if t_ratings and t_ratings > 0 else 92, 0),
+                    "total_videos": t_vids or 25,
+                    "avg_duration": avg_dur or 20
+                })
+
+        # Extra fallback: Direct targeted YouTube search links if DB was empty
+        if not matched:
+            from urllib.parse import quote_plus
+            base = "https://www.youtube.com/results?search_query="
+            matched = [
+                {
+                    "id": 1,
+                    "channel": "Bennett Recommended Lectures",
+                    "instructor": "Top Faculty Series",
+                    "topic": f"{topic.title()} - Beginner Foundation",
+                    "playlist_url": base + quote_plus(f"{topic} for beginners Bennett engineering"),
+                    "difficulty": "Beginner",
+                    "rating": 4.8,
+                    "total_ratings": 32,
+                    "helpful_count": 30,
+                    "helpful_percentage": 94,
+                    "total_videos": 18,
+                    "avg_duration": 20
+                },
+                {
+                    "id": 2,
+                    "channel": "Engineers Ki Pathshala",
+                    "instructor": "Umesh Dhande",
+                    "topic": f"{topic.title()} - Complete Concepts & Solved PYQs",
+                    "playlist_url": base + quote_plus(f"{topic} Umesh Dhande lecture"),
+                    "difficulty": "Intermediate",
+                    "rating": 4.9,
+                    "total_ratings": 58,
+                    "helpful_count": 56,
+                    "helpful_percentage": 96,
+                    "total_videos": 35,
+                    "avg_duration": 25
+                },
+                {
+                    "id": 3,
+                    "channel": "Neso Academy",
+                    "instructor": "Neso Academy",
+                    "topic": f"{topic.title()} - Visual Tutorial & Examples",
+                    "playlist_url": base + quote_plus(f"{topic} Neso Academy tutorial"),
+                    "difficulty": "Beginner",
+                    "rating": 4.9,
+                    "total_ratings": 84,
+                    "helpful_count": 81,
+                    "helpful_percentage": 96,
+                    "total_videos": 42,
+                    "avg_duration": 18
+                }
+            ]
+
+        matched.sort(key=lambda p: p["rating"], reverse=True)
+        return matched[:limit]
+    return db_retry(_do)
+
+def rate_playlist_record(playlist_id: int, user_id: int, rating: int, was_helpful: bool, watched_percentage: int = 30) -> dict:
+    """Record user playlist rating and recompute helpfulness score."""
+    def _do():
+        cursor = conn.cursor()
+        cursor.execute("""
+            INSERT INTO playlist_rating (user_id, playlist_id, rating, was_helpful, watched_percentage, timestamp)
+            VALUES (?, ?, ?, ?, ?, ?)
+        """, (user_id, playlist_id, rating, 1 if was_helpful else 0, watched_percentage, _dt.now().isoformat()))
+
+        # Update totals in youtube_playlist
+        cursor.execute("""
+            UPDATE youtube_playlist
+            SET total_ratings = total_ratings + 1,
+                helpful_count = helpful_count + ?
+            WHERE id = ?
+        """, (1 if was_helpful else 0, playlist_id))
+
+        # Recompute score
+        all_ratings = cursor.execute("SELECT rating FROM playlist_rating WHERE playlist_id = ?", (playlist_id,)).fetchall()
+        if all_ratings:
+            avg_score = sum(r[0] for r in all_ratings) / len(all_ratings)
+            cursor.execute("UPDATE youtube_playlist SET helpfulness_score = ? WHERE id = ?", (round(avg_score, 1), playlist_id))
+        else:
+            avg_score = 4.5
+
+        conn.commit()
+        return {"avg_rating": round(avg_score, 1)}
+    return db_retry(_do)
+
+def get_next_action_message(recommendation_strength: str, attempt_number: int) -> str:
+    """Suggest next action based on recommendation strength and attempts."""
+    if recommendation_strength == "urgent":
+        return "👉 Watch a video first, then come back with specific questions"
+    elif recommendation_strength == "medium":
+        return "👉 Try the practice questions, or watch a video if still stuck"
+    else:
+        if attempt_number == 1:
+            return "👉 Ready for practice questions?"
+        else:
+            return "👉 Let's try practice questions"
+
 
 def _extract_topic_keywords(query: str) -> str:
     """Keyword-based academic topic extraction."""

@@ -416,6 +416,21 @@ class QueueCallbackHandler(BaseCallbackHandler):
             except Exception:
                 break
 
+class ApiChatRequest(BaseModel):
+    message: str
+    subject: Optional[str] = "General"
+    topic: Optional[str] = None
+    mode: Optional[str] = "exam"
+    user_id: Optional[int] = 1
+    university_id: Optional[int] = 1
+    session_id: Optional[str] = None
+
+class RatePlaylistRequest(BaseModel):
+    user_id: Optional[int] = 1
+    rating: int
+    was_helpful: bool
+    watched_percentage: Optional[int] = 30
+
 @app.post("/chat")
 async def chat_stream(request: ChatRequest):
     if request.user_email:
@@ -425,32 +440,47 @@ async def chat_stream(request: ChatRequest):
     thread_id = request.thread_id or "default_thread"
     config = {"configurable": {"thread_id": thread_id}}
 
-    # ── Intent Analysis ────────────────────────────────────────────────────────
+    # ── Intent Understanding & Conversation Context ────────────────────────────
     try:
+        conv = get_or_create_conversation(user_id=1, session_id=thread_id, subject="General")
+        history = conv.get("messages", [])
+        last_topic = conv.get("topics_discussed", [""])[-1] if conv.get("topics_discussed") else ""
+        detected_topic = extract_topic_from_query(request.query, last_topic=last_topic)
+        topic_attempts = conv.get("topic_attempts", {}).get(detected_topic, 0)
+
         intent_result = analyze_user_intent(
-            query=request.query,
-            thread_id=thread_id,
-            user_email=request.user_email
+            current_message=request.query,
+            conversation_history=history,
+            topic=detected_topic,
+            topic_attempts=topic_attempts
         )
-        print(f"[INTENT] {intent_result}")
+        print(f"[INTENT] topic='{detected_topic}' attempts={topic_attempts} intent={intent_result.get('intent')} strength={intent_result.get('recommendation_strength')}")
     except Exception as ie:
         print(f"[INTENT] Analysis failed (ignored): {ie}")
-        intent_result = {"should_recommend_videos": False}
+        detected_topic = "general"
+        topic_attempts = 0
+        intent_result = {
+            "should_recommend_videos": False,
+            "recommendation_strength": "none",
+            "intent": "initial",
+            "explanation_style": "normal",
+            "reason": ""
+        }
 
-    # Adjust prompt based on confusion level
+    # Adjust prompt based on attempt number and style
     query_text = request.query
-    if intent_result.get("intent") == "true_confusion":
+    style = intent_result.get("explanation_style", "normal")
+    if style == "basic" or intent_result.get("intent") == "confused":
         query_text = (
-            f"[SYSTEM NOTE: The user has asked about '{intent_result.get('topic')}' "
-            f"{intent_result.get('topic_count', 1)} times and is struggling. "
-            f"Please explain at the most basic level possible using simple everyday analogies. "
-            f"Break into very small steps. Avoid jargon.] "
+            f"[SYSTEM NOTE: The user has asked about '{detected_topic}' multiple times (Attempt #{topic_attempts + 1}) and is struggling. "
+            f"Please give a VERY BASIC explanation of '{detected_topic}'. Use simple everyday analogies. "
+            f"Break into very small steps. No technical jargon at all.] "
             f"{request.query}"
         )
-    elif intent_result.get("intent") == "clarification_needed":
+    elif style == "detailed" or intent_result.get("intent") == "clarify":
         query_text = (
-            f"[SYSTEM NOTE: The user asked about this before and needs a clearer explanation. "
-            f"Try a completely different angle — use a fresh analogy or visual description.] "
+            f"[SYSTEM NOTE: The user is asking for clarification on '{detected_topic}' (Attempt #{topic_attempts + 1}). "
+            f"Explain from a completely DIFFERENT angle. Use a fresh analogy and clear examples.] "
             f"{request.query}"
         )
     # ──────────────────────────────────────────────────────────────────────────
@@ -464,19 +494,70 @@ async def chat_stream(request: ChatRequest):
     # Store handler in registry mapped to thread ID
     active_streams[thread_id] = handler
 
+    accumulated_ai_response = []
+
     async def run_workflow():
         try:
-            await run_in_threadpool(workflow.invoke, state, config=config)
+            res = await run_in_threadpool(workflow.invoke, state, config=config)
+            
+            # Save message & update context
+            try:
+                ai_text = ""
+                if res and "messages" in res and res["messages"]:
+                    ai_text = str(res["messages"][-1].content)
+                
+                # Update conversation in DB
+                conv_curr = get_or_create_conversation(user_id=1, session_id=thread_id, subject="General")
+                msgs = conv_curr.get("messages", [])
+                msgs.append({
+                    "user": request.query,
+                    "ai": ai_text[:500],
+                    "timestamp": datetime.now().isoformat(),
+                    "intent": intent_result.get("intent", "initial"),
+                    "recommendation_strength": intent_result.get("recommendation_strength", "none")
+                })
+                
+                topics = conv_curr.get("topics_discussed", [])
+                if detected_topic and detected_topic not in topics:
+                    topics.append(detected_topic)
+                
+                t_attempts = conv_curr.get("topic_attempts", {})
+                t_attempts[detected_topic] = topic_attempts + 1
+                
+                cursor = conn.cursor()
+                cursor.execute("""
+                    UPDATE conversation_context
+                    SET messages = ?, topics_discussed = ?, topic_attempts = ?, last_activity = ?
+                    WHERE session_id = ?
+                """, (json.dumps(msgs[-20:]), json.dumps(topics), json.dumps(t_attempts), datetime.now().isoformat(), thread_id))
+                conn.commit()
+            except Exception as dbe:
+                print(f"[CONTEXT DB UPDATE ERROR] {dbe}")
+
             # Emit video recommendation if needed
             if intent_result.get("should_recommend_videos"):
-                topic    = intent_result.get("topic", "this topic")
-                diff     = intent_result.get("video_difficulty", "beginner")
+                videos = get_recommended_videos(
+                    subject="Introduction to Electrical & Electronics",
+                    topic=detected_topic,
+                    difficulty_level=intent_result.get("video_difficulty", "Beginner"),
+                    mode="exam",
+                    limit=3
+                )
                 strength = intent_result.get("recommendation_strength", "medium")
-                videos   = get_video_recommendations(topic, diff, limit=3)
+                if strength == "urgent":
+                    rec_msg = "🚨 I see you're really struggling with this.\n\nLet me show you the BEST videos recommended by Bennett students:"
+                elif strength == "medium":
+                    rec_msg = "📺 Recommended videos for this topic:"
+                else:
+                    rec_msg = "Optional: Here are helpful video resources:"
+
                 rec_payload = json.dumps({
-                    "topic": topic,
+                    "topic": detected_topic.title(),
                     "strength": strength,
-                    "topic_count": intent_result.get("topic_count", 1),
+                    "attempt_number": topic_attempts + 1,
+                    "intent_reason": intent_result.get("reason", ""),
+                    "recommendation_message": rec_msg,
+                    "next_action": get_next_action_message(strength, topic_attempts + 1),
                     "videos": videos
                 })
                 await queue.put(f"__VIDEO_REC__:{rec_payload}")
@@ -514,6 +595,141 @@ async def chat_stream(request: ChatRequest):
     }
     return StreamingResponse(response_generator(), headers=headers, media_type="text/event-stream")
 
+# ── Part 3: JSON Smart Chat Endpoint (/api/chat) ──────────────────────────────
+@app.post("/api/chat")
+async def exam_chat_api(request: ApiChatRequest):
+    """
+    Smart chat endpoint with intent understanding, adaptive prompts, and Bennett University recommendations
+    """
+    try:
+        session_id = request.session_id or f"session_{secrets.token_hex(8)}"
+        conv = get_or_create_conversation(user_id=request.user_id or 1, session_id=session_id, subject=request.subject or "General")
+        history = conv.get("messages", [])
+        
+        last_topic = conv.get("topics_discussed", [""])[-1] if conv.get("topics_discussed") else ""
+        topic = request.topic or extract_topic_from_query(request.message, last_topic=last_topic)
+        topic_attempts = conv.get("topic_attempts", {}).get(topic, 0)
+
+        # Intent analysis
+        intent_analysis = analyze_user_intent(
+            current_message=request.message,
+            conversation_history=history,
+            topic=topic,
+            topic_attempts=topic_attempts
+        )
+
+        # Generate explanation
+        style = intent_analysis.get("explanation_style", "normal")
+        prompt_instruction = ""
+        if style == "basic":
+            prompt_instruction = f"VERY BASIC explanation of {topic}. Use only simple everyday words. Real-world example. No technical jargon at all. Step by step."
+        elif style == "simpler":
+            prompt_instruction = f"Simplify explanation of {topic}. Use everyday examples. Break into tiny steps."
+        elif style == "detailed":
+            prompt_instruction = f"Explain {topic} from a DIFFERENT angle. Use analogies. Keep simple and clear."
+        else:
+            prompt_instruction = f"Explain {topic} clearly for exam prep. Include examples."
+
+        prompt_text = f"[SYSTEM: {prompt_instruction}] {request.message}"
+        config = {"configurable": {"thread_id": session_id}}
+        state = {"messages": [HumanMessage(content=prompt_text)]}
+        res = await run_in_threadpool(workflow.invoke, state, config=config)
+        explanation = str(res["messages"][-1].content) if (res and "messages" in res and res["messages"]) else f"Explanation for {topic}."
+
+        # Video recommendations
+        recommended_videos = []
+        recommendation_message = ""
+        if intent_analysis["should_recommend_videos"]:
+            recommended_videos = get_recommended_videos(
+                subject=request.subject or "Introduction to Electrical & Electronics",
+                topic=topic,
+                difficulty_level=intent_analysis["video_difficulty"],
+                mode=request.mode or "exam",
+                limit=3
+            )
+            strength = intent_analysis["recommendation_strength"]
+            if strength == "urgent":
+                recommendation_message = "🚨 I see you're really struggling with this.\n\nLet me show you the BEST videos recommended by Bennett students:"
+            elif strength == "medium":
+                recommendation_message = "📺 Recommended videos for this topic:"
+            else:
+                recommendation_message = "Optional: Here are helpful videos:"
+
+        # Update conversation context in DB
+        msgs = conv.get("messages", [])
+        msgs.append({
+            "user": request.message,
+            "ai": explanation[:500],
+            "timestamp": datetime.now().isoformat(),
+            "intent": intent_analysis["intent"],
+            "recommendation_strength": intent_analysis["recommendation_strength"]
+        })
+        topics = conv.get("topics_discussed", [])
+        if topic not in topics:
+            topics.append(topic)
+        t_attempts = conv.get("topic_attempts", {})
+        t_attempts[topic] = topic_attempts + 1
+
+        cursor = conn.cursor()
+        cursor.execute("""
+            UPDATE conversation_context
+            SET messages = ?, topics_discussed = ?, topic_attempts = ?, last_activity = ?
+            WHERE session_id = ?
+        """, (json.dumps(msgs[-20:]), json.dumps(topics), json.dumps(t_attempts), datetime.now().isoformat(), session_id))
+        conn.commit()
+
+        return {
+            "status": "success",
+            "explanation": explanation,
+            "intent": intent_analysis["intent"],
+            "intent_reason": intent_analysis["reason"],
+            "attempt_number": t_attempts[topic],
+            "should_recommend_videos": intent_analysis["should_recommend_videos"],
+            "recommendation_strength": intent_analysis["recommendation_strength"],
+            "recommendation_message": recommendation_message,
+            "recommended_videos": recommended_videos,
+            "session_id": session_id,
+            "next_action": get_next_action_message(intent_analysis["recommendation_strength"], t_attempts[topic])
+        }
+    except Exception as e:
+        print(f"[API CHAT ERROR] {e}")
+        return {
+            "status": "error",
+            "message": str(e)
+        }
+
+# ── Part 4: Video Rating Endpoint (/api/videos/{playlist_id}/rate) ────────────
+@app.post("/api/videos/{playlist_id}/rate")
+async def rate_playlist_endpoint(playlist_id: int, request: RatePlaylistRequest):
+    """
+    Record user rating for a playlist
+    """
+    try:
+        res = rate_playlist_record(
+            playlist_id=playlist_id,
+            user_id=request.user_id or 1,
+            rating=request.rating,
+            was_helpful=request.was_helpful,
+            watched_percentage=request.watched_percentage or 30
+        )
+        return {
+            "status": "success",
+            "message": "Thanks for rating! This helps other Bennett students.",
+            "playlist_score": res.get("avg_rating", 4.5)
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+# ── Part 5: Seed Channels Endpoint (/api/admin/seed-channels) ─────────────────
+@app.post("/api/admin/seed-channels")
+async def seed_channels_endpoint(admin_token: Optional[str] = None):
+    """Populate database with Bennett University recommended channels"""
+    try:
+        seed_bennett_channels_if_needed()
+        return {"status": "success", "message": f"Seeded {len(BENNETT_CHANNELS)} Bennett University channels."}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
 from database import (
     create_user, get_user_by_email, verify_password,
     record_upload, get_file_uploads_metadata, delete_upload_record,
@@ -526,7 +742,9 @@ from database import (
     get_shared_documents, update_document_record, delete_document_record,
     toggle_document_share_record, check_login_lockout, record_failed_login,
     clear_failed_logins,
-    analyze_user_intent, get_video_recommendations
+    analyze_user_intent, get_recommended_videos, get_or_create_conversation,
+    get_recent_messages, rate_playlist_record, get_next_action_message,
+    extract_topic_from_query, BENNETT_CHANNELS
 )
 from fastapi import Form
 from typing import Optional
