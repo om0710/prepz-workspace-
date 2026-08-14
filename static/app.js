@@ -2563,22 +2563,51 @@ function initializeDocPilotApp() {
     }
 
     // ── Embedded YouTube Modal Player (ChatGPT Style) ──────────────────────────
+    const KNOWN_PLAYLIST_VIDEOS = {
+        "PLGjplNEQ1it8-0CmoljS5yeV-GlKSUEt0": "ERCMXc8x7mc", // Apna College Python
+        "PLu0W_9lII9agwh1XjRt242xIpHhPT2llg": "7wnove7K-ZQ", // Code With Harry Python
+        "PLDN4rrl48XKpZkf03iYFl-O29szjTrs_O": "0IAPZzGSbME", // Abdul Bari DSA
+        "PLU6SqdYcYsfIJRl8mo2Rv1MpdvmVD0YyI": "3d6DsjIBzJ4", // Gajendra Purohit Calculus
+        "PLdM-WZokR4tbCBA4mkvfk2vOH12eRPT2Y": "eY3jUf2F23E", // Vishwakarma Advanced Calculus
+        "PL9RcWoqXmzaLTYUdnzKhF4bYug3GjGcEc": "xIu1g8hW2qY", // Umesh Dhande Network Theorems
+        "PLBlnK6fEyqRhqJPDXcvYlLfXPh37L89g3": "1xWS7g1ZUPg", // NESO Academy Electrical Basics
+        "PLBlnK6fEyqRitWLDxMrzVQK8813oqG797": "2h3eWaEx88s", // NESO Academy Operating Systems
+        "PLxCzCOWd7aiGz9donHRrE9I3Mwn6XdP8p": "bkSWJJZNgf8", // Gate Smashers OS
+        "PLT3bOBUU3L9hADhGPsZjSddwAC3BvJDnl": "x8K1N_404X8"  // Pradeep Giri Mechanics
+    };
+
     window.extractYtEmbedUrl = function(url) {
         if (!url) return "";
         try {
             const parsed = new URL(url);
-            if (parsed.searchParams.has("list")) {
-                const listId = parsed.searchParams.get("list");
-                return `https://www.youtube-nocookie.com/embed/videoseries?list=${listId}&autoplay=1`;
-            }
-            if (parsed.searchParams.has("v")) {
-                const vId = parsed.searchParams.get("v");
-                return `https://www.youtube-nocookie.com/embed/${vId}?autoplay=1`;
-            }
+            let listId = parsed.searchParams.get("list");
+            let videoId = parsed.searchParams.get("v");
+
             if (parsed.hostname.includes("youtu.be")) {
-                const vId = parsed.pathname.replace(/^\//, "");
-                return `https://www.youtube-nocookie.com/embed/${vId}?autoplay=1`;
+                videoId = parsed.pathname.replace(/^\//, "");
             }
+
+            // 1. Direct Known Playlist -> First Video + Playlist Embed
+            if (listId && KNOWN_PLAYLIST_VIDEOS[listId]) {
+                videoId = KNOWN_PLAYLIST_VIDEOS[listId];
+                return `https://www.youtube.com/embed/${videoId}?list=${listId}&autoplay=1&enablejsapi=1&rel=0`;
+            }
+
+            // 2. Video with Playlist
+            if (videoId && listId) {
+                return `https://www.youtube.com/embed/${videoId}?list=${listId}&autoplay=1&enablejsapi=1&rel=0`;
+            }
+
+            // 3. Single Video
+            if (videoId) {
+                return `https://www.youtube.com/embed/${videoId}?autoplay=1&enablejsapi=1&rel=0`;
+            }
+
+            // 4. Playlist without known video
+            if (listId) {
+                return `https://www.youtube.com/embed/videoseries?list=${listId}&autoplay=1&enablejsapi=1&rel=0`;
+            }
+
             return url;
         } catch (e) {
             return url;

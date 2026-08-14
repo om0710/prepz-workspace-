@@ -291,7 +291,7 @@ BENNETT_CHANNELS = [
         "instructor": "NESO Academy",
         "subject": "Introduction to Electrical & Electronics",
         "topic": "Electrical Engineering Basics & Circuits",
-        "playlist_url": "https://www.youtube.com/@nesoacademy/playlists",
+        "playlist_url": "https://www.youtube.com/playlist?list=PLBlnK6fEyqRhqJPDXcvYlLfXPh37L89g3",
         "difficulty": "Intermediate",
         "best_for": ["deep learning", "exam prep"],
         "avg_duration": 20,
@@ -453,8 +453,12 @@ def seed_bennett_channels_if_needed():
                     ch.get("helpful_count", 19), ch.get("total_videos", 40), ch.get("avg_duration", 20),
                     _json.dumps(ch.get("best_for", ["exam prep", "foundation"]))
                 ))
+            for ch in BENNETT_CHANNELS:
+                cursor.execute("""
+                    UPDATE youtube_playlist SET playlist_url = ? WHERE channel_name = ? AND topic = ?
+                """, (ch["playlist_url"], ch["channel_name"], ch["topic"]))
             conn.commit()
-            print(f"[SEED] Seeded {len(BENNETT_CHANNELS)} Bennett University channels.")
+            print(f"[SEED] Seeded & synced {len(BENNETT_CHANNELS)} Bennett University channels.")
     db_retry(_do)
 
 seed_bennett_channels_if_needed()
