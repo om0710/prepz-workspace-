@@ -2501,10 +2501,16 @@ function initializeDocPilotApp() {
                         <span>⏱️ ${avgDur} min avg</span>
                     </div>
                     
-                    <a href="${playlistUrl}" target="_blank" rel="noopener noreferrer" class="btn-watch-inapp" style="display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%; box-sizing: border-box; padding: 12px 18px; font-size: 13.5px; font-weight: 700; border-radius: 10px; margin: 10px 0; text-decoration: none; background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%); color: #ffffff !important; box-shadow: 0 4px 14px rgba(239, 68, 68, 0.45);">
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
-                        <span>Watch Lecture Video ↗</span>
-                    </a>
+                    <div class="video-actions-row">
+                        <button type="button" onclick="window.openYtPlayerModal('${playlistUrl}', '${(v.topic || topicLabel).replace(/'/g, "\\'")}', '${channelName.replace(/'/g, "\\'")}')" class="btn-watch-inapp">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
+                            <span>In-App Player</span>
+                        </button>
+                        <a href="${playlistUrl}" target="_blank" rel="noopener noreferrer" class="btn-watch-yt">
+                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+                            <span>YouTube ↗</span>
+                        </a>
+                    </div>
                     
                     <div class="rate-buttons" id="rate-btns-${v.id || i}">
                         <button onclick="window.rateVideo(${v.id || i + 1}, 5, true, 'rate-btns-${v.id || i}')" class="btn-helpful">👍 Helpful</button>
@@ -2556,6 +2562,72 @@ function initializeDocPilotApp() {
             card.scrollIntoView({ behavior: "smooth", block: "nearest" });
         }, 100);
     }
+
+    // ── In-App Interactive Video Player Modal ──────────────────────────────────
+    const KNOWN_THUMBNAILS = {
+        "PLU6SqdYcYsfIJRl8mo2Rv1MpdvmVD0YyI": "https://img.youtube.com/vi/3d6DsjIBzJ4/hqdefault.jpg",
+        "PLdM-WZokR4tbCBA4mkvfk2vOH12eRPT2Y": "https://img.youtube.com/vi/eY3jUf2F23E/hqdefault.jpg",
+        "PL9RcWoqXmzaLTYUdnzKhF4bYug3GjGcEc": "https://img.youtube.com/vi/xIu1g8hW2qY/hqdefault.jpg",
+        "PLBlnK6fEyqRhqJPDXcvYlLfXPh37L89g3": "https://img.youtube.com/vi/1xWS7g1ZUPg/hqdefault.jpg",
+        "PLGjplNEQ1it8-0CmoljS5yeV-GlKSUEt0": "https://img.youtube.com/vi/ERCMXc8x7mc/hqdefault.jpg",
+        "PLu0W_9lII9agwh1XjRt242xIpHhPT2llg": "https://img.youtube.com/vi/7wnove7K-ZQ/hqdefault.jpg",
+        "PLDN4rrl48XKpZkf03iYFl-O29szjTrs_O": "https://img.youtube.com/vi/0IAPZzGSbME/hqdefault.jpg",
+        "PLxCzCOWd7aiGz9donHRrE9I3Mwn6XdP8p": "https://img.youtube.com/vi/bkSWJJZNgf8/hqdefault.jpg",
+        "PLBlnK6fEyqRitWLDxMrzVQK8813oqG797": "https://img.youtube.com/vi/2h3eWaEx88s/hqdefault.jpg",
+        "PLT3bOBUU3L9hADhGPsZjSddwAC3BvJDnl": "https://img.youtube.com/vi/x8K1N_404X8/hqdefault.jpg"
+    };
+
+    window.openYtPlayerModal = function(url, title, channel) {
+        const modal = document.getElementById("yt-player-modal");
+        const titleEl = document.getElementById("yt-player-title");
+        const channelEl = document.getElementById("yt-player-channel");
+        const extLink = document.getElementById("yt-player-external-link");
+        const contentBox = document.getElementById("yt-player-dynamic-content");
+
+        if (!modal) return;
+
+        if (titleEl) titleEl.textContent = title || "Bennett Verified Lecture";
+        if (channelEl) channelEl.textContent = channel || "Faculty Series";
+        if (extLink) extLink.href = url || "#";
+
+        let thumb = "https://img.youtube.com/vi/3d6DsjIBzJ4/hqdefault.jpg";
+        try {
+            const parsed = new URL(url);
+            const listId = parsed.searchParams.get("list");
+            const vid = parsed.searchParams.get("v");
+            if (listId && KNOWN_THUMBNAILS[listId]) {
+                thumb = KNOWN_THUMBNAILS[listId];
+            } else if (vid) {
+                thumb = `https://img.youtube.com/vi/${vid}/hqdefault.jpg`;
+            }
+        } catch (e) {}
+
+        if (contentBox) {
+            contentBox.innerHTML = `
+                <a href="${url}" target="_blank" rel="noopener noreferrer" class="yt-player-preview-card" style="background-image: url('${thumb}');">
+                    <div class="yt-player-preview-overlay">
+                        <div class="yt-big-play-btn">
+                            <svg width="34" height="34" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
+                        </div>
+                        <h4 class="yt-preview-title">${title || 'Bennett Verified Playlist'}</h4>
+                        <p class="yt-preview-sub">${channel || 'Faculty Lecture Series'} • Top Rated by Bennett Students</p>
+                        <span class="yt-preview-badge">▶ Click Anywhere to Watch in HD ↗</span>
+                    </div>
+                </a>
+            `;
+        }
+
+        modal.classList.remove("hidden");
+        modal.style.display = "flex";
+    };
+
+    window.closeYtPlayerModal = function() {
+        const modal = document.getElementById("yt-player-modal");
+        if (modal) {
+            modal.classList.add("hidden");
+            modal.style.display = "none";
+        }
+    };
 
     // Global rateVideo handler
     window.rateVideo = async function(playlistId, rating, wasHelpful, containerId) {
