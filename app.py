@@ -506,35 +506,20 @@ async def chat_stream(request: ChatRequest):
                 if res and "messages" in res and res["messages"]:
                     ai_text = str(res["messages"][-1].content)
                 
-                # Update conversation in DB
-                conv_curr = get_or_create_conversation(user_id=1, session_id=thread_id, subject="General")
-                msgs = conv_curr.get("messages", [])
-                msgs.append({
-                    "user": request.query,
-                    "ai": ai_text[:500],
-                    "timestamp": datetime.now().isoformat(),
-                    "intent": intent_result.get("intent", "initial"),
-                    "recommendation_strength": intent_result.get("recommendation_strength", "none")
-                })
-                
-                topics = conv_curr.get("topics_discussed", [])
-                if detected_topic and detected_topic not in topics:
-                    topics.append(detected_topic)
-                
-                t_attempts = conv_curr.get("topic_attempts", {})
-                t_attempts[detected_topic] = topic_attempts + 1
-                
-                cursor = conn.cursor()
-                cursor.execute("""
-                    UPDATE conversation_context
-                    SET messages = ?, topics_discussed = ?, topic_attempts = ?, last_activity = ?
-                    WHERE session_id = ?
-                """, (json.dumps(msgs[-20:]), json.dumps(topics), json.dumps(t_attempts), datetime.now().isoformat(), thread_id))
-                conn.commit()
+                update_conversation_context_record(
+                    session_id=thread_id,
+                    user_message=request.query,
+                    ai_message=ai_text[:500],
+                    topic=detected_topic,
+                    topic_attempts=topic_attempts + 1,
+                    intent=intent_result.get("intent", "initial"),
+                    strength=intent_result.get("recommendation_strength", "none")
+                )
             except Exception as dbe:
                 print(f"[CONTEXT DB UPDATE ERROR] {dbe}")
 
             # Emit video recommendation if needed
+            print(f"[STREAM] Checking video rec: should={intent_result.get('should_recommend_videos')} strength={intent_result.get('recommendation_strength')} topic='{detected_topic}'")
             if intent_result.get("should_recommend_videos"):
                 videos = get_recommended_videos(
                     subject="Introduction to Electrical & Electronics",
@@ -560,8 +545,10 @@ async def chat_stream(request: ChatRequest):
                     "next_action": get_next_action_message(strength, topic_attempts + 1),
                     "videos": videos
                 })
+                print(f"[STREAM EMIT VIDEO_REC] {rec_payload[:120]}...")
                 await queue.put(f"__VIDEO_REC__:{rec_payload}")
         except Exception as e:
+            print(f"[RUN_WORKFLOW ERROR] {e}")
             await queue.put(f"__ERROR__:{str(e)}")
         finally:
             active_streams.pop(thread_id, None)
@@ -656,40 +643,28 @@ async def exam_chat_api(request: ApiChatRequest):
                 recommendation_message = "Optional: Here are helpful videos:"
 
         # Update conversation context in DB
-        msgs = conv.get("messages", [])
-        msgs.append({
-            "user": request.message,
-            "ai": explanation[:500],
-            "timestamp": datetime.now().isoformat(),
-            "intent": intent_analysis["intent"],
-            "recommendation_strength": intent_analysis["recommendation_strength"]
-        })
-        topics = conv.get("topics_discussed", [])
-        if topic not in topics:
-            topics.append(topic)
-        t_attempts = conv.get("topic_attempts", {})
-        t_attempts[topic] = topic_attempts + 1
-
-        cursor = conn.cursor()
-        cursor.execute("""
-            UPDATE conversation_context
-            SET messages = ?, topics_discussed = ?, topic_attempts = ?, last_activity = ?
-            WHERE session_id = ?
-        """, (json.dumps(msgs[-20:]), json.dumps(topics), json.dumps(t_attempts), datetime.now().isoformat(), session_id))
-        conn.commit()
+        update_conversation_context_record(
+            session_id=session_id,
+            user_message=request.message,
+            ai_message=explanation[:500],
+            topic=topic,
+            topic_attempts=topic_attempts + 1,
+            intent=intent_analysis["intent"],
+            strength=intent_analysis["recommendation_strength"]
+        )
 
         return {
             "status": "success",
             "explanation": explanation,
             "intent": intent_analysis["intent"],
             "intent_reason": intent_analysis["reason"],
-            "attempt_number": t_attempts[topic],
+            "attempt_number": topic_attempts + 1,
             "should_recommend_videos": intent_analysis["should_recommend_videos"],
             "recommendation_strength": intent_analysis["recommendation_strength"],
             "recommendation_message": recommendation_message,
             "recommended_videos": recommended_videos,
             "session_id": session_id,
-            "next_action": get_next_action_message(intent_analysis["recommendation_strength"], t_attempts[topic])
+            "next_action": get_next_action_message(intent_analysis["recommendation_strength"], topic_attempts + 1)
         }
     except Exception as e:
         print(f"[API CHAT ERROR] {e}")
@@ -744,7 +719,8 @@ from database import (
     clear_failed_logins,
     analyze_user_intent, get_recommended_videos, get_or_create_conversation,
     get_recent_messages, rate_playlist_record, get_next_action_message,
-    extract_topic_from_query, BENNETT_CHANNELS
+    extract_topic_from_query, BENNETT_CHANNELS, seed_bennett_channels_if_needed,
+    update_conversation_context_record
 )
 from fastapi import Form
 from typing import Optional

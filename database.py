@@ -537,6 +537,37 @@ def get_or_create_conversation(user_id: int = 1, session_id: str = None, subject
         }
     return db_retry(_do)
 
+def update_conversation_context_record(session_id: str, user_message: str, ai_message: str, topic: str, topic_attempts: int, intent: str = "initial", strength: str = "none"):
+    """Safely append messages and update topic attempts in conversation_context."""
+    def _do():
+        cursor = conn.cursor()
+        row = cursor.execute("SELECT messages, topics_discussed, topic_attempts FROM conversation_context WHERE session_id = ?", (session_id,)).fetchone()
+        if row:
+            msgs = _json.loads(row[0] or "[]")
+            topics = _json.loads(row[1] or "[]")
+            t_attempts = _json.loads(row[2] or "{}")
+        else:
+            msgs, topics, t_attempts = [], [], {}
+
+        msgs.append({
+            "user": user_message,
+            "ai": ai_message[:500] if ai_message else "",
+            "timestamp": _dt.now().isoformat(),
+            "intent": intent,
+            "recommendation_strength": strength
+        })
+        if topic and topic not in topics:
+            topics.append(topic)
+        t_attempts[topic] = topic_attempts
+
+        cursor.execute("""
+            UPDATE conversation_context
+            SET messages = ?, topics_discussed = ?, topic_attempts = ?, last_activity = ?
+            WHERE session_id = ?
+        """, (_json.dumps(msgs[-20:]), _json.dumps(topics), _json.dumps(t_attempts), _dt.now().isoformat(), session_id))
+        conn.commit()
+    db_retry(_do)
+
 def get_recent_messages(conversation_id: int, limit: int = 10) -> list:
     """Get recent messages from conversation"""
     try:
