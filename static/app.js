@@ -2484,6 +2484,19 @@ function initializeDocPilotApp() {
             const instructorName = v.instructor ? `<p class="instructor"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display:inline;vertical-align:middle;margin-right:4px;"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>${v.instructor}</p>` : "";
             const playlistUrl = v.playlist_url || v.url || `https://www.youtube.com/results?search_query=${encodeURIComponent(topicLabel + ' Bennett University')}`;
 
+            let videoId = "3d6DsjIBzJ4";
+            try {
+                const parsed = new URL(playlistUrl);
+                const listId = parsed.searchParams.get("list");
+                const vid = parsed.searchParams.get("v");
+                if (listId && KNOWN_PLAYLIST_FIRST_VIDEOS[listId]) {
+                    videoId = KNOWN_PLAYLIST_FIRST_VIDEOS[listId];
+                } else if (vid) {
+                    videoId = vid;
+                }
+            } catch (e) {}
+            const thumbUrl = `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`;
+
             return `
                 <div class="video-card">
                     <div class="video-rank">#${i + 1}</div>
@@ -2491,18 +2504,18 @@ function initializeDocPilotApp() {
                     ${instructorName}
                     <p class="topic">${v.topic || topicLabel}</p>
                     
+                    <a href="${playlistUrl}" onclick="window.playVideoInApp(this, '${v.id || i}'); return false;" class="video-poster-box" data-url="${playlistUrl}" data-title="${(v.topic || topicLabel)}" data-channel="${channelName}" style="display: block; position: relative; width: 100%; padding-bottom: 56.25%; border-radius: 10px; overflow: hidden; background: #000 url('${thumbUrl}') center/cover no-repeat; margin: 10px 0; box-shadow: 0 4px 14px rgba(0,0,0,0.5); cursor: pointer; text-decoration: none;">
+                        <div style="position: absolute; inset: 0; background: linear-gradient(180deg, rgba(0,0,0,0.2) 0%, rgba(0,0,0,0.7) 100%); display: flex; flex-direction: column; align-items: center; justify-content: center;">
+                            <div style="width: 52px; height: 52px; border-radius: 50%; background: #ef4444; color: #fff; display: flex; align-items: center; justify-content: center; box-shadow: 0 0 20px rgba(239, 68, 68, 0.8);">
+                                <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
+                            </div>
+                            <span style="position: absolute; bottom: 8px; right: 8px; background: rgba(0,0,0,0.8); color: #fff; padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 600;">⏱️ ${avgDur} min</span>
+                        </div>
+                    </a>
+
                     <div class="video-stats">
                         <span class="rating">⭐ ${ratingScore}/5 (${totalR} ratings)</span>
                         <span class="helpful">✅ ${helpfulPct}% helpful</span>
-                    </div>
-                    
-                    <div class="video-meta">
-                        <span>📹 ${totalVids} videos</span>
-                        <span>⏱️ ${avgDur} min avg</span>
-                    </div>
-                    
-                    <div class="video-inline-player-box" id="inline-player-${v.id || i}" style="display: none; margin: 10px 0; border-radius: 10px; overflow: hidden; position: relative; padding-bottom: 56.25%; height: 0; background: #000; box-shadow: 0 4px 14px rgba(0,0,0,0.5);">
-                        <iframe src="" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen style="position: absolute; top:0; left:0; width:100%; height:100%; border:0;"></iframe>
                     </div>
 
                     <div class="video-actions-row">
@@ -2567,7 +2580,7 @@ function initializeDocPilotApp() {
         }, 100);
     }
 
-    // ── In-App Interactive Video Player Modal ──────────────────────────────────
+    // ── In-App Interactive Video Player System ─────────────────────────────────
     const KNOWN_PLAYLIST_FIRST_VIDEOS = {
         "PLU6SqdYcYsfIJRl8mo2Rv1MpdvmVD0YyI": "3d6DsjIBzJ4", // Gajendra Purohit Calculus
         "PLdM-WZokR4tbCBA4mkvfk2vOH12eRPT2Y": "eY3jUf2F23E", // Vishwakarma Advanced Calculus
@@ -2599,22 +2612,13 @@ function initializeDocPilotApp() {
             }
         } catch (e) {}
 
-        // 1. Expand inline player inside the card
-        if (cardId !== undefined) {
-            const inlineBox = document.getElementById(`inline-player-${cardId}`);
-            if (inlineBox) {
-                const iframe = inlineBox.querySelector("iframe");
-                if (iframe) {
-                    iframe.src = `https://www.youtube.com/embed/${videoId}?autoplay=1&playsinline=1&rel=0`;
-                }
-                inlineBox.style.display = "block";
-                inlineBox.scrollIntoView({ behavior: "smooth", block: "nearest" });
-            }
-        }
-
-        // 2. Also open modal player
-        if (window.openYtPlayerModal) {
-            window.openYtPlayerModal(url, title, channel);
+        const embedPlayerUrl = `https://www.youtube.com/embed/${videoId}?autoplay=1&playsinline=1&rel=0`;
+        
+        // Open dedicated popup player window (bypasses Hugging Face parent iframe CSP)
+        const win = window.open(embedPlayerUrl, "BU_Prepz_Video_Player", "width=860,height=520,menubar=no,toolbar=no,location=no,status=no,resizable=yes");
+        if (!win || win.closed || typeof win.closed === 'undefined') {
+            // If popup was blocked by browser, open YouTube directly
+            window.open(url, "_blank");
         }
     };
 
