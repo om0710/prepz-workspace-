@@ -2440,13 +2440,26 @@ function initializeDocPilotApp() {
         }
     });
 
-    // ── Video Recommendation Card Renderer (Bennett University Verified) ──────
+    // ── Video Recommendation System (Bennett University Verified) ──────────────
+    const KNOWN_PLAYLIST_FIRST_VIDEOS = {
+        "PLU6SqdYcYsfIJRl8mo2Rv1MpdvmVD0YyI": "3d6DsjIBzJ4", // Gajendra Purohit Calculus
+        "PLdM-WZokR4tbCBA4mkvfk2vOH12eRPT2Y": "eY3jUf2F23E", // Vishwakarma Advanced Calculus
+        "PL9RcWoqXmzaLTYUdnzKhF4bYug3GjGcEc": "xIu1g8hW2qY", // Umesh Dhande Network Theorems
+        "PLBlnK6fEyqRhqJPDXcvYlLfXPh37L89g3": "1xWS7g1ZUPg", // NESO Academy Electrical Basics
+        "PLGjplNEQ1it8-0CmoljS5yeV-GlKSUEt0": "ERCMXc8x7mc", // Apna College Python
+        "PLu0W_9lII9agwh1XjRt242xIpHhPT2llg": "7wnove7K-ZQ", // Code With Harry Python
+        "PLDN4rrl48XKpZkf03iYFl-O29szjTrs_O": "0IAPZzGSbME", // Abdul Bari DSA
+        "PLxCzCOWd7aiGz9donHRrE9I3Mwn6XdP8p": "bkSWJJZNgf8", // Gate Smashers OS
+        "PLBlnK6fEyqRitWLDxMrzVQK8813oqG797": "2h3eWaEx88s", // NESO Academy OS
+        "PLT3bOBUU3L9hADhGPsZjSddwAC3BvJDnl": "x8K1N_404X8"  // Pradeep Giri Mechanics
+    };
+
     function renderVideoRecommendation(rec, afterBubble) {
         if (!rec || !rec.videos || rec.videos.length === 0) return;
 
         const strengthConfig = {
             urgent: {
-                label: "🚨 You seem stuck — watch a video first!",
+                label: "🚨 Recommended Faculty Lectures for Bennett Students",
                 cls: "video-rec-urgent",
                 icon: "🎬"
             },
@@ -2506,8 +2519,8 @@ function initializeDocPilotApp() {
                     
                     <a href="${playlistUrl}" onclick="window.playVideoInApp(this, '${v.id || i}'); return false;" class="video-poster-box" data-url="${playlistUrl}" data-title="${(v.topic || topicLabel)}" data-channel="${channelName}" style="display: block; position: relative; width: 100%; padding-bottom: 56.25%; border-radius: 10px; overflow: hidden; background: #000 url('${thumbUrl}') center/cover no-repeat; margin: 10px 0; box-shadow: 0 4px 14px rgba(0,0,0,0.5); cursor: pointer; text-decoration: none;">
                         <div style="position: absolute; inset: 0; background: linear-gradient(180deg, rgba(0,0,0,0.2) 0%, rgba(0,0,0,0.7) 100%); display: flex; flex-direction: column; align-items: center; justify-content: center;">
-                            <div style="width: 52px; height: 52px; border-radius: 50%; background: #ef4444; color: #fff; display: flex; align-items: center; justify-content: center; box-shadow: 0 0 20px rgba(239, 68, 68, 0.8);">
-                                <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
+                            <div style="width: 50px; height: 50px; border-radius: 50%; background: #ef4444; color: #fff; display: flex; align-items: center; justify-content: center; box-shadow: 0 0 20px rgba(239, 68, 68, 0.8);">
+                                <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
                             </div>
                             <span style="position: absolute; bottom: 8px; right: 8px; background: rgba(0,0,0,0.8); color: #fff; padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 600;">⏱️ ${avgDur} min</span>
                         </div>
@@ -2580,20 +2593,6 @@ function initializeDocPilotApp() {
         }, 100);
     }
 
-    // ── In-App Interactive Video Player System ─────────────────────────────────
-    const KNOWN_PLAYLIST_FIRST_VIDEOS = {
-        "PLU6SqdYcYsfIJRl8mo2Rv1MpdvmVD0YyI": "3d6DsjIBzJ4", // Gajendra Purohit Calculus
-        "PLdM-WZokR4tbCBA4mkvfk2vOH12eRPT2Y": "eY3jUf2F23E", // Vishwakarma Advanced Calculus
-        "PL9RcWoqXmzaLTYUdnzKhF4bYug3GjGcEc": "xIu1g8hW2qY", // Umesh Dhande Network Theorems
-        "PLBlnK6fEyqRhqJPDXcvYlLfXPh37L89g3": "1xWS7g1ZUPg", // NESO Academy Electrical Basics
-        "PLGjplNEQ1it8-0CmoljS5yeV-GlKSUEt0": "ERCMXc8x7mc", // Apna College Python
-        "PLu0W_9lII9agwh1XjRt242xIpHhPT2llg": "7wnove7K-ZQ", // Code With Harry Python
-        "PLDN4rrl48XKpZkf03iYFl-O29szjTrs_O": "0IAPZzGSbME", // Abdul Bari DSA
-        "PLxCzCOWd7aiGz9donHRrE9I3Mwn6XdP8p": "bkSWJJZNgf8", // Gate Smashers OS
-        "PLBlnK6fEyqRitWLDxMrzVQK8813oqG797": "2h3eWaEx88s", // NESO Academy OS
-        "PLT3bOBUU3L9hADhGPsZjSddwAC3BvJDnl": "x8K1N_404X8"  // Pradeep Giri Mechanics
-    };
-
     window.playVideoInApp = function(btn, cardId) {
         if (!btn) return;
         const url = btn.getAttribute("data-url") || btn.dataset.url;
@@ -2623,46 +2622,7 @@ function initializeDocPilotApp() {
     };
 
     window.openYtPlayerModal = function(url, title, channel) {
-        const modal = document.getElementById("yt-player-modal");
-        const iframe = document.getElementById("yt-player-iframe");
-        const titleEl = document.getElementById("yt-player-title");
-        const channelEl = document.getElementById("yt-player-channel");
-        const extLink = document.getElementById("yt-player-external-link");
-
-        if (!modal) return;
-
-        if (titleEl) titleEl.textContent = title || "Bennett Verified Lecture";
-        if (channelEl) channelEl.textContent = channel || "Faculty Lecture Series";
-        if (extLink) extLink.href = url || "#";
-
-        let videoId = "3d6DsjIBzJ4";
-        try {
-            const parsed = new URL(url);
-            const listId = parsed.searchParams.get("list");
-            const vid = parsed.searchParams.get("v");
-            if (listId && KNOWN_PLAYLIST_FIRST_VIDEOS[listId]) {
-                videoId = KNOWN_PLAYLIST_FIRST_VIDEOS[listId];
-            } else if (vid) {
-                videoId = vid;
-            }
-        } catch (e) {}
-
-        if (iframe) {
-            iframe.src = `https://www.youtube.com/embed/${videoId}?autoplay=1&playsinline=1&rel=0`;
-        }
-
-        modal.classList.remove("hidden");
-        modal.style.display = "flex";
-    };
-
-    window.closeYtPlayerModal = function() {
-        const modal = document.getElementById("yt-player-modal");
-        const iframe = document.getElementById("yt-player-iframe");
-        if (iframe) iframe.src = "";
-        if (modal) {
-            modal.classList.add("hidden");
-            modal.style.display = "none";
-        }
+        window.playVideoInApp({ getAttribute: () => url, dataset: { url, title, channel } });
     };
 
     // Global Click Delegation for In-App Player
