@@ -563,6 +563,7 @@ def calculate_similarity(msg1: str, msg2: str) -> float:
 
 # ── Core Academic Topics Dictionary ──────────────────────────────────────────
 TOPIC_KW = {
+    "electronics": ["basic electronics", "analog electronics", "digital electronics", "electronics", "electronic", "semiconductor", "diode", "bjt", "opamp", "transistor", "fet", "mosfet"],
     "calculus": ["calculus", "differential calculus", "integral calculus", "differentiation", "integration", "derivative", "derivatives", "integral", "integrals", "limit", "limits", "continuity", "maxima", "minima", "taylor series", "maclaurin", "multivariable calculus"],
     "differential equations": ["differential equation", "differential equations", "ode", "pde", "exact differential", "bernoulli equation", "linear differential"],
     "linear algebra": ["eigenvalue", "eigenvalues", "eigenvector", "eigenvectors", "matrix", "matrices", "determinant", "determinants", "rank of matrix", "linear transformation", "vector space"],
@@ -598,7 +599,8 @@ def extract_topic_from_query(query: str, last_topic: str = "") -> str:
     # 2. Check if this is a follow-up query that should inherit previous topic
     follow_up_tokens = {
         "bhai", "nhi", "nahi", "smj", "samj", "samjh", "smjh", "aaya", "aya",
-        "video", "videos", "tutorial", "tutorials", "tutorilas", "some", "again",
+        "video", "videos", "vid", "vids", "yt", "youtube", "channel", "channels",
+        "tutorial", "tutorials", "tutorilas", "some", "again",
         "fir", "se", "please", "help", "kuch", "stuck", "what", "how", "why",
         "suggest", "suggested", "suggestions", "for", "it", "this", "that", "give",
         "show", "recommend", "links", "link", "karo", "do", "batao", "dekhna", "dekh",
@@ -633,6 +635,14 @@ FRUSTRATION_PHRASES = [
     "smjh nhi aaya", "nhi smj", "nhi aaya", "nahi aaya"
 ]
 
+VIDEO_REQUEST_SIGNALS = [
+    "video", "videos", "vid", "vids", "yt", "youtube", "channel", "channels",
+    "lecture", "lectures", "lec", "lecs", "tutorial", "tutorials", "tutorilas",
+    "playlist", "playlists", "watch", "link", "links", "recommend channel",
+    "suggest channel", "best channel", "best channels", "recommend videos",
+    "suggest videos", "courses", "course", "dekho", "dekhna", "dikhao"
+]
+
 def analyze_user_intent(
     current_message: str,
     conversation_history: list = None,
@@ -641,7 +651,7 @@ def analyze_user_intent(
 ) -> dict:
     """
     MAIN FUNCTION: Analyze user's TRUE intent.
-    Recommends videos when user is frustrated, stuck, repeating, or explicitly asks for videos.
+    Recommends videos when user is frustrated, stuck, repeating, or explicitly asks for videos / channels.
     """
     if conversation_history is None:
         conversation_history = []
@@ -663,7 +673,7 @@ def analyze_user_intent(
     # Signals
     is_frustrated = any(phrase in q_lower for phrase in FRUSTRATION_PHRASES)
     is_asking_clarification = any(phrase in q_lower for phrase in CLARIFICATION_PHRASES)
-    is_video_requested = any(v in q_lower for v in ["video", "videos", "youtube", "lecture", "tutorial", "tutorials", "tutorilas", "playlist", "watch", "link", "links"])
+    is_video_requested = any(_re.search(r'(?<![a-zA-Z0-9])' + _re.escape(v) + r'(?![a-zA-Z0-9])', q_lower) for v in VIDEO_REQUEST_SIGNALS)
 
     # Repetition Check
     is_repeating = False
@@ -692,12 +702,12 @@ def analyze_user_intent(
         analysis["explanation_style"] = "basic"
         return analysis
 
-    # 2. Explicit Video Request (🚨 Urgent Video Mode)
+    # 2. Explicit Video / Channel Request (🚨 Urgent Video Mode)
     if is_video_requested:
         analysis["intent"] = "clarify" if topic_attempts <= 1 else "confused"
         analysis["should_recommend_videos"] = True
         analysis["recommendation_strength"] = "urgent"
-        analysis["reason"] = "User explicitly requested video support"
+        analysis["reason"] = "User explicitly requested video/channel recommendations"
         analysis["explanation_style"] = "simpler"
         return analysis
 
@@ -729,6 +739,7 @@ def analyze_user_intent(
 # ── Video Recommendations & Rating ─────────────────────────────────────────────
 
 TOPIC_TO_FACULTY_MAP = {
+    "electronics": ["electronics", "circuits", "electrical", "neso academy", "umesh dhande", "engineers ki pathshala"],
     "calculus": ["calculus", "math", "differentiation", "integration", "derivative", "differential", "gajendra purohit", "vishwakarma"],
     "differential equations": ["calculus", "math", "differential equations", "vishwakarma", "gajendra purohit"],
     "linear algebra": ["calculus", "math", "linear algebra", "matrices", "gajendra purohit"],
