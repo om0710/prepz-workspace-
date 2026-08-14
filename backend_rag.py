@@ -39,13 +39,25 @@ llm_primary = ChatGroq(
     streaming=True,
     groq_api_key=groq_key
 )
-llm_fallback = ChatGroq(
-    model="qwen/qwen3-32b",
+llm_fallback_1 = ChatGroq(
+    model="llama-3.1-8b-instant",
     temperature=0,
     streaming=True,
     groq_api_key=groq_key
 )
-llm = llm_primary.with_fallbacks([llm_fallback])
+llm_fallback_2 = ChatGroq(
+    model="openai/gpt-oss-120b",
+    temperature=0,
+    streaming=True,
+    groq_api_key=groq_key
+)
+llm_fallback_3 = ChatGroq(
+    model="qwen/qwen3.6-27b",
+    temperature=0,
+    streaming=True,
+    groq_api_key=groq_key
+)
+llm = llm_primary.with_fallbacks([llm_fallback_1, llm_fallback_2, llm_fallback_3])
 
 def grade_document(question: str, document_content: str) -> str:
     prompt = f"""System: You are a grader assessing relevance of a retrieved document to a user question.

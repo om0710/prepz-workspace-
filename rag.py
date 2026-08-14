@@ -15,11 +15,17 @@ os.environ["GROQ_API_KEY"] = groq_key
 
 # ---------------- LLM ---------------- #
 
-llm = ChatGroq(
+llm_primary = ChatGroq(
     model="llama-3.3-70b-versatile",
     temperature=0,
     groq_api_key=groq_key
 )
+llm_fallback = ChatGroq(
+    model="llama-3.1-8b-instant",
+    temperature=0,
+    groq_api_key=groq_key
+)
+llm = llm_primary.with_fallbacks([llm_fallback])
 
 # ---------------- Text Splitter ---------------- #
 
