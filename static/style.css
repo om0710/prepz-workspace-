@@ -2212,72 +2212,54 @@ button, a[role="button"], input[type="button"], input[type="submit"] {
 }
 
 .intent-text {
-    color: #fca5a5;
+    color: var(--text-muted, #94a3b8);
     font-weight: 500;
-    font-size: 12.5px;
+    font-size: 12px;
 }
 
 .video-recommendations {
-    margin: 20px 0 24px 0;
-    padding: 20px 22px;
+    margin: 18px 0 22px 0;
+    padding: 18px 20px;
     border-radius: 16px;
-    backdrop-filter: blur(24px);
-    -webkit-backdrop-filter: blur(24px);
-    animation: recSlideIn 0.4s cubic-bezier(0.22, 1, 0.36, 1) both;
+    background: var(--bg-card, #121519);
+    border: 1px solid var(--border-medium, rgba(255, 107, 0, 0.2));
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    animation: recSlideIn 0.35s cubic-bezier(0.16, 1, 0.3, 1) both;
     position: relative;
     z-index: 10;
     width: 100%;
     box-sizing: border-box;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
 }
 
 .video-recommendations.light {
-    background: rgba(15, 23, 42, 0.95);
-    border: 1.5px solid rgba(59, 130, 246, 0.5);
-    box-shadow: 0 10px 36px rgba(0, 0, 0, 0.6), 0 0 25px rgba(59, 130, 246, 0.2);
+    border-left: 4px solid var(--accent-info, #38bdf8);
 }
 
 .video-recommendations.medium {
-    background: rgba(36, 20, 10, 0.95);
-    border: 1.5px solid rgba(245, 158, 11, 0.55);
-    box-shadow: 0 10px 36px rgba(0, 0, 0, 0.6), 0 0 25px rgba(245, 158, 11, 0.25);
+    border-left: 4px solid var(--accent-warning, #f59e0b);
 }
 
 .video-recommendations.urgent {
-    background: linear-gradient(135deg, rgba(48, 10, 14, 0.96) 0%, rgba(26, 8, 12, 0.98) 100%);
-    border: 1.5px solid rgba(239, 68, 68, 0.65);
-    border-left: 5px solid #ef4444;
-    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.7), 0 0 35px rgba(239, 68, 68, 0.35);
-    animation: recSlideIn 0.4s cubic-bezier(0.22, 1, 0.36, 1) both,
-               pulseRedUrgent 2.5s infinite ease-in-out;
-}
-
-@keyframes pulseRedUrgent {
-    0%, 100% { 
-        box-shadow: 0 12px 40px rgba(0, 0, 0, 0.7), 0 0 25px rgba(239, 68, 68, 0.3);
-        border-color: rgba(239, 68, 68, 0.6);
-    }
-    50% { 
-        box-shadow: 0 14px 48px rgba(0, 0, 0, 0.8), 0 0 45px rgba(239, 68, 68, 0.55);
-        border-color: rgba(239, 68, 68, 0.95);
-    }
+    border-left: 4px solid var(--accent-primary, #ff6b00);
 }
 
 .rec-header {
     display: flex;
     align-items: center;
-    gap: 12px;
-    margin-bottom: 16px;
+    gap: 10px;
+    margin-bottom: 14px;
 }
 
 .rec-header-icon { 
-    font-size: 22px; 
-    filter: drop-shadow(0 0 8px rgba(239, 68, 68, 0.6));
+    font-size: 20px; 
 }
 
 .rec-header-label {
-    font-size: 15px;
-    font-weight: 700;
-    color: #ffffff;
+    font-size: 14.5px;
+    font-weight: 600;
+    color: var(--text-heading, #f4f4f5);
     line-height: 1.4;
     letter-spacing: -0.01em;
 }
@@ -2285,116 +2267,97 @@ button, a[role="button"], input[type="button"], input[type="submit"] {
 .videos-grid {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-    gap: 16px;
-    margin-top: 12px;
+    gap: 14px;
+    margin-top: 10px;
 }
 
 .video-card {
-    background: rgba(255, 255, 255, 0.06);
-    border: 1px solid rgba(255, 255, 255, 0.14);
+    background: rgba(255, 255, 255, 0.025);
+    border: 1px solid rgba(255, 255, 255, 0.07);
     border-radius: 14px;
-    padding: 16px 18px;
+    padding: 15px 16px;
     position: relative;
-    transition: all 0.25s ease;
+    transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
     display: flex;
     flex-direction: column;
 }
 
 .video-card:hover {
-    background: rgba(255, 255, 255, 0.10);
-    border-color: rgba(239, 68, 68, 0.6);
-    transform: translateY(-3px);
-    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4), 0 0 20px rgba(239, 68, 68, 0.2);
+    background: rgba(255, 255, 255, 0.05);
+    border-color: var(--border-hover, rgba(255, 107, 0, 0.4));
+    transform: translateY(-2px);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
 }
 
 .video-rank {
     position: absolute;
     top: 12px;
     right: 12px;
-    background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
-    color: white;
-    width: 28px;
-    height: 28px;
+    background: rgba(255, 107, 0, 0.15);
+    border: 1px solid rgba(255, 107, 0, 0.35);
+    color: var(--accent-primary, #ff6b00);
+    width: 26px;
+    height: 26px;
     border-radius: 50%;
     display: flex;
     align-items: center;
     justify-content: center;
-    font-weight: 800;
-    font-size: 12px;
+    font-weight: 700;
+    font-size: 11px;
     font-family: var(--font-mono, monospace);
-    box-shadow: 0 2px 8px rgba(239, 68, 68, 0.5);
 }
 
 .video-card h4 {
-    margin: 0 0 5px 0;
+    margin: 0 0 4px 0;
     font-size: 14.5px;
     font-weight: 700;
-    color: #ffffff;
+    color: var(--text-primary, #ffffff);
     padding-right: 32px;
 }
 
 .video-card .instructor {
     font-size: 12px;
-    color: #cbd5e1;
-    margin: 0 0 8px 0;
+    color: var(--text-muted, #94a3b8);
+    margin: 0 0 6px 0;
     font-weight: 500;
 }
 
 .video-card .topic {
     font-size: 13px;
-    color: #f1f5f9;
-    margin: 0 0 12px 0;
+    color: var(--text-secondary, #d4d4d8);
+    margin: 0 0 10px 0;
     font-weight: 600;
 }
 
 .video-stats {
     display: flex;
     flex-direction: column;
-    gap: 5px;
-    font-size: 12px;
+    gap: 4px;
+    font-size: 11.5px;
     margin-bottom: 12px;
     background: rgba(0, 0, 0, 0.25);
-    padding: 8px 10px;
+    border: 1px solid rgba(255, 255, 255, 0.04);
+    padding: 7px 10px;
     border-radius: 8px;
 }
 
 .video-stats .rating {
     color: #fbbf24;
-    font-weight: 700;
+    font-weight: 600;
 }
 
 .video-stats .helpful {
     color: #34d399;
-    font-weight: 700;
+    font-weight: 600;
 }
 
 .video-meta {
     display: flex;
-    gap: 14px;
-    font-size: 11.5px;
-    color: #94a3b8;
-    margin-bottom: 14px;
-    font-family: var(--font-mono, monospace);
-}
-
-.watch-btn {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 6px;
-    width: 100%;
-    padding: 10px 14px;
-    background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
-    color: #ffffff !important;
-    text-decoration: none;
-    border-radius: 10px;
-    text-align: center;
-    font-size: 13.5px;
-    font-weight: 700;
+    gap: 12px;
+    font-size: 11px;
+    color: var(--text-muted, #8a8f98);
     margin-bottom: 12px;
-    transition: all 0.2s ease;
-    box-shadow: 0 4px 14px rgba(239, 68, 68, 0.4);
-    box-sizing: border-box;
+    font-family: var(--font-mono, monospace);
 }
 
 .video-actions-row {
@@ -2409,23 +2372,23 @@ button, a[role="button"], input[type="button"], input[type="submit"] {
     align-items: center;
     justify-content: center;
     gap: 6px;
-    padding: 10px 14px;
-    background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+    padding: 9px 13px;
+    background: linear-gradient(135deg, var(--accent-primary, #ff6b00) 0%, #e05d00 100%);
     color: #ffffff !important;
     border: none;
     border-radius: 9px;
-    font-size: 13px;
-    font-weight: 700;
+    font-size: 12.5px;
+    font-weight: 600;
     cursor: pointer;
     text-decoration: none;
-    box-shadow: 0 4px 14px rgba(239, 68, 68, 0.4);
+    box-shadow: 0 4px 12px rgba(255, 107, 0, 0.25);
     transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .btn-watch-inapp:hover {
-    background: linear-gradient(135deg, #f87171 0%, #ef4444 100%);
-    transform: translateY(-2px);
-    box-shadow: 0 6px 20px rgba(239, 68, 68, 0.6);
+    background: linear-gradient(135deg, #ff851a 0%, var(--accent-primary, #ff6b00) 100%);
+    transform: translateY(-1px);
+    box-shadow: 0 6px 18px rgba(255, 107, 0, 0.4);
 }
 
 .btn-watch-yt {
@@ -2434,12 +2397,12 @@ button, a[role="button"], input[type="button"], input[type="submit"] {
     align-items: center;
     justify-content: center;
     gap: 6px;
-    padding: 10px 12px;
-    background: rgba(255, 255, 255, 0.07);
-    color: #f1f5f9 !important;
-    border: 1px solid rgba(255, 255, 255, 0.16);
+    padding: 9px 11px;
+    background: rgba(255, 255, 255, 0.05);
+    color: var(--text-secondary, #d4d4d8) !important;
+    border: 1px solid rgba(255, 255, 255, 0.1);
     border-radius: 9px;
-    font-size: 12.5px;
+    font-size: 12px;
     font-weight: 600;
     cursor: pointer;
     text-decoration: none !important;
@@ -2447,10 +2410,10 @@ button, a[role="button"], input[type="button"], input[type="submit"] {
 }
 
 .btn-watch-yt:hover {
-    background: rgba(239, 68, 68, 0.15);
-    border-color: #ef4444;
+    background: rgba(255, 255, 255, 0.09);
+    border-color: rgba(255, 255, 255, 0.2);
     color: #ffffff !important;
-    transform: translateY(-2px);
+    transform: translateY(-1px);
 }
 
 .rate-buttons {
@@ -2461,33 +2424,33 @@ button, a[role="button"], input[type="button"], input[type="submit"] {
 
 .rate-buttons button {
     flex: 1;
-    padding: 7px 10px;
-    border: 1px solid rgba(255, 255, 255, 0.16);
-    background: rgba(255, 255, 255, 0.06);
-    color: #f1f5f9;
+    padding: 6px 10px;
+    border: 1px solid rgba(255, 255, 255, 0.07);
+    background: rgba(255, 255, 255, 0.03);
+    color: var(--text-muted, #94a3b8);
     border-radius: 8px;
     cursor: pointer;
-    font-size: 12px;
-    font-weight: 600;
+    font-size: 11.5px;
+    font-weight: 500;
     transition: all 0.2s ease;
 }
 
 .rate-buttons button:hover {
-    border-color: #ef4444;
-    background: rgba(239, 68, 68, 0.2);
+    border-color: rgba(255, 255, 255, 0.18);
+    background: rgba(255, 255, 255, 0.08);
     color: #ffffff;
     transform: translateY(-1px);
 }
 
 .next-action {
-    margin-top: 18px;
-    padding: 14px 16px;
-    background: rgba(239, 68, 68, 0.12);
-    border: 1px solid rgba(239, 68, 68, 0.3);
+    margin-top: 14px;
+    padding: 12px 14px;
+    background: rgba(255, 107, 0, 0.06);
+    border: 1px solid rgba(255, 107, 0, 0.18);
     border-radius: 10px;
     text-align: center;
-    font-size: 13.5px;
-    color: #fecaca;
+    font-size: 13px;
+    color: #fed7aa;
 }
 
 .next-action strong {
@@ -2500,26 +2463,25 @@ button, a[role="button"], input[type="button"], input[type="submit"] {
     display: inline-flex;
     align-items: center;
     gap: 5px;
-    background: rgba(239, 68, 68, 0.18);
-    border: 1px solid rgba(239, 68, 68, 0.45);
-    color: #fca5a5 !important;
+    background: rgba(255, 107, 0, 0.1);
+    border: 1px solid rgba(255, 107, 0, 0.28);
+    color: var(--accent-primary, #ff6b00) !important;
     text-decoration: none !important;
-    padding: 3px 10px;
-    border-radius: 8px;
+    padding: 3px 9px;
+    border-radius: 6px;
     font-weight: 600;
-    font-size: 13px;
-    margin: 3px 2px;
+    font-size: 12.5px;
+    margin: 2px 2px;
     transition: all 0.2s ease;
-    box-shadow: 0 2px 8px rgba(239, 68, 68, 0.2);
 }
 
 .msg-text-content a:hover,
 .chat-yt-link:hover {
-    background: #ef4444;
+    background: var(--accent-primary, #ff6b00);
     color: #ffffff !important;
-    border-color: #f87171;
+    border-color: #ff851a;
     transform: translateY(-1px);
-    box-shadow: 0 4px 14px rgba(239, 68, 68, 0.45);
+    box-shadow: 0 4px 12px rgba(255, 107, 0, 0.35);
 }
 
 /* ── ChatGPT-Style Embedded YouTube Video Player Modal ─────────────────────── */
