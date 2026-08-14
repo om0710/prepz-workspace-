@@ -2596,25 +2596,20 @@ function initializeDocPilotApp() {
                 videoId = parsed.pathname.replace(/^\//, "");
             }
 
-            // 1. Direct Known Playlist -> First Video + Playlist Embed
+            // 1. Direct Known Playlist -> First Video Embed (pure video embed to prevent 403 block)
             if (listId && KNOWN_PLAYLIST_VIDEOS[listId]) {
                 videoId = KNOWN_PLAYLIST_VIDEOS[listId];
-                return `https://www.youtube.com/embed/${videoId}?list=${listId}&autoplay=1&enablejsapi=1&rel=0`;
+                return `https://www.youtube-nocookie.com/embed/${videoId}?autoplay=1&rel=0`;
             }
 
-            // 2. Video with Playlist
-            if (videoId && listId) {
-                return `https://www.youtube.com/embed/${videoId}?list=${listId}&autoplay=1&enablejsapi=1&rel=0`;
-            }
-
-            // 3. Single Video
+            // 2. Single Video
             if (videoId) {
-                return `https://www.youtube.com/embed/${videoId}?autoplay=1&enablejsapi=1&rel=0`;
+                return `https://www.youtube-nocookie.com/embed/${videoId}?autoplay=1&rel=0`;
             }
 
-            // 4. Playlist without known video
+            // 3. Fallback playlist
             if (listId) {
-                return `https://www.youtube.com/embed/videoseries?list=${listId}&autoplay=1&enablejsapi=1&rel=0`;
+                return `https://www.youtube-nocookie.com/embed/videoseries?list=${listId}&autoplay=1`;
             }
 
             return url;
