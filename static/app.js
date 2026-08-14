@@ -2245,13 +2245,7 @@ function initializeDocPilotApp() {
         formatted = formatted.replace(/\*([^*]+?)\*/g, "<em>$1</em>");
         formatted = formatted.replace(/^### (.*$)/gim, "<h3>$1</h3>");
         formatted = formatted.replace(/^## (.*$)/gim, "<h2>$1</h2>");
-        formatted = formatted.replace(/\[([^\]]+)\]\((https?:\/\/[^\s\)]+)\)/g, (match, text, url) => {
-            if (url.includes("youtube.com") || url.includes("youtu.be")) {
-                const safeTitle = text.replace(/'/g, "\\'");
-                return `<a href="${url}" onclick="if(window.openYtPlayerModal){window.openYtPlayerModal('${url}', '${safeTitle}', 'Bennett University Verified'); return false;}" class="chat-yt-link">🎬 ${text} ▶</a>`;
-            }
-            return `<a href="${url}" target="_blank" rel="noopener noreferrer" class="chat-yt-link">📄 ${text} ↗</a>`;
-        });
+        formatted = formatted.replace(/\[([^\]]+)\]\((https?:\/\/[^\s\)]+)\)/g, '<a href="$2" target="_blank" rel="noopener noreferrer" class="chat-yt-link">🎬 $1 ↗</a>');
         formatted = formatted.replace(/\n\n+/g, "</p><p>");
         formatted = formatted.replace(/\n/g, "<br>");
         return `<p>${formatted}</p>`;
@@ -2507,16 +2501,10 @@ function initializeDocPilotApp() {
                         <span>⏱️ ${avgDur} min avg</span>
                     </div>
                     
-                    <div class="video-actions-row">
-                        <button type="button" onclick="window.openYtPlayerModal('${playlistUrl}', '${(v.topic || topicLabel).replace(/'/g, "\\'")}', '${channelName.replace(/'/g, "\\'")}')" class="btn-watch-inapp">
-                            <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
-                            <span>In-App Player</span>
-                        </button>
-                        <a href="${playlistUrl}" target="_blank" rel="noopener noreferrer" class="btn-watch-yt">
-                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
-                            <span>YouTube ↗</span>
-                        </a>
-                    </div>
+                    <a href="${playlistUrl}" target="_blank" rel="noopener noreferrer" class="btn-watch-inapp" style="display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%; box-sizing: border-box; padding: 12px 18px; font-size: 13.5px; font-weight: 700; border-radius: 10px; margin: 10px 0; text-decoration: none; background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%); color: #ffffff !important; box-shadow: 0 4px 14px rgba(239, 68, 68, 0.45);">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
+                        <span>Watch Lecture Video ↗</span>
+                    </a>
                     
                     <div class="rate-buttons" id="rate-btns-${v.id || i}">
                         <button onclick="window.rateVideo(${v.id || i + 1}, 5, true, 'rate-btns-${v.id || i}')" class="btn-helpful">👍 Helpful</button>
@@ -2568,106 +2556,6 @@ function initializeDocPilotApp() {
             card.scrollIntoView({ behavior: "smooth", block: "nearest" });
         }, 100);
     }
-
-    // ── Embedded YouTube Modal Player (ChatGPT Style) ──────────────────────────
-    const KNOWN_PLAYLIST_VIDEOS = {
-        "PLGjplNEQ1it8-0CmoljS5yeV-GlKSUEt0": "ERCMXc8x7mc", // Apna College Python
-        "PLu0W_9lII9agwh1XjRt242xIpHhPT2llg": "7wnove7K-ZQ", // Code With Harry Python
-        "PLDN4rrl48XKpZkf03iYFl-O29szjTrs_O": "0IAPZzGSbME", // Abdul Bari DSA
-        "PLU6SqdYcYsfIJRl8mo2Rv1MpdvmVD0YyI": "3d6DsjIBzJ4", // Gajendra Purohit Calculus
-        "PLdM-WZokR4tbCBA4mkvfk2vOH12eRPT2Y": "eY3jUf2F23E", // Vishwakarma Advanced Calculus
-        "PL9RcWoqXmzaLTYUdnzKhF4bYug3GjGcEc": "xIu1g8hW2qY", // Umesh Dhande Network Theorems
-        "PLBlnK6fEyqRhqJPDXcvYlLfXPh37L89g3": "1xWS7g1ZUPg", // NESO Academy Electrical Basics
-        "PLBlnK6fEyqRitWLDxMrzVQK8813oqG797": "2h3eWaEx88s", // NESO Academy Operating Systems
-        "PLxCzCOWd7aiGz9donHRrE9I3Mwn6XdP8p": "bkSWJJZNgf8", // Gate Smashers OS
-        "PLT3bOBUU3L9hADhGPsZjSddwAC3BvJDnl": "x8K1N_404X8"  // Pradeep Giri Mechanics
-    };
-
-    window.currentYtUrl = "";
-
-    window.extractYtEmbedUrl = function(url) {
-        if (!url) return "";
-        try {
-            const parsed = new URL(url);
-            let listId = parsed.searchParams.get("list");
-            let videoId = parsed.searchParams.get("v");
-
-            if (parsed.hostname.includes("youtu.be")) {
-                videoId = parsed.pathname.replace(/^\//, "");
-            }
-
-            // 1. Direct Known Playlist -> First Video Embed (pure video embed to prevent 403 block)
-            if (listId && KNOWN_PLAYLIST_VIDEOS[listId]) {
-                videoId = KNOWN_PLAYLIST_VIDEOS[listId];
-                return `https://www.youtube-nocookie.com/embed/${videoId}?autoplay=1&rel=0`;
-            }
-
-            // 2. Single Video
-            if (videoId) {
-                return `https://www.youtube-nocookie.com/embed/${videoId}?autoplay=1&rel=0`;
-            }
-
-            // 3. Fallback playlist
-            if (listId) {
-                return `https://www.youtube-nocookie.com/embed/videoseries?list=${listId}&autoplay=1`;
-            }
-
-            return url;
-        } catch (e) {
-            return url;
-        }
-    };
-
-    window.openYtPlayerModal = function(url, title, channel) {
-        window.currentYtUrl = url;
-        const modal = document.getElementById("yt-player-modal");
-        const iframe = document.getElementById("yt-player-iframe");
-        const titleEl = document.getElementById("yt-player-title");
-        const channelEl = document.getElementById("yt-player-channel");
-        const extLink = document.getElementById("yt-player-external-link");
-        const playerCard = modal ? modal.querySelector(".yt-player-card") : null;
-
-        if (!modal || !iframe) return;
-
-        if (titleEl) titleEl.textContent = title || "Bennett Verified Lecture";
-        if (channelEl) channelEl.textContent = channel || "Faculty Series";
-        if (extLink) extLink.href = url || "#";
-
-        const embedSrc = window.extractYtEmbedUrl(url);
-        iframe.src = embedSrc;
-
-        modal.classList.remove("hidden");
-        modal.style.display = "flex";
-        if (playerCard) playerCard.classList.remove("pip-mode");
-        modal.classList.remove("has-pip");
-    };
-
-    window.closeYtPlayerModal = function() {
-        const modal = document.getElementById("yt-player-modal");
-        const iframe = document.getElementById("yt-player-iframe");
-        const playerCard = modal ? modal.querySelector(".yt-player-card") : null;
-
-        if (iframe) iframe.src = "";
-        if (playerCard) playerCard.classList.remove("pip-mode");
-        if (modal) {
-            modal.classList.remove("has-pip");
-            modal.classList.add("hidden");
-            modal.style.display = "none";
-        }
-    };
-
-    window.toggleYtMiniPlayer = function() {
-        const modal = document.getElementById("yt-player-modal");
-        const playerCard = modal ? modal.querySelector(".yt-player-card") : null;
-        if (!modal || !playerCard) return;
-
-        const isPip = playerCard.classList.toggle("pip-mode");
-        if (isPip) {
-            modal.classList.add("has-pip");
-        } else {
-            modal.classList.remove("has-pip");
-        }
-    };
 
     // Global rateVideo handler
     window.rateVideo = async function(playlistId, rating, wasHelpful, containerId) {
