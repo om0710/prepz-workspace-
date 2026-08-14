@@ -2501,8 +2501,12 @@ function initializeDocPilotApp() {
                         <span>⏱️ ${avgDur} min avg</span>
                     </div>
                     
+                    <div class="video-inline-player-box" id="inline-player-${v.id || i}" style="display: none; margin: 10px 0; border-radius: 10px; overflow: hidden; position: relative; padding-bottom: 56.25%; height: 0; background: #000; box-shadow: 0 4px 14px rgba(0,0,0,0.5);">
+                        <iframe src="" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen style="position: absolute; top:0; left:0; width:100%; height:100%; border:0;"></iframe>
+                    </div>
+
                     <div class="video-actions-row">
-                        <button type="button" class="btn-watch-inapp btn-launch-inapp" data-url="${playlistUrl}" data-title="${(v.topic || topicLabel)}" data-channel="${channelName}">
+                        <button type="button" class="btn-watch-inapp btn-launch-inapp" onclick="window.playVideoInApp(this, '${v.id || i}')" data-url="${playlistUrl}" data-title="${(v.topic || topicLabel)}" data-channel="${channelName}">
                             <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
                             <span>In-App Player</span>
                         </button>
@@ -2537,19 +2541,6 @@ function initializeDocPilotApp() {
             <div class="videos-grid">${videosHtml}</div>
             ${nextActionHtml}
         `;
-
-        // Attach reliable click listeners for In-App Player
-        card.querySelectorAll('.btn-launch-inapp').forEach(btn => {
-            btn.addEventListener('click', (e) => {
-                e.preventDefault();
-                const url = btn.getAttribute('data-url');
-                const title = btn.getAttribute('data-title');
-                const channel = btn.getAttribute('data-channel');
-                if (window.openYtPlayerModal) {
-                    window.openYtPlayerModal(url, title, channel);
-                }
-            });
-        });
 
         console.log("[PREPZ VIDEO REC RENDERED]", rec);
         const bubbleCard = (afterBubble && afterBubble.closest) ? afterBubble.closest(".msg-bubble-card") : null;
@@ -2588,6 +2579,43 @@ function initializeDocPilotApp() {
         "PLxCzCOWd7aiGz9donHRrE9I3Mwn6XdP8p": "bkSWJJZNgf8", // Gate Smashers OS
         "PLBlnK6fEyqRitWLDxMrzVQK8813oqG797": "2h3eWaEx88s", // NESO Academy OS
         "PLT3bOBUU3L9hADhGPsZjSddwAC3BvJDnl": "x8K1N_404X8"  // Pradeep Giri Mechanics
+    };
+
+    window.playVideoInApp = function(btn, cardId) {
+        if (!btn) return;
+        const url = btn.getAttribute("data-url") || btn.dataset.url;
+        const title = btn.getAttribute("data-title") || btn.dataset.title || "Bennett Verified Lecture";
+        const channel = btn.getAttribute("data-channel") || btn.dataset.channel || "Faculty Lecture Series";
+        
+        let videoId = "3d6DsjIBzJ4";
+        try {
+            const parsed = new URL(url);
+            const listId = parsed.searchParams.get("list");
+            const vid = parsed.searchParams.get("v");
+            if (listId && KNOWN_PLAYLIST_FIRST_VIDEOS[listId]) {
+                videoId = KNOWN_PLAYLIST_FIRST_VIDEOS[listId];
+            } else if (vid) {
+                videoId = vid;
+            }
+        } catch (e) {}
+
+        // 1. Expand inline player inside the card
+        if (cardId !== undefined) {
+            const inlineBox = document.getElementById(`inline-player-${cardId}`);
+            if (inlineBox) {
+                const iframe = inlineBox.querySelector("iframe");
+                if (iframe) {
+                    iframe.src = `https://www.youtube.com/embed/${videoId}?autoplay=1&playsinline=1&rel=0`;
+                }
+                inlineBox.style.display = "block";
+                inlineBox.scrollIntoView({ behavior: "smooth", block: "nearest" });
+            }
+        }
+
+        // 2. Also open modal player
+        if (window.openYtPlayerModal) {
+            window.openYtPlayerModal(url, title, channel);
+        }
     };
 
     window.openYtPlayerModal = function(url, title, channel) {
@@ -2639,12 +2667,7 @@ function initializeDocPilotApp() {
         if (btn) {
             e.preventDefault();
             e.stopPropagation();
-            const url = btn.getAttribute("data-url") || btn.dataset.url;
-            const title = btn.getAttribute("data-title") || btn.dataset.title || "Bennett Verified Lecture";
-            const channel = btn.getAttribute("data-channel") || btn.dataset.channel || "Faculty Lecture Series";
-            if (window.openYtPlayerModal) {
-                window.openYtPlayerModal(url, title, channel);
-            }
+            window.playVideoInApp(btn);
         }
     });
 
