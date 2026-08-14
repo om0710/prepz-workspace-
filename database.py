@@ -627,7 +627,9 @@ FRUSTRATION_PHRASES = [
     "still not", "still confused", "yrr", "bhai", "frustrated", "frustrat",
     "help", "what's wrong", "why", "can't understand", "cant understand", "too hard",
     "stuck", "not making sense", "this is hard", "aise kaise", "kuch samjh nahi",
-    "yaar", "haan", "bhaii", "kuch nahi aaya", "problem ho rahi", "tough"
+    "yaar", "haan", "bhaii", "kuch nahi aaya", "problem ho rahi", "tough",
+    "bilkul samjh nahi", "samjh nahi aaya", "smjh nahi aaya", "samjh nhi aaya",
+    "smjh nhi aaya", "nhi smj", "nhi aaya", "nahi aaya"
 ]
 
 def analyze_user_intent(
@@ -638,16 +640,16 @@ def analyze_user_intent(
 ) -> dict:
     """
     MAIN FUNCTION: Analyze user's TRUE intent.
-    Recommends videos only when truly needed (after 2-3 attempts or frustration).
+    Recommends videos when user is frustrated, stuck, repeating, or after 2-3 attempts.
     """
     if conversation_history is None:
         conversation_history = []
 
     analysis = {
-        "intent": "initial",  # "initial", "clarify", "confused"
+        "intent": "initial",
         "confidence": 0.95,
         "should_recommend_videos": False,
-        "recommendation_strength": "none",  # "none", "light", "medium", "urgent"
+        "recommendation_strength": "none",
         "reason": "",
         "video_difficulty": "beginner",
         "explanation_style": "normal",
@@ -657,26 +659,12 @@ def analyze_user_intent(
 
     q_lower = current_message.lower()
 
-    # ===== CHECK 1: IS FIRST TIME? =====
-    # If topic_attempts is 0 (first time ever asking), explanation only
-    if topic_attempts == 0:
-        analysis["intent"] = "initial"
-        analysis["confidence"] = 0.95
-        analysis["should_recommend_videos"] = False
-        analysis["reason"] = "First time asking - provide explanation only"
-        analysis["explanation_style"] = "normal"
-        return analysis
-
-    # ===== CHECK 2: IS ASKING CLARIFICATION? =====
-    is_asking_clarification = any(phrase in q_lower for phrase in CLARIFICATION_PHRASES)
-
-    # ===== CHECK 3: IS FRUSTRATED? =====
+    # Signals
     is_frustrated = any(phrase in q_lower for phrase in FRUSTRATION_PHRASES)
+    is_asking_clarification = any(phrase in q_lower for phrase in CLARIFICATION_PHRASES)
+    is_video_requested = any(v in q_lower for v in ["video", "videos", "youtube", "lecture", "tutorial", "tutorials", "tutorilas", "playlist", "watch", "link", "links"])
 
-    # ===== CHECK 4: IS EXPLICIT VIDEO REQUEST? =====
-    is_video_requested = any(v in q_lower for v in ["video", "videos", "youtube", "lecture", "tutorial", "tutorials", "tutorilas", "playlist", "watch"])
-
-    # ===== CHECK 5: IS REPEATING SAME QUESTION? =====
+    # Repetition Check
     is_repeating = False
     previous_messages = []
     if conversation_history:
@@ -690,60 +678,54 @@ def analyze_user_intent(
         if previous_messages:
             similarities = [calculate_similarity(current_message, prev) for prev in previous_messages]
             max_similarity = max(similarities) if similarities else 0
-            is_repeating = max_similarity > 0.60  # 60% match = same question
+            is_repeating = max_similarity > 0.60
 
-    # ===== DECISION LOGIC =====
+    # ===== DECISION LOGIC (PRIORITIZED) =====
 
-    # Scenario 0: User specifically asked for videos
-    if is_video_requested:
-        analysis["intent"] = "clarify" if topic_attempts <= 2 else "confused"
-        analysis["confidence"] = 0.95
+    # 1. Frustration / Stuck / Repeated (🚨 URGENT Mode)
+    if is_frustrated or is_repeating:
+        analysis["intent"] = "confused"
         analysis["should_recommend_videos"] = True
-        analysis["recommendation_strength"] = "urgent" if (is_frustrated or topic_attempts >= 2) else "medium"
+        analysis["recommendation_strength"] = "urgent"
+        analysis["reason"] = f"User is frustrated/stuck (Attempt #{topic_attempts + 1}) - urgent videos NEEDED"
+        analysis["explanation_style"] = "basic"
+        return analysis
+
+    # 2. Explicit Video Request
+    if is_video_requested:
+        analysis["intent"] = "clarify" if topic_attempts <= 1 else "confused"
+        analysis["should_recommend_videos"] = True
+        analysis["recommendation_strength"] = "urgent" if topic_attempts >= 2 else "medium"
         analysis["reason"] = "User explicitly requested video support"
         analysis["explanation_style"] = "simpler"
         return analysis
 
-    # Scenario 1: Second attempt (topic_attempts == 1)
-    if topic_attempts == 1:
-        if is_frustrated or is_repeating:
-            analysis["intent"] = "clarify"
-            analysis["confidence"] = 0.85
-            analysis["should_recommend_videos"] = True
-            analysis["recommendation_strength"] = "medium"
-            analysis["reason"] = "Second attempt, frustrated or repeating - recommend videos"
-            analysis["explanation_style"] = "detailed"
-        elif is_asking_clarification:
-            analysis["intent"] = "clarify"
-            analysis["confidence"] = 0.85
-            analysis["should_recommend_videos"] = True
-            analysis["recommendation_strength"] = "light"
-            analysis["reason"] = "Second attempt - provide detailed explanation & optional video"
-            analysis["explanation_style"] = "detailed"
-        else:
-            analysis["intent"] = "clarify"
-            analysis["should_recommend_videos"] = False
-            analysis["reason"] = "Second attempt - provide better explanation"
-            analysis["explanation_style"] = "detailed"
-        return analysis
-
-    # Scenario 2: Third+ attempt (topic_attempts >= 2)
+    # 3. Third+ Attempt
     if topic_attempts >= 2:
         analysis["intent"] = "confused"
-        analysis["confidence"] = 0.95
         analysis["should_recommend_videos"] = True
-        
-        if is_frustrated or is_repeating:
-            analysis["recommendation_strength"] = "urgent"
-            analysis["reason"] = f"Attempt #{topic_attempts + 1}, frustrated/repeating - videos NEEDED"
-            analysis["explanation_style"] = "basic"
-        else:
-            analysis["recommendation_strength"] = "medium"
-            analysis["reason"] = f"Attempt #{topic_attempts + 1} - recommend videos"
-            analysis["explanation_style"] = "simpler"
+        analysis["recommendation_strength"] = "medium"
+        analysis["reason"] = f"Attempt #{topic_attempts + 1} - recommend videos"
+        analysis["explanation_style"] = "simpler"
         return analysis
 
+    # 4. Second Attempt + Clarification
+    if topic_attempts == 1 and is_asking_clarification:
+        analysis["intent"] = "clarify"
+        analysis["confidence"] = 0.85
+        analysis["should_recommend_videos"] = True
+        analysis["recommendation_strength"] = "light"
+        analysis["reason"] = "Second attempt - provide detailed explanation & optional video"
+        analysis["explanation_style"] = "detailed"
+        return analysis
+
+    # 5. Normal Initial Learning (First time asking without frustration)
+    analysis["intent"] = "initial"
+    analysis["should_recommend_videos"] = False
+    analysis["reason"] = "First time asking - provide explanation only"
+    analysis["explanation_style"] = "normal"
     return analysis
+
 
 # ── Video Recommendations & Rating ─────────────────────────────────────────────
 
