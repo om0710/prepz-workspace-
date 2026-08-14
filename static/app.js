@@ -2529,17 +2529,24 @@ function initializeDocPilotApp() {
         `;
 
         console.log("[PREPZ VIDEO REC RENDERED]", rec);
-        const msgItem = afterBubble.closest ? afterBubble.closest(".chat-message-item") : (afterBubble.parentElement || null);
+        const msgItem = (afterBubble && afterBubble.closest) ? afterBubble.closest(".chat-message-item") : (afterBubble ? afterBubble.parentElement : null);
         const chatContainer = document.getElementById("chat-messages");
+
+        // Remove any old card from this specific message item to prevent duplicates
+        if (msgItem && msgItem.nextElementSibling && msgItem.nextElementSibling.classList.contains("video-recommendations")) {
+            msgItem.nextElementSibling.remove();
+        }
+
         if (msgItem && msgItem.parentElement) {
             msgItem.parentElement.insertBefore(card, msgItem.nextSibling);
         } else if (chatContainer) {
             chatContainer.appendChild(card);
         }
+
         setTimeout(() => {
             scrollToBottom();
             card.scrollIntoView({ behavior: "smooth", block: "nearest" });
-        }, 60);
+        }, 80);
     }
 
     // Global rateVideo handler

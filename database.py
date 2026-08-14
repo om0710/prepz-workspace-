@@ -690,11 +690,11 @@ def analyze_user_intent(
         analysis["explanation_style"] = "basic"
         return analysis
 
-    # 2. Explicit Video Request
+    # 2. Explicit Video Request (🚨 Urgent Video Mode)
     if is_video_requested:
         analysis["intent"] = "clarify" if topic_attempts <= 1 else "confused"
         analysis["should_recommend_videos"] = True
-        analysis["recommendation_strength"] = "urgent" if topic_attempts >= 2 else "medium"
+        analysis["recommendation_strength"] = "urgent"
         analysis["reason"] = "User explicitly requested video support"
         analysis["explanation_style"] = "simpler"
         return analysis
