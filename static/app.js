@@ -2245,7 +2245,7 @@ function initializeDocPilotApp() {
         formatted = formatted.replace(/\*([^*]+?)\*/g, "<em>$1</em>");
         formatted = formatted.replace(/^### (.*$)/gim, "<h3>$1</h3>");
         formatted = formatted.replace(/^## (.*$)/gim, "<h2>$1</h2>");
-        formatted = formatted.replace(/^# (.*$)/gim, "<h1>$1</h1>");
+        formatted = formatted.replace(/\[([^\]]+)\]\((https?:\/\/[^\s\)]+)\)/g, '<a href="$2" target="_blank" rel="noopener noreferrer" class="chat-yt-link">🎬 $1 ↗</a>');
         formatted = formatted.replace(/\n\n+/g, "</p><p>");
         formatted = formatted.replace(/\n/g, "<br>");
         return `<p>${formatted}</p>`;
@@ -2410,6 +2410,10 @@ function initializeDocPilotApp() {
                             } else if (parsed.video_rec) {
                                 pendingVideoRec = parsed.video_rec;
                                 console.log("[SSE VIDEO REC RECEIVED]", pendingVideoRec);
+                                const recToRender = pendingVideoRec;
+                                setTimeout(() => {
+                                    renderVideoRecommendation(recToRender, assistantBubble);
+                                }, 100);
                             } else if (parsed.error) {
                                 if (renderTimer) clearInterval(renderTimer);
                                 assistantBubble.innerHTML = `<span style="color:#ef4444;">Error: ${parsed.error}</span>`;
@@ -2425,7 +2429,6 @@ function initializeDocPilotApp() {
                 fetchThreads();
                 if (pendingVideoRec) {
                     const recToRender = pendingVideoRec;
-                    pendingVideoRec = null;
                     setTimeout(() => renderVideoRecommendation(recToRender, assistantBubble), 100);
                 }
             }
@@ -2459,7 +2462,7 @@ function initializeDocPilotApp() {
             }
         };
 
-        const cfg = strengthConfig[rec.strength] || strengthConfig.medium;
+        const cfg = strengthConfig[rec.strength] || strengthConfig.urgent;
         const topicLabel = rec.topic ? rec.topic.replace(/\b\w/g, l => l.toUpperCase()) : "This Topic";
         const attemptNote = rec.attempt_number && rec.attempt_number > 1
             ? `<span class="rec-attempt-badge">Attempt #${rec.attempt_number}</span>` : "";
@@ -2517,7 +2520,7 @@ function initializeDocPilotApp() {
         ` : "";
 
         const card = document.createElement("div");
-        card.className = `video-recommendations ${rec.strength || 'medium'}`;
+        card.className = `video-recommendations ${rec.strength || 'urgent'}`;
         card.innerHTML = `
             ${intentInfo}
             <div class="rec-header">
@@ -2529,15 +2532,19 @@ function initializeDocPilotApp() {
         `;
 
         console.log("[PREPZ VIDEO REC RENDERED]", rec);
+        const bubbleCard = (afterBubble && afterBubble.closest) ? afterBubble.closest(".msg-bubble-card") : null;
         const msgItem = (afterBubble && afterBubble.closest) ? afterBubble.closest(".chat-message-item") : (afterBubble ? afterBubble.parentElement : null);
         const chatContainer = document.getElementById("chat-messages");
 
-        // Remove any old card from this specific message item to prevent duplicates
-        if (msgItem && msgItem.nextElementSibling && msgItem.nextElementSibling.classList.contains("video-recommendations")) {
-            msgItem.nextElementSibling.remove();
-        }
-
-        if (msgItem && msgItem.parentElement) {
+        // Remove any old card inside this bubble or adjacent
+        if (bubbleCard) {
+            const old = bubbleCard.querySelector(".video-recommendations");
+            if (old) old.remove();
+            bubbleCard.appendChild(card);
+        } else if (msgItem && msgItem.parentElement) {
+            if (msgItem.nextElementSibling && msgItem.nextElementSibling.classList.contains("video-recommendations")) {
+                msgItem.nextElementSibling.remove();
+            }
             msgItem.parentElement.insertBefore(card, msgItem.nextSibling);
         } else if (chatContainer) {
             chatContainer.appendChild(card);
@@ -2546,7 +2553,7 @@ function initializeDocPilotApp() {
         setTimeout(() => {
             scrollToBottom();
             card.scrollIntoView({ behavior: "smooth", block: "nearest" });
-        }, 80);
+        }, 100);
     }
 
     // Global rateVideo handler

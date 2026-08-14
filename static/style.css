@@ -2444,6 +2444,34 @@ button, a[role="button"], input[type="button"], input[type="submit"] {
     color: #ffffff;
 }
 
+/* In-text Clickable YouTube Link Pills */
+.msg-text-content a,
+.chat-yt-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    background: rgba(239, 68, 68, 0.18);
+    border: 1px solid rgba(239, 68, 68, 0.45);
+    color: #fca5a5 !important;
+    text-decoration: none !important;
+    padding: 3px 10px;
+    border-radius: 8px;
+    font-weight: 600;
+    font-size: 13px;
+    margin: 3px 2px;
+    transition: all 0.2s ease;
+    box-shadow: 0 2px 8px rgba(239, 68, 68, 0.2);
+}
+
+.msg-text-content a:hover,
+.chat-yt-link:hover {
+    background: #ef4444;
+    color: #ffffff !important;
+    border-color: #f87171;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 14px rgba(239, 68, 68, 0.45);
+}
+
 
 
 
