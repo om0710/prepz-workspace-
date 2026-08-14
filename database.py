@@ -1,42 +1,15 @@
-from langgraph.graph import StateGraph, START, END
-from langgraph.graph.message import add_messages
-
-from typing import TypedDict, Annotated
-from langchain_groq import ChatGroq
-
-import os
-from dotenv import load_dotenv
-
-from langchain_core.messages import BaseMessage, HumanMessage
-
-# Persistence
-from langgraph.checkpoint.sqlite import SqliteSaver
 import sqlite3
-
-load_dotenv()
-
-llm = ChatGroq(
-    model="llama-3.3-70b-versatile",
-    temperature=0
-)
-
-class ChatState(TypedDict):
-    messages: Annotated[list[BaseMessage], add_messages]
-
-
-def chat_node(state: ChatState):
-    # Take query from user
-    messages = state["messages"]
-
-    # Send to LLM
-    response = llm.invoke(messages)
-
-    # Store response in state
-    return {
-        "messages": [response]
-    }
-
+import os
+import re as _re
+import json as _json
+import secrets as _secrets
 import time
+from datetime import datetime as _dt, datetime
+try:
+    from dotenv import load_dotenv
+    load_dotenv()
+except Exception:
+    pass
 
 def get_db():
     c = sqlite3.connect(database='chatbot.db', timeout=60.0, check_same_thread=False)
@@ -45,7 +18,6 @@ def get_db():
     return c
 
 conn = get_db()
-memory = SqliteSaver(conn=conn)
 
 def db_retry(func, *args, **kwargs):
     max_retries = 5
@@ -58,31 +30,7 @@ def db_retry(func, *args, **kwargs):
                 continue
             raise e
 
-graph = StateGraph(ChatState)
 
-graph.add_node("chat_node", chat_node)
-
-graph.add_edge(START, "chat_node")
-graph.add_edge("chat_node", END)
-
-# Compile with persistence
-workflow = graph.compile(checkpointer=memory)
-thread_id = "1"
-config = {
-        "configurable": {
-            "thread_id": thread_id
-        }
-    }
-workflow.get_state(config)
-def retrieve_all_threads():
-    all_threads = set()
-
-    for checkpoint in memory.list(None):
-        all_threads.add(
-            checkpoint.config["configurable"]["thread_id"]
-        )
-
-    return list(all_threads)
 
 import hashlib
 import secrets
@@ -470,6 +418,26 @@ def seed_bennett_channels_if_needed():
     """Populate database with Bennett University recommended channels if table empty."""
     def _do():
         cursor = conn.cursor()
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS youtube_playlist (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                channel_name TEXT NOT NULL,
+                instructor TEXT NOT NULL,
+                subject TEXT NOT NULL,
+                topic TEXT NOT NULL,
+                playlist_url TEXT NOT NULL,
+                difficulty TEXT DEFAULT 'Beginner',
+                university TEXT DEFAULT 'Bennett University',
+                semester INTEGER DEFAULT 1,
+                helpfulness_score REAL DEFAULT 4.5,
+                total_ratings INTEGER DEFAULT 12,
+                helpful_count INTEGER DEFAULT 11,
+                total_videos INTEGER DEFAULT 35,
+                avg_duration INTEGER DEFAULT 22,
+                best_for TEXT DEFAULT '["exam prep", "foundation"]',
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        """)
         count = cursor.execute("SELECT COUNT(*) FROM youtube_playlist").fetchone()[0]
         if count == 0:
             for ch in BENNETT_CHANNELS:
@@ -1088,115 +1056,7 @@ def update_conversation_context(thread_id: str, user_email: str, topic: str, que
         conn.commit()
     db_retry(_do)
 
-# ── Migration: ensure last_topic column exists ─────────────────────────────────
-try:
-    conn.execute("ALTER TABLE conversation_contexts ADD COLUMN last_topic TEXT DEFAULT ''")
-    conn.commit()
-except Exception:
-    pass
 
-# ── Main intent analysis (NLP-powered) ───────────────────────────────────────
-def analyze_user_intent(query: str, thread_id: str, user_email: str = None) -> dict:
-    """
-    NLP-powered intent analysis:
-    - Topic extracted via Groq LLM + thread-level memory
-    - Repetition detected via sentence-transformer cosine similarity
-    - Confusion / Video Request detection with adaptive strength
-    """
-    context = get_conversation_context(thread_id)
-    recent_queries = context.get("recent_queries", [])
-    last_topic = context.get("last_topic", "")
-
-    # 1. NLP topic extraction (with thread topic memory)
-    topic = _extract_topic_nlp(query, last_topic=last_topic, recent_queries=recent_queries)
-
-    topic_count = context["topic_attempts"].get(topic, 0)
-    q_lower     = query.lower()
-
-    # 2. Semantic similarity vs recent queries in this thread
-    max_sim = 0.0
-    if recent_queries:
-        try:
-            sims = [_cosine_similarity(query, prev) for prev in recent_queries[-5:]]
-            max_sim = max(sims) if sims else 0.0
-        except Exception:
-            pass
-
-    is_semantically_repeating = max_sim > 0.70  # ≥70% similarity
-    is_frustrated       = any(p in q_lower for p in _FRUSTRATION_SIGNALS)
-    is_video_requested  = any(p in q_lower for p in _VIDEO_REQUEST_SIGNALS)
-    is_clarifying       = any(p in q_lower for p in _CLARIFICATION_SIGNALS)
-
-    print(f"[NLP INTENT] topic='{topic}' last_topic='{last_topic}' count={topic_count} sim={max_sim:.2f} frustrated={is_frustrated} video_req={is_video_requested}")
-
-    result = {
-        "topic":                   topic or last_topic or "engineering fundamentals",
-        "topic_count":             topic_count + 1,
-        "semantic_similarity":     round(max_sim, 3),
-        "should_recommend_videos": False,
-        "recommendation_strength": "none",
-        "intent":                  "initial",
-        "video_difficulty":        "beginner"
-    }
-
-    # 3. Comprehensive Decision Logic
-    if is_video_requested or (is_frustrated and (topic_count >= 1 or len(recent_queries) >= 1)):
-        # Video specifically asked OR user frustrated on 2nd+ turn in thread
-        result.update({
-            "intent":                  "true_confusion" if is_frustrated else "video_requested",
-            "should_recommend_videos": True,
-            "recommendation_strength": "urgent",
-            "video_difficulty":        "beginner"
-        })
-    elif is_frustrated or is_semantically_repeating:
-        # Frustration on turn 1 or repeat question
-        result.update({
-            "intent":                  "true_confusion",
-            "should_recommend_videos": True,
-            "recommendation_strength": "urgent",
-            "video_difficulty":        "beginner"
-        })
-    elif (topic_count >= 2) or (topic_count >= 1 and is_clarifying) or (len(recent_queries) >= 2 and is_clarifying):
-        # 2nd/3rd question on same topic or asking for clarification
-        result.update({
-            "intent":                  "clarification_needed",
-            "should_recommend_videos": True,
-            "recommendation_strength": "medium",
-            "video_difficulty":        "beginner"
-        })
-    elif is_clarifying and topic_count >= 1:
-        result.update({
-            "intent":                  "clarification_needed",
-            "should_recommend_videos": True,
-            "recommendation_strength": "light",
-            "video_difficulty":        "beginner"
-        })
-
-    # 4. Update context with current query & topic
-    update_conversation_context(thread_id, user_email, topic, query)
-
-    return result
-
-
-def get_video_recommendations(topic: str, difficulty: str = "beginner", limit: int = 3) -> list:
-    """Return curated YouTube search links for topic at given difficulty."""
-    labels = {
-        "beginner":     "for beginners explained simply",
-        "intermediate": "intermediate tutorial",
-        "advanced":     "advanced in depth"
-    }
-    label = labels.get(difficulty, "explained")
-    from urllib.parse import quote_plus
-    base = "https://www.youtube.com/results?search_query="
-    configs = [
-        (f"{topic} {label}",           f"{topic.title()} — Beginner Guide"),
-        (f"{topic} lecture tutorial",   f"{topic.title()} — Full Lecture"),
-        (f"{topic} solved examples",    f"{topic.title()} — Solved Examples"),
-    ]
-    return [
-        {"title": title, "url": base + quote_plus(q), "difficulty": difficulty.title()}
-        for q, title in configs[:limit]
-    ]
 
 
 COMMON_PASSWORDS_BLOCKLIST = {
