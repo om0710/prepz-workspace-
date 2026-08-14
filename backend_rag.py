@@ -437,16 +437,14 @@ def chat_node(state: ChatState, config = None):
             "- EXPLAIN FIRST PRINCIPLE: When a student asks a conceptual question or doubt (e.g. 'explain decorators in python', 'what is thevenin theorem', 'what is deadlock', 'how to solve integration'):\n"
             "  • Teach the concept thoroughly yourself first using clear analogies, intuitive definitions, step-by-step points, and code/math examples.\n"
             "  • Do NOT include YouTube links or playlist recommendations in your text answer on normal first-time conceptual questions.\n"
-            "- ONLY WHEN a student explicitly asks for video recommendations/channels (e.g. 'suggest some videos for calculus', 'recommend videos for thevenin theorem', 'give video tutorials for os') OR expresses repeated confusion/struggle:\n"
-            "  1. Identify the EXACT subject or topic the student is asking about.\n"
-            "  2. DO NOT call Wikipedia or external search tools.\n"
-            "  3. Recommend ONLY the relevant top-rated faculty playlist that matches the user's topic:\n"
-            "     • For Calculus, Integration, Derivatives & Engineering Mathematics: Recommend [Dr. Gajendra Purohit](https://www.youtube.com/playlist?list=PLU6SqdYcYsfIJRl8mo2Rv1MpdvmVD0YyI) and [Bhagwan Singh Vishwakarma](https://www.youtube.com/playlist?list=PLdM-WZokR4tbCBA4mkvfk2vOH12eRPT2Y).\n"
-            "     • For Electrical Circuits, Thevenin Theorem, Norton, KVL/KCL: Recommend [Engineers Ki Pathshala (Umesh Dhande)](https://youtube.com/playlist?list=PL9RcWoqXmzaLTYUdnzKhF4bYug3GjGcEc) and [NESO Academy](https://www.youtube.com/@nesoacademy/playlists).\n"
-            "     • For Operating Systems, Deadlocks, Scheduling, Memory: Recommend [Gate Smashers (Varun Singla)](https://www.youtube.com/playlist?list=PLxCzCOWd7aiGz9donHRrE9I3Mwn6XdP8p) and [NESO Academy](https://www.youtube.com/playlist?list=PLBlnK6fEyqRitWLDxMrzVQK8813oqG797).\n"
-            "     • For Python, DSA & Coding: Recommend [Apna College (Shradha Khapra)](https://youtube.com/playlist?list=PLGjplNEQ1it8-0CmoljS5yeV-GlKSUEt0), [Code With Harry](https://youtube.com/playlist?list=PLu0W_9lII9agwh1XjRt242xIpHhPT2llg), and [Abdul Bari](https://www.youtube.com/playlist?list=PLDN4rrl48XKpZkf03iYFl-O29szjTrs_O).\n"
-            "     • For Engineering Mechanics: Recommend [Pradeep Giri Academy](https://youtube.com/playlist?list=PLT3bOBUU3L9hADhGPsZjSddwAC3BvJDnl).\n"
-            "  4. Give only the relevant matching playlist links and let the student know the interactive cards with ratings are displayed right below.\n"
+            "- STRICT FACULTY & SUBJECT INTEGRITY (NEVER HALLUCINATE OR CROSS-ASSIGN DOMAINS):\n"
+            "  • For Python, DSA & Coding: ONLY recommend [Apna College (Shradha Khapra)](https://youtube.com/playlist?list=PLGjplNEQ1it8-0CmoljS5yeV-GlKSUEt0), [Code With Harry](https://youtube.com/playlist?list=PLu0W_9lII9agwh1XjRt242xIpHhPT2llg), and [Abdul Bari](https://www.youtube.com/playlist?list=PLDN4rrl48XKpZkf03iYFl-O29szjTrs_O). NEVER recommend Dr. Gajendra Purohit or Umesh Dhande for Python/Coding!\n"
+            "  • For Calculus, Integration & Differential Equations: ONLY recommend [Dr. Gajendra Purohit](https://www.youtube.com/playlist?list=PLU6SqdYcYsfIJRl8mo2Rv1MpdvmVD0YyI) and [Bhagwan Singh Vishwakarma](https://www.youtube.com/playlist?list=PLdM-WZokR4tbCBA4mkvfk2vOH12eRPT2Y).\n"
+            "  • For Electrical Circuits & Network Theorems: ONLY recommend [Engineers Ki Pathshala (Umesh Dhande)](https://youtube.com/playlist?list=PL9RcWoqXmzaLTYUdnzKhF4bYug3GjGcEc) and [NESO Academy](https://www.youtube.com/@nesoacademy/playlists).\n"
+            "  • For Operating Systems: ONLY recommend [Gate Smashers (Varun Singla)](https://www.youtube.com/playlist?list=PLxCzCOWd7aiGz9donHRrE9I3Mwn6XdP8p) and [NESO Academy](https://www.youtube.com/playlist?list=PLBlnK6fEyqRitWLDxMrzVQK8813oqG797).\n"
+            "  • For Engineering Mechanics: ONLY recommend [Pradeep Giri Academy](https://youtube.com/playlist?list=PLT3bOBUU3L9hADhGPsZjSddwAC3BvJDnl).\n"
+            "- ONLY WHEN a student explicitly asks for video recommendations/channels OR expresses repeated confusion/struggle, provide the exact matching verified links above and remind the student about the interactive cards below.\n"
+            "- GREETINGS & ACKNOWLEDGEMENTS: If the student says 'ok thanks', 'thank you', 'thanks', 'got it', 'bye', or greets you, reply with a short friendly 1-sentence response. Do NOT re-explain topics or dump links.\n"
             f"- The currently uploaded documents in the knowledge base database are: [{files_str}]. If the user asks about 'this pdf', 'the document', or any uploaded file, you MUST use the tools (like rag_tool) to read from these current files. Do NOT rely on old file details from the history.\n"
             "- PROFILE ISOLATION: Keep candidate profiles completely isolated. When answering queries about a specific document (e.g., Kanak's resume), you MUST NOT merge, copy, or inherit facts, names, roles, or employers (like Flipkart, Blinkit, or Niyo) from other profiles mentioned in the conversation history. Keep different individuals' details 100% distinct.\n"
             "- CRITICAL: Always answer the user's query in a natural, concise, human-like summary. Do NOT copy-paste large blocks or output raw line-by-line text from the retrieved documents. Summarize the document details in 1-3 clear sentences instead (e.g., 'This is a Google IT support certificate issued to Om Bansal on Coursera.').\n"
@@ -459,6 +457,31 @@ def chat_node(state: ChatState, config = None):
             "- IMPORTANT: You MUST include the exact numbers, names, and facts returned by tools in your response. Do not censor or alter them, but always present them in a clean, natural summary. Do NOT copy-paste raw lists or lines from the database."
         )
     )
+
+    thread_id = config.get("configurable", {}).get("thread_id", "default_thread") if config else "default_thread"
+    handler = active_streams.get(thread_id)
+
+    # Check for direct greeting / acknowledgement interception
+    last_user_msg = ""
+    for m in reversed(state.get("messages", [])):
+        if isinstance(m, HumanMessage) or (hasattr(m, "type") and m.type == "human"):
+            last_user_msg = m.content if isinstance(m.content, str) else str(m.content)
+            break
+
+    from database import is_acknowledgement_or_greeting
+    if last_user_msg and is_acknowledgement_or_greeting(last_user_msg):
+        q_lower = last_user_msg.lower()
+        if any(w in q_lower.split() for w in ["hi", "hello", "hey"]):
+            ack_text = "Hello! I am BU Prepz AI, your Bennett University academic copilot. How can I help you with your coursework, concepts, or exam prep today? 😊"
+        elif any(w in q_lower.split() for w in ["bye", "goodnight", "night"]):
+            ack_text = "Goodbye! Best of luck with your studies, and feel free to reach out anytime you need help! 😊"
+        else:
+            ack_text = "You're welcome! Feel free to ask if you have any questions or need help with any other topic. Happy learning and all the best with your prep! 😊"
+        
+        if handler and hasattr(handler, "on_llm_new_token"):
+            for token in ack_text.split(" "):
+                handler.on_llm_new_token(token + " ")
+        return {"messages": [AIMessage(content=ack_text)]}
 
     pruned = prune_messages(state["messages"])
     messages = [system_instruction] + pruned

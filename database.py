@@ -718,6 +718,20 @@ VIDEO_REQUEST_SIGNALS = [
     "aur de", "bhi de", "bhi bata"
 ]
 
+def is_acknowledgement_or_greeting(query: str) -> bool:
+    """Detect if the message is a pure greeting, polite acknowledgement, or thank you."""
+    q_clean = _re.sub(r'[^\w\s]', '', query.strip().lower())
+    words = q_clean.split()
+    if len(words) == 0:
+        return True
+    ack_words = {
+        'ok', 'okay', 'thanks', 'thank', 'you', 'thx', 'ty', 'tq', 'thanx', 'got', 'it',
+        'understood', 'cool', 'great', 'nice', 'shukriya', 'dhanyawad', 'bye', 'good', 'night',
+        'morning', 'afternoon', 'hello', 'hi', 'hey', 'alright', 'theek', 'hai', 'thik', 'accha',
+        'acha', 'sahi', 'k', 'bro', 'bhai', 'yaar', 'sir', 'a', 'lot', 'so', 'much', 'very'
+    }
+    return len(words) <= 4 and all(w in ack_words for w in words)
+
 def analyze_user_intent(
     current_message: str,
     conversation_history: list = None,
@@ -742,6 +756,15 @@ def analyze_user_intent(
         "topic": topic or "engineering fundamentals",
         "topic_attempts": topic_attempts
     }
+
+    # 0. Check Greetings / Acknowledgements / Gratitude -> NO VIDEOS!
+    if is_acknowledgement_or_greeting(current_message):
+        analysis["intent"] = "initial"
+        analysis["should_recommend_videos"] = False
+        analysis["recommendation_strength"] = "none"
+        analysis["reason"] = "User acknowledged/greeted"
+        analysis["explanation_style"] = "normal"
+        return analysis
 
     # 1. PRIORITY: Deep Semantic LLM Classifier (with conversation history context)
     llm_res = classify_intent_with_llm(current_message, last_topic=topic, conversation_history=conversation_history)
