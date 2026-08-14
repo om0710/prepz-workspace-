@@ -467,25 +467,8 @@ async def chat_stream(request: ChatRequest):
             "reason": ""
         }
 
-    # Adjust prompt based on attempt number and style
-    query_text = request.query
-    style = intent_result.get("explanation_style", "normal")
-    if style == "basic" or intent_result.get("intent") == "confused":
-        query_text = (
-            f"[SYSTEM NOTE: The user has asked about '{detected_topic}' multiple times (Attempt #{topic_attempts + 1}) and is struggling. "
-            f"Please give a VERY BASIC explanation of '{detected_topic}'. Use simple everyday analogies. "
-            f"Break into very small steps. No technical jargon at all.] "
-            f"{request.query}"
-        )
-    elif style == "detailed" or intent_result.get("intent") == "clarify":
-        query_text = (
-            f"[SYSTEM NOTE: The user is asking for clarification on '{detected_topic}' (Attempt #{topic_attempts + 1}). "
-            f"Explain from a completely DIFFERENT angle. Use a fresh analogy and clear examples.] "
-            f"{request.query}"
-        )
-    # ──────────────────────────────────────────────────────────────────────────
-
-    state = {"messages": [HumanMessage(content=query_text)]}
+    # Keep HumanMessage pure without prepending leaking system notes
+    state = {"messages": [HumanMessage(content=request.query)]}
 
     queue = asyncio.Queue()
     loop = asyncio.get_running_loop()

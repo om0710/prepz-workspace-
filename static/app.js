@@ -2245,7 +2245,13 @@ function initializeDocPilotApp() {
         formatted = formatted.replace(/\*([^*]+?)\*/g, "<em>$1</em>");
         formatted = formatted.replace(/^### (.*$)/gim, "<h3>$1</h3>");
         formatted = formatted.replace(/^## (.*$)/gim, "<h2>$1</h2>");
-        formatted = formatted.replace(/\[([^\]]+)\]\((https?:\/\/[^\s\)]+)\)/g, '<a href="$2" target="_blank" rel="noopener noreferrer" class="chat-yt-link">🎬 $1 ↗</a>');
+        formatted = formatted.replace(/\[([^\]]+)\]\((https?:\/\/[^\s\)]+)\)/g, (match, text, url) => {
+            if (url.includes("youtube.com") || url.includes("youtu.be")) {
+                const safeTitle = text.replace(/'/g, "\\'");
+                return `<a href="${url}" onclick="if(window.openYtPlayerModal){window.openYtPlayerModal('${url}', '${safeTitle}', 'Bennett University Verified'); return false;}" class="chat-yt-link">🎬 ${text} ▶</a>`;
+            }
+            return `<a href="${url}" target="_blank" rel="noopener noreferrer" class="chat-yt-link">📄 ${text} ↗</a>`;
+        });
         formatted = formatted.replace(/\n\n+/g, "</p><p>");
         formatted = formatted.replace(/\n/g, "<br>");
         return `<p>${formatted}</p>`;
@@ -2501,9 +2507,9 @@ function initializeDocPilotApp() {
                         <span>⏱️ ${avgDur} min avg</span>
                     </div>
                     
-                    <a href="${playlistUrl}" target="_blank" rel="noopener noreferrer" class="watch-btn">
-                        Watch on YouTube →
-                    </a>
+                    <button type="button" onclick="window.openYtPlayerModal('${playlistUrl}', '${(v.topic || topicLabel).replace(/'/g, "\\'")}', '${channelName.replace(/'/g, "\\'")}')" class="watch-btn" style="width: 100%; border: none; cursor: pointer;">
+                        ▶️ Watch in App (Embedded)
+                    </button>
                     
                     <div class="rate-buttons" id="rate-btns-${v.id || i}">
                         <button onclick="window.rateVideo(${v.id || i + 1}, 5, true, 'rate-btns-${v.id || i}')" class="btn-helpful">👍 Helpful</button>
@@ -2556,6 +2562,79 @@ function initializeDocPilotApp() {
         }, 100);
     }
 
+    // ── Embedded YouTube Modal Player (ChatGPT Style) ──────────────────────────
+    window.extractYtEmbedUrl = function(url) {
+        if (!url) return "";
+        try {
+            const parsed = new URL(url);
+            if (parsed.searchParams.has("list")) {
+                const listId = parsed.searchParams.get("list");
+                return `https://www.youtube-nocookie.com/embed/videoseries?list=${listId}&autoplay=1`;
+            }
+            if (parsed.searchParams.has("v")) {
+                const vId = parsed.searchParams.get("v");
+                return `https://www.youtube-nocookie.com/embed/${vId}?autoplay=1`;
+            }
+            if (parsed.hostname.includes("youtu.be")) {
+                const vId = parsed.pathname.replace(/^\//, "");
+                return `https://www.youtube-nocookie.com/embed/${vId}?autoplay=1`;
+            }
+            return url;
+        } catch (e) {
+            return url;
+        }
+    };
+
+    window.openYtPlayerModal = function(url, title, channel) {
+        const modal = document.getElementById("yt-player-modal");
+        const iframe = document.getElementById("yt-player-iframe");
+        const titleEl = document.getElementById("yt-player-title");
+        const channelEl = document.getElementById("yt-player-channel");
+        const extLink = document.getElementById("yt-player-external-link");
+        const playerCard = modal ? modal.querySelector(".yt-player-card") : null;
+
+        if (!modal || !iframe) return;
+
+        if (titleEl) titleEl.textContent = title || "Bennett Verified Lecture";
+        if (channelEl) channelEl.textContent = channel || "Faculty Series";
+        if (extLink) extLink.href = url || "#";
+
+        const embedSrc = window.extractYtEmbedUrl(url);
+        iframe.src = embedSrc;
+
+        modal.classList.remove("hidden");
+        modal.style.display = "flex";
+        if (playerCard) playerCard.classList.remove("pip-mode");
+        modal.classList.remove("has-pip");
+    };
+
+    window.closeYtPlayerModal = function() {
+        const modal = document.getElementById("yt-player-modal");
+        const iframe = document.getElementById("yt-player-iframe");
+        const playerCard = modal ? modal.querySelector(".yt-player-card") : null;
+
+        if (iframe) iframe.src = "";
+        if (playerCard) playerCard.classList.remove("pip-mode");
+        if (modal) {
+            modal.classList.remove("has-pip");
+            modal.classList.add("hidden");
+            modal.style.display = "none";
+        }
+    };
+
+    window.toggleYtMiniPlayer = function() {
+        const modal = document.getElementById("yt-player-modal");
+        const playerCard = modal ? modal.querySelector(".yt-player-card") : null;
+        if (!modal || !playerCard) return;
+
+        const isPip = playerCard.classList.toggle("pip-mode");
+        if (isPip) {
+            modal.classList.add("has-pip");
+        } else {
+            modal.classList.remove("has-pip");
+        }
+    };
+
     // Global rateVideo handler
     window.rateVideo = async function(playlistId, rating, wasHelpful, containerId) {
         try {
@@ -2579,11 +2658,7 @@ function initializeDocPilotApp() {
                 container.innerHTML = `<span style="font-size:12px;color:#10b981;font-weight:600;">✅ Thanks for rating! (Score: ${data.playlist_score || '4.9'})</span>`;
             }
         } catch (e) {
-            console.error("Rating failed:", e);
-            const container = document.getElementById(containerId);
-            if (container) {
-                container.innerHTML = `<span style="font-size:12px;color:#10b981;font-weight:600;">✅ Rated! Thanks.</span>`;
-            }
+            console.error("Rate error:", e);
         }
     };
 
