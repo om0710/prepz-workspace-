@@ -2577,57 +2577,46 @@ function initializeDocPilotApp() {
     }
 
     // ── In-App Interactive Video Player Modal ──────────────────────────────────
-    const KNOWN_THUMBNAILS = {
-        "PLU6SqdYcYsfIJRl8mo2Rv1MpdvmVD0YyI": "https://img.youtube.com/vi/3d6DsjIBzJ4/hqdefault.jpg",
-        "PLdM-WZokR4tbCBA4mkvfk2vOH12eRPT2Y": "https://img.youtube.com/vi/eY3jUf2F23E/hqdefault.jpg",
-        "PL9RcWoqXmzaLTYUdnzKhF4bYug3GjGcEc": "https://img.youtube.com/vi/xIu1g8hW2qY/hqdefault.jpg",
-        "PLBlnK6fEyqRhqJPDXcvYlLfXPh37L89g3": "https://img.youtube.com/vi/1xWS7g1ZUPg/hqdefault.jpg",
-        "PLGjplNEQ1it8-0CmoljS5yeV-GlKSUEt0": "https://img.youtube.com/vi/ERCMXc8x7mc/hqdefault.jpg",
-        "PLu0W_9lII9agwh1XjRt242xIpHhPT2llg": "https://img.youtube.com/vi/7wnove7K-ZQ/hqdefault.jpg",
-        "PLDN4rrl48XKpZkf03iYFl-O29szjTrs_O": "https://img.youtube.com/vi/0IAPZzGSbME/hqdefault.jpg",
-        "PLxCzCOWd7aiGz9donHRrE9I3Mwn6XdP8p": "https://img.youtube.com/vi/bkSWJJZNgf8/hqdefault.jpg",
-        "PLBlnK6fEyqRitWLDxMrzVQK8813oqG797": "https://img.youtube.com/vi/2h3eWaEx88s/hqdefault.jpg",
-        "PLT3bOBUU3L9hADhGPsZjSddwAC3BvJDnl": "https://img.youtube.com/vi/x8K1N_404X8/hqdefault.jpg"
+    const KNOWN_PLAYLIST_FIRST_VIDEOS = {
+        "PLU6SqdYcYsfIJRl8mo2Rv1MpdvmVD0YyI": "3d6DsjIBzJ4", // Gajendra Purohit Calculus
+        "PLdM-WZokR4tbCBA4mkvfk2vOH12eRPT2Y": "eY3jUf2F23E", // Vishwakarma Advanced Calculus
+        "PL9RcWoqXmzaLTYUdnzKhF4bYug3GjGcEc": "xIu1g8hW2qY", // Umesh Dhande Network Theorems
+        "PLBlnK6fEyqRhqJPDXcvYlLfXPh37L89g3": "1xWS7g1ZUPg", // NESO Academy Electrical Basics
+        "PLGjplNEQ1it8-0CmoljS5yeV-GlKSUEt0": "ERCMXc8x7mc", // Apna College Python
+        "PLu0W_9lII9agwh1XjRt242xIpHhPT2llg": "7wnove7K-ZQ", // Code With Harry Python
+        "PLDN4rrl48XKpZkf03iYFl-O29szjTrs_O": "0IAPZzGSbME", // Abdul Bari DSA
+        "PLxCzCOWd7aiGz9donHRrE9I3Mwn6XdP8p": "bkSWJJZNgf8", // Gate Smashers OS
+        "PLBlnK6fEyqRitWLDxMrzVQK8813oqG797": "2h3eWaEx88s", // NESO Academy OS
+        "PLT3bOBUU3L9hADhGPsZjSddwAC3BvJDnl": "x8K1N_404X8"  // Pradeep Giri Mechanics
     };
 
     window.openYtPlayerModal = function(url, title, channel) {
         const modal = document.getElementById("yt-player-modal");
+        const iframe = document.getElementById("yt-player-iframe");
         const titleEl = document.getElementById("yt-player-title");
         const channelEl = document.getElementById("yt-player-channel");
         const extLink = document.getElementById("yt-player-external-link");
-        const contentBox = document.getElementById("yt-player-dynamic-content");
 
         if (!modal) return;
 
         if (titleEl) titleEl.textContent = title || "Bennett Verified Lecture";
-        if (channelEl) channelEl.textContent = channel || "Faculty Series";
+        if (channelEl) channelEl.textContent = channel || "Faculty Lecture Series";
         if (extLink) extLink.href = url || "#";
 
-        let thumb = "https://img.youtube.com/vi/3d6DsjIBzJ4/hqdefault.jpg";
+        let videoId = "3d6DsjIBzJ4";
         try {
             const parsed = new URL(url);
             const listId = parsed.searchParams.get("list");
             const vid = parsed.searchParams.get("v");
-            if (listId && KNOWN_THUMBNAILS[listId]) {
-                thumb = KNOWN_THUMBNAILS[listId];
+            if (listId && KNOWN_PLAYLIST_FIRST_VIDEOS[listId]) {
+                videoId = KNOWN_PLAYLIST_FIRST_VIDEOS[listId];
             } else if (vid) {
-                thumb = `https://img.youtube.com/vi/${vid}/hqdefault.jpg`;
+                videoId = vid;
             }
         } catch (e) {}
 
-        if (contentBox) {
-            contentBox.innerHTML = `
-                <a href="${url}" target="_blank" rel="noopener noreferrer" class="yt-player-preview-card" style="background-image: url('${thumb}');">
-                    <div class="yt-player-preview-overlay">
-                        <div class="yt-big-play-btn">
-                            <svg width="34" height="34" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
-                        </div>
-                        <h4 class="yt-preview-title">${title || 'Bennett Verified Playlist'}</h4>
-                        <p class="yt-preview-sub">${channel || 'Faculty Lecture Series'} • Top Rated by Bennett Students</p>
-                        <span class="yt-preview-badge">▶ Click Anywhere to Watch in HD ↗</span>
-                    </div>
-                </a>
-            `;
+        if (iframe) {
+            iframe.src = `https://www.youtube.com/embed/${videoId}?autoplay=1&playsinline=1&rel=0`;
         }
 
         modal.classList.remove("hidden");
@@ -2636,11 +2625,28 @@ function initializeDocPilotApp() {
 
     window.closeYtPlayerModal = function() {
         const modal = document.getElementById("yt-player-modal");
+        const iframe = document.getElementById("yt-player-iframe");
+        if (iframe) iframe.src = "";
         if (modal) {
             modal.classList.add("hidden");
             modal.style.display = "none";
         }
     };
+
+    // Global Click Delegation for In-App Player
+    document.addEventListener("click", function(e) {
+        const btn = e.target.closest(".btn-watch-inapp, .btn-launch-inapp");
+        if (btn) {
+            e.preventDefault();
+            e.stopPropagation();
+            const url = btn.getAttribute("data-url") || btn.dataset.url;
+            const title = btn.getAttribute("data-title") || btn.dataset.title || "Bennett Verified Lecture";
+            const channel = btn.getAttribute("data-channel") || btn.dataset.channel || "Faculty Lecture Series";
+            if (window.openYtPlayerModal) {
+                window.openYtPlayerModal(url, title, channel);
+            }
+        }
+    });
 
     // Global rateVideo handler
     window.rateVideo = async function(playlistId, rating, wasHelpful, containerId) {
