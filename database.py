@@ -750,20 +750,50 @@ def analyze_user_intent(
             topic = llm_res["topic"].lower().strip()
             analysis["topic"] = topic
 
-        if llm_res.get("is_video_requested") or llm_res.get("is_confused_or_frustrated"):
-            is_confused = llm_res.get("is_confused_or_frustrated", False)
-            analysis["intent"] = "confused" if is_confused else "clarify"
+        is_video_req = bool(llm_res.get("is_video_requested", False))
+        is_confused = bool(llm_res.get("is_confused_or_frustrated", False))
+
+        # Explicit Video/Channel Request
+        if is_video_req:
+            analysis["intent"] = "clarify"
             analysis["should_recommend_videos"] = True
             analysis["recommendation_strength"] = "urgent"
-            analysis["reason"] = "User wants video/visual learning" if llm_res.get("is_video_requested") else "User expressed confusion/struggle"
+            analysis["reason"] = "User explicitly requested videos/playlists"
             analysis["explanation_style"] = "simpler"
             return analysis
 
-    # 2. Fallback Pattern Engine
+        # Expressed Confusion / Frustration OR 3rd+ attempt on same topic
+        if is_confused or topic_attempts >= 2:
+            analysis["intent"] = "confused"
+            analysis["should_recommend_videos"] = True
+            analysis["recommendation_strength"] = "urgent"
+            analysis["reason"] = "User expressed confusion/struggle" if is_confused else f"Repeated attempt #{topic_attempts + 1}"
+            analysis["explanation_style"] = "basic"
+            return analysis
+
+        # First attempt asking conceptual question -> EXPLAIN FIRST, NO VIDEOS!
+        if topic_attempts == 0:
+            analysis["intent"] = "initial"
+            analysis["should_recommend_videos"] = False
+            analysis["recommendation_strength"] = "none"
+            analysis["reason"] = "First attempt - explain concepts thoroughly first without videos"
+            analysis["explanation_style"] = "normal"
+            return analysis
+
+        # Second attempt asking clarification -> EXPLAIN SIMPLER, NO VIDEOS YET!
+        if topic_attempts == 1:
+            analysis["intent"] = "clarify"
+            analysis["should_recommend_videos"] = False
+            analysis["recommendation_strength"] = "none"
+            analysis["reason"] = "Second attempt - explain with different analogies/examples"
+            analysis["explanation_style"] = "simpler"
+            return analysis
+
+    # 2. Fallback Pattern Engine (Strict word boundaries only)
     q_lower = current_message.lower()
     is_frustrated = any(phrase in q_lower for phrase in FRUSTRATION_PHRASES)
     is_asking_clarification = any(phrase in q_lower for phrase in CLARIFICATION_PHRASES)
-    is_video_requested = any(_re.search(r'(?<![a-zA-Z0-9])' + _re.escape(v) + r'(?![a-zA-Z0-9])', q_lower) or v in q_lower for v in VIDEO_REQUEST_SIGNALS)
+    is_video_requested = any(_re.search(r'(?<![a-zA-Z0-9])' + _re.escape(v) + r'(?![a-zA-Z0-9])', q_lower) for v in VIDEO_REQUEST_SIGNALS)
 
     # Repetition Check
     is_repeating = False
@@ -782,20 +812,20 @@ def analyze_user_intent(
             is_repeating = max_similarity > 0.60
 
     # Decision Logic (Fallback)
+    if is_video_requested:
+        analysis["intent"] = "clarify"
+        analysis["should_recommend_videos"] = True
+        analysis["recommendation_strength"] = "urgent"
+        analysis["reason"] = "User explicitly requested video/channel recommendations"
+        analysis["explanation_style"] = "simpler"
+        return analysis
+
     if is_frustrated or is_repeating:
         analysis["intent"] = "confused"
         analysis["should_recommend_videos"] = True
         analysis["recommendation_strength"] = "urgent"
         analysis["reason"] = f"User is frustrated/stuck (Attempt #{topic_attempts + 1}) - urgent videos NEEDED"
         analysis["explanation_style"] = "basic"
-        return analysis
-
-    if is_video_requested:
-        analysis["intent"] = "clarify" if topic_attempts <= 1 else "confused"
-        analysis["should_recommend_videos"] = True
-        analysis["recommendation_strength"] = "urgent"
-        analysis["reason"] = "User explicitly requested video/channel recommendations"
-        analysis["explanation_style"] = "simpler"
         return analysis
 
     if topic_attempts >= 2:
