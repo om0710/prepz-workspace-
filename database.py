@@ -658,22 +658,17 @@ def classify_intent_with_llm(query: str, last_topic: str = "", conversation_hist
         return None
 
 def extract_topic_from_query(query: str, last_topic: str = "") -> str:
-    """Extract topic using LLM semantic understanding first, then fallback to word boundaries."""
-    # 1. Try LLM semantic understanding
-    llm_res = classify_intent_with_llm(query, last_topic=last_topic)
-    if llm_res and llm_res.get("topic") and len(llm_res["topic"].strip()) > 2:
-        return llm_res["topic"].lower().strip()
-
+    """Extract topic using ultra-fast in-memory pattern matching first, with LLM fallback."""
     q_clean = query.strip().lower()
-    
-    # 2. Check explicit topic keyword in current query
+
+    # 1. Fast in-memory explicit topic keyword matching (< 0.01ms)
     for topic_name, kws in TOPIC_KW.items():
         for kw in sorted(kws, key=len, reverse=True):
             pattern = r'(?<![a-zA-Z0-9])' + _re.escape(kw) + r'(?![a-zA-Z0-9])'
             if _re.search(pattern, q_clean):
                 return topic_name
 
-    # 3. Check if this is a follow-up query that should inherit previous topic
+    # 2. Check if this is a follow-up query that should inherit previous topic
     follow_up_tokens = {
         "bhai", "nhi", "nahi", "smj", "samj", "samjh", "smjh", "aaya", "aya",
         "video", "videos", "vid", "vids", "yt", "youtube", "channel", "channels",
@@ -690,6 +685,11 @@ def extract_topic_from_query(query: str, last_topic: str = "") -> str:
 
     if (is_followup or has_frustration or has_pronoun_ref) and last_topic and last_topic != "general":
         return last_topic
+
+    # 3. LLM semantic fallback only if ambiguous
+    llm_res = classify_intent_with_llm(query, last_topic=last_topic)
+    if llm_res and llm_res.get("topic") and len(llm_res["topic"].strip()) > 2:
+        return llm_res["topic"].lower().strip()
 
     return last_topic if (last_topic and last_topic != "general") else "engineering fundamentals"
 
