@@ -2507,9 +2507,14 @@ function initializeDocPilotApp() {
                         <span>⏱️ ${avgDur} min avg</span>
                     </div>
                     
-                    <button type="button" onclick="window.openYtPlayerModal('${playlistUrl}', '${(v.topic || topicLabel).replace(/'/g, "\\'")}', '${channelName.replace(/'/g, "\\'")}')" class="watch-btn" style="width: 100%; border: none; cursor: pointer;">
-                        ▶️ Watch in App (Embedded)
-                    </button>
+                    <div style="display: flex; gap: 6px; margin-top: 6px;">
+                        <button type="button" onclick="window.openYtPlayerModal('${playlistUrl}', '${(v.topic || topicLabel).replace(/'/g, "\\'")}', '${channelName.replace(/'/g, "\\'")}')" class="watch-btn" style="flex: 1; border: none; cursor: pointer; padding: 9px 8px; font-size: 12.5px;">
+                            ▶️ In-App Player
+                        </button>
+                        <button type="button" onclick="window.openYtFloatingWindow('${playlistUrl}')" class="watch-btn" style="background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.18); color: #ffffff; padding: 9px 12px; cursor: pointer; font-size: 12px;" title="Open in Floating Window (Bypasses all iframe restrictions)">
+                            ⚡ Floating
+                        </button>
+                    </div>
                     
                     <div class="rate-buttons" id="rate-btns-${v.id || i}">
                         <button onclick="window.rateVideo(${v.id || i + 1}, 5, true, 'rate-btns-${v.id || i}')" class="btn-helpful">👍 Helpful</button>
@@ -2576,6 +2581,8 @@ function initializeDocPilotApp() {
         "PLT3bOBUU3L9hADhGPsZjSddwAC3BvJDnl": "x8K1N_404X8"  // Pradeep Giri Mechanics
     };
 
+    window.currentYtUrl = "";
+
     window.extractYtEmbedUrl = function(url) {
         if (!url) return "";
         try {
@@ -2615,6 +2622,7 @@ function initializeDocPilotApp() {
     };
 
     window.openYtPlayerModal = function(url, title, channel) {
+        window.currentYtUrl = url;
         const modal = document.getElementById("yt-player-modal");
         const iframe = document.getElementById("yt-player-iframe");
         const titleEl = document.getElementById("yt-player-title");
@@ -2635,6 +2643,15 @@ function initializeDocPilotApp() {
         modal.style.display = "flex";
         if (playerCard) playerCard.classList.remove("pip-mode");
         modal.classList.remove("has-pip");
+    };
+
+    window.openYtFloatingWindow = function(url) {
+        const targetUrl = url || window.currentYtUrl || "https://www.youtube.com";
+        const width = 960;
+        const height = 560;
+        const left = Math.max(0, (window.screen.width - width) / 2);
+        const top = Math.max(0, (window.screen.height - height) / 2);
+        window.open(targetUrl, 'BUPrepzPlayer', `width=${width},height=${height},left=${left},top=${top},resizable=yes,scrollbars=yes,status=no,toolbar=no,menubar=no,location=no`);
     };
 
     window.closeYtPlayerModal = function() {
