@@ -585,8 +585,8 @@ TOPIC_KW = {
     "digital electronics": ["digital electronics", "logic gate", "logic gates", "flip flop", "flip flops", "counter", "multiplexer", "boolean algebra", "karnaugh map", "k-map", "adc", "dac"]
 }
 
-def classify_intent_with_llm(query: str, last_topic: str = "") -> dict:
-    """Use fast Groq LLM zero-shot classifier to understand user's true intent in any language/slang."""
+def classify_intent_with_llm(query: str, last_topic: str = "", conversation_history: list = None) -> dict:
+    """Use fast Groq LLM zero-shot classifier to understand user's true intent in any language/slang and follow-ups."""
     groq_key = _os.environ.get("GROQ_API_KEY") or "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"
     if not groq_key:
         return None
@@ -595,9 +595,12 @@ def classify_intent_with_llm(query: str, last_topic: str = "") -> dict:
         "You are an expert student intent classifier for Bennett University AI copilot.\n"
         "Your job is to deeply understand the student's message (in English, Hinglish, Hindi, slang, or abbreviations).\n"
         "Analyze:\n"
-        "1. 'is_video_requested': true IF the student wants videos, YouTube channels, lectures to watch, playlists, tutorials, visual explanations, or teachers/sources to learn from (e.g. 'yt channel', 'koi video do', 'suggest channels', 'playlist link', 'where to watch', 'dekhne ke liye kuch', etc.). Otherwise false.\n"
+        "1. 'is_video_requested': true IF:\n"
+        "   - The student directly asks for videos, YouTube channels, playlists, lectures, visual tutorials, or teachers/sources to learn from (e.g. 'yt channel', 'playlist bata de', 'video links', etc.).\n"
+        "   - OR the student asks a follow-up asking for recommendations for another subject (e.g. 'also give for electricals', 'aur os ka bhi de', 'same for python', 'what about dsa', 'aur mechanics ka batao', etc.).\n"
+        "   Otherwise false.\n"
         "2. 'is_confused_or_frustrated': true IF the student expresses confusion, struggle, being stuck, or not understanding (e.g. 'samjh nahi aaya', 'stuck ho gaya', 'confusing', 'again please', 'tough lag raha hai', etc.). Otherwise false.\n"
-        "3. 'topic': Clean 1-3 word academic topic (e.g. 'electronics', 'calculus', 'thevenin theorem', 'operating systems', 'python programming', 'data structures', 'engineering mechanics', etc.). If the student is asking a follow-up about a previous topic and mentions no new topic, inherit last_topic.\n\n"
+        "3. 'topic': Clean 1-3 word academic topic (e.g. 'electricals', 'electronics', 'calculus', 'thevenin theorem', 'operating systems', 'python programming', 'data structures', 'engineering mechanics', etc.). If the student is asking a follow-up about a previous topic and mentions no new topic, inherit last_topic.\n\n"
         "Respond ONLY with a valid JSON object matching this schema:\n"
         "{\n"
         '  "is_video_requested": boolean,\n'
@@ -605,6 +608,17 @@ def classify_intent_with_llm(query: str, last_topic: str = "") -> dict:
         '  "topic": string\n'
         "}"
     )
+
+    history_str = ""
+    if conversation_history:
+        prev_user_msgs = []
+        for m in conversation_history[-3:]:
+            if isinstance(m, dict) and "user" in m:
+                prev_user_msgs.append(f"- Student: {m['user']}")
+            elif isinstance(m, str):
+                prev_user_msgs.append(f"- Student: {m}")
+        if prev_user_msgs:
+            history_str = "\nRecent Conversation:\n" + "\n".join(prev_user_msgs)
 
     try:
         import urllib.request
@@ -614,7 +628,7 @@ def classify_intent_with_llm(query: str, last_topic: str = "") -> dict:
             "model": "llama-3.1-8b-instant",
             "messages": [
                 {"role": "system", "content": system_prompt},
-                {"role": "user", "content": f"Previous topic: \"{last_topic}\"\nStudent message: \"{query}\""}
+                {"role": "user", "content": f"Previous active topic: \"{last_topic}\"{history_str}\nCurrent student message: \"{query}\""}
             ],
             "temperature": 0,
             "response_format": {"type": "json_object"}
@@ -699,7 +713,9 @@ VIDEO_REQUEST_SIGNALS = [
     "lecture", "lectures", "lec", "lecs", "tutorial", "tutorials", "tutorilas",
     "playlist", "playlists", "watch", "link", "links", "recommend channel",
     "suggest channel", "best channel", "best channels", "recommend videos",
-    "suggest videos", "courses", "course", "dekho", "dekhna", "dikhao"
+    "suggest videos", "courses", "course", "dekho", "dekhna", "dikhao",
+    "also give for", "also give", "give for", "and for", "same for", "what about",
+    "aur de", "bhi de", "bhi bata"
 ]
 
 def analyze_user_intent(
@@ -727,8 +743,8 @@ def analyze_user_intent(
         "topic_attempts": topic_attempts
     }
 
-    # 1. PRIORITY: Deep Semantic LLM Classifier
-    llm_res = classify_intent_with_llm(current_message, last_topic=topic)
+    # 1. PRIORITY: Deep Semantic LLM Classifier (with conversation history context)
+    llm_res = classify_intent_with_llm(current_message, last_topic=topic, conversation_history=conversation_history)
     if llm_res and isinstance(llm_res, dict):
         if llm_res.get("topic") and len(llm_res["topic"].strip()) > 2:
             topic = llm_res["topic"].lower().strip()
@@ -747,7 +763,7 @@ def analyze_user_intent(
     q_lower = current_message.lower()
     is_frustrated = any(phrase in q_lower for phrase in FRUSTRATION_PHRASES)
     is_asking_clarification = any(phrase in q_lower for phrase in CLARIFICATION_PHRASES)
-    is_video_requested = any(_re.search(r'(?<![a-zA-Z0-9])' + _re.escape(v) + r'(?![a-zA-Z0-9])', q_lower) for v in VIDEO_REQUEST_SIGNALS)
+    is_video_requested = any(_re.search(r'(?<![a-zA-Z0-9])' + _re.escape(v) + r'(?![a-zA-Z0-9])', q_lower) or v in q_lower for v in VIDEO_REQUEST_SIGNALS)
 
     # Repetition Check
     is_repeating = False
@@ -807,18 +823,32 @@ def analyze_user_intent(
 # ── Video Recommendations & Rating ─────────────────────────────────────────────
 
 TOPIC_TO_FACULTY_MAP = {
-    "electronics": ["electronics", "circuits", "electrical", "neso academy", "umesh dhande", "engineers ki pathshala"],
-    "calculus": ["calculus", "math", "differentiation", "integration", "derivative", "differential", "gajendra purohit", "vishwakarma"],
-    "differential equations": ["calculus", "math", "differential equations", "vishwakarma", "gajendra purohit"],
-    "linear algebra": ["calculus", "math", "linear algebra", "matrices", "gajendra purohit"],
+    "electricals": ["electrical", "circuits", "thevenin", "umesh dhande", "engineers ki pathshala", "neso academy"],
+    "electrical": ["electrical", "circuits", "thevenin", "umesh dhande", "engineers ki pathshala", "neso academy"],
+    "electrical engineering": ["electrical", "circuits", "thevenin", "umesh dhande", "engineers ki pathshala", "neso academy"],
+    "bee": ["electrical", "circuits", "thevenin", "umesh dhande", "engineers ki pathshala", "neso academy"],
     "thevenin theorem": ["thevenin", "network", "circuit", "electrical", "kvl", "kcl", "umesh dhande", "engineers ki pathshala", "neso academy"],
     "electrical circuits": ["circuit", "circuits", "electrical", "electronics", "neso academy", "umesh dhande"],
     "electrical machines": ["electrical", "motor", "transformer", "circuits", "neso academy"],
+    "electronics": ["electronics", "circuits", "electrical", "neso academy", "umesh dhande", "engineers ki pathshala"],
+    "basic electronics": ["electronics", "circuits", "electrical", "neso academy", "umesh dhande", "engineers ki pathshala"],
+    "ece": ["electronics", "circuits", "electrical", "neso academy", "umesh dhande", "engineers ki pathshala"],
+    "calculus": ["calculus", "math", "differentiation", "integration", "derivative", "differential", "gajendra purohit", "vishwakarma"],
+    "math": ["calculus", "math", "differentiation", "integration", "derivative", "differential", "gajendra purohit", "vishwakarma"],
+    "maths": ["calculus", "math", "differentiation", "integration", "derivative", "differential", "gajendra purohit", "vishwakarma"],
+    "mathematics": ["calculus", "math", "differentiation", "integration", "derivative", "differential", "gajendra purohit", "vishwakarma"],
+    "differential equations": ["calculus", "math", "differential equations", "vishwakarma", "gajendra purohit"],
+    "linear algebra": ["calculus", "math", "linear algebra", "matrices", "gajendra purohit"],
     "operating systems": ["operating", "os", "deadlock", "semaphore", "process", "gate smashers", "varun singla", "neso academy"],
+    "os": ["operating", "os", "deadlock", "semaphore", "process", "gate smashers", "varun singla", "neso academy"],
     "python programming": ["python", "programming", "code with harry", "apna college", "shradha khapra"],
+    "python": ["python", "programming", "code with harry", "apna college", "shradha khapra"],
+    "coding": ["python", "programming", "code with harry", "apna college", "shradha khapra", "abdul bari"],
     "data structures": ["data structure", "dsa", "abdul bari", "tree", "graph", "algorithm", "apna college"],
+    "dsa": ["data structure", "dsa", "abdul bari", "tree", "graph", "algorithm", "apna college"],
     "algorithms": ["algorithm", "algorithms", "abdul bari", "dynamic programming", "dsa"],
     "engineering mechanics": ["mechanics", "statics", "dynamics", "pradeep giri"],
+    "mechanics": ["mechanics", "statics", "dynamics", "pradeep giri"],
     "thermodynamics": ["thermodynamics", "entropy", "heat", "mechanical"],
     "fluid mechanics": ["fluid", "bernoulli", "mechanical"],
     "digital electronics": ["digital", "logic gate", "flip flop", "neso academy"]
