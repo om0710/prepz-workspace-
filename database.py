@@ -331,32 +331,35 @@ def _extract_topic_nlp(query: str) -> str:
         return _extract_topic_keywords(query)
 
 def _extract_topic_keywords(query: str) -> str:
-    """Keyword-based fallback topic extraction."""
+    """Keyword-based academic topic extraction."""
     TOPIC_KW = {
-        "thermodynamics": ["thermodynamics","entropy","enthalpy","carnot","rankine"],
-        "operating systems": ["operating system","deadlock","scheduling","semaphore","paging","virtual memory"],
-        "data structures": ["data structure","linked list","binary tree","heap","bst","sorting","searching"],
-        "dbms": ["database","dbms","sql","normalization","transaction","acid","join","indexing"],
-        "computer networks": ["network","tcp","ip","http","dns","routing","osi","ethernet","subnet"],
-        "algorithms": ["algorithm","complexity","big o","dynamic programming","greedy","backtracking"],
-        "machine learning": ["machine learning","neural network","deep learning","regression","gradient descent"],
-        "digital electronics": ["logic gate","flip flop","counter","multiplexer","boolean","karnaugh"],
-        "signals systems": ["fourier","laplace","convolution","filter","sampling","nyquist"],
-        "engineering mathematics": ["calculus","differential equation","eigenvalue","integral","probability"],
-        "c programming": ["pointer","malloc","struct","recursion in c"],
-        "object oriented": ["oop","object oriented","inheritance","polymorphism","encapsulation"],
-        "computer architecture": ["processor","cpu","cache","pipeline","instruction set","alu"],
-        "software engineering": ["sdlc","agile","design pattern","uml"],
+        "thevenin theorem": ["thevenin", "thevenin's", "norton", "kvl", "kcl", "maximum power transfer", "superposition theorem", "reciprocity"],
+        "electrical circuits": ["circuit", "dependent source", "phasor", "impedance", "mesh analysis", "nodal analysis", "rlc circuit", "ac circuit", "kirchhoff"],
+        "electrical machines": ["induction motor", "transformer", "rotating magnetic field", "rmf", "synchronous motor", "dc motor", "stator", "rotor", "armature", "torque slip"],
+        "power systems": ["power factor", "three phase", "transmission line", "load flow", "fault analysis", "generator", "bus admittance"],
+        "control systems": ["bode plot", "root locus", "nyquist plot", "transfer function", "pid controller", "state space", "stability"],
+        "thermodynamics": ["thermodynamics", "entropy", "enthalpy", "carnot", "rankine", "brayton", "first law", "second law", "refrigeration"],
+        "fluid mechanics": ["bernoulli", "navier stokes", "viscosity", "reynolds number", "venturimeter", "fluid flow", "pipe flow"],
+        "operating systems": ["operating system", "deadlock", "scheduling", "semaphore", "paging", "virtual memory", "process management", "banker's algorithm"],
+        "data structures": ["data structure", "linked list", "binary tree", "heap", "bst", "sorting", "searching", "graph traversal", "avl tree"],
+        "dbms": ["database", "dbms", "sql", "normalization", "transaction", "acid", "join", "indexing", "relational algebra", "b+ tree"],
+        "computer networks": ["network", "tcp", "ip", "http", "dns", "routing", "osi", "ethernet", "subnet", "congestion control"],
+        "algorithms": ["algorithm", "complexity", "big o", "dynamic programming", "greedy", "backtracking", "divide and conquer", "dijkstra"],
+        "machine learning": ["machine learning", "neural network", "deep learning", "regression", "gradient descent", "backpropagation", "cnn", "rnn"],
+        "digital electronics": ["logic gate", "flip flop", "counter", "multiplexer", "boolean", "karnaugh", "k-map", "adc", "dac"],
+        "signals systems": ["fourier", "laplace", "convolution", "filter", "sampling", "nyquist", "z-transform", "fourier transform"],
+        "engineering mathematics": ["calculus", "differential equation", "eigenvalue", "eigenvector", "integral", "probability", "laplace transform", "linear algebra"],
+        "c programming": ["pointer", "malloc", "struct", "recursion in c", "dynamic memory", "file handling in c"],
+        "object oriented": ["oop", "object oriented", "inheritance", "polymorphism", "encapsulation", "abstraction", "virtual function"],
+        "computer architecture": ["processor", "cpu", "cache", "pipeline", "instruction set", "alu", "cache mapping", "pipelining hazards"],
+        "software engineering": ["sdlc", "agile", "design pattern", "uml", "software testing", "waterfall model"]
     }
     q = query.lower()
     for topic, kws in TOPIC_KW.items():
         if any(kw in q for kw in kws):
             return topic
-    stop = {"what","when","where","which","this","that","with","from","have","does","about","explain","please","help","understand"}
-    for w in _re.findall(r'\b[a-zA-Z]{4,}\b', q):
-        if w not in stop:
-            return w
     return "general"
+
 
 # ── Frustration / Clarification / Video signals (with typo tolerance) ──────────
 _FRUSTRATION_SIGNALS = [
