@@ -585,18 +585,77 @@ TOPIC_KW = {
     "digital electronics": ["digital electronics", "logic gate", "logic gates", "flip flop", "flip flops", "counter", "multiplexer", "boolean algebra", "karnaugh map", "k-map", "adc", "dac"]
 }
 
+def classify_intent_with_llm(query: str, last_topic: str = "") -> dict:
+    """Use fast Groq LLM zero-shot classifier to understand user's true intent in any language/slang."""
+    groq_key = _os.environ.get("GROQ_API_KEY") or "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"
+    if not groq_key:
+        return None
+
+    system_prompt = (
+        "You are an expert student intent classifier for Bennett University AI copilot.\n"
+        "Your job is to deeply understand the student's message (in English, Hinglish, Hindi, slang, or abbreviations).\n"
+        "Analyze:\n"
+        "1. 'is_video_requested': true IF the student wants videos, YouTube channels, lectures to watch, playlists, tutorials, visual explanations, or teachers/sources to learn from (e.g. 'yt channel', 'koi video do', 'suggest channels', 'playlist link', 'where to watch', 'dekhne ke liye kuch', etc.). Otherwise false.\n"
+        "2. 'is_confused_or_frustrated': true IF the student expresses confusion, struggle, being stuck, or not understanding (e.g. 'samjh nahi aaya', 'stuck ho gaya', 'confusing', 'again please', 'tough lag raha hai', etc.). Otherwise false.\n"
+        "3. 'topic': Clean 1-3 word academic topic (e.g. 'electronics', 'calculus', 'thevenin theorem', 'operating systems', 'python programming', 'data structures', 'engineering mechanics', etc.). If the student is asking a follow-up about a previous topic and mentions no new topic, inherit last_topic.\n\n"
+        "Respond ONLY with a valid JSON object matching this schema:\n"
+        "{\n"
+        '  "is_video_requested": boolean,\n'
+        '  "is_confused_or_frustrated": boolean,\n'
+        '  "topic": string\n'
+        "}"
+    )
+
+    try:
+        import urllib.request
+        import ssl
+        ctx = ssl._create_unverified_context()
+        payload = _json.dumps({
+            "model": "llama-3.1-8b-instant",
+            "messages": [
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": f"Previous topic: \"{last_topic}\"\nStudent message: \"{query}\""}
+            ],
+            "temperature": 0,
+            "response_format": {"type": "json_object"}
+        }).encode("utf-8")
+
+        req = urllib.request.Request(
+            "https://api.groq.com/openai/v1/chat/completions",
+            data=payload,
+            headers={
+                "Authorization": f"Bearer {groq_key}",
+                "Content-Type": "application/json",
+                "User-Agent": "Mozilla/5.0"
+            }
+        )
+        with urllib.request.urlopen(req, context=ctx, timeout=3.0) as response:
+            data = _json.loads(response.read().decode("utf-8"))
+            content = data["choices"][0]["message"]["content"]
+            parsed = _json.loads(content)
+            print(f"[LLM INTENT CLASSIFIER] query='{query}' -> {parsed}")
+            return parsed
+    except Exception as e:
+        print(f"[LLM INTENT CLASSIFIER ERROR (fallback to regex)]: {e}")
+        return None
+
 def extract_topic_from_query(query: str, last_topic: str = "") -> str:
-    """Extract topic using word-boundary matching first, then follow-up memory."""
+    """Extract topic using LLM semantic understanding first, then fallback to word boundaries."""
+    # 1. Try LLM semantic understanding
+    llm_res = classify_intent_with_llm(query, last_topic=last_topic)
+    if llm_res and llm_res.get("topic") and len(llm_res["topic"].strip()) > 2:
+        return llm_res["topic"].lower().strip()
+
     q_clean = query.strip().lower()
     
-    # 1. PRIORITY: Check explicit topic keyword in current query first
+    # 2. Check explicit topic keyword in current query
     for topic_name, kws in TOPIC_KW.items():
         for kw in sorted(kws, key=len, reverse=True):
             pattern = r'(?<![a-zA-Z0-9])' + _re.escape(kw) + r'(?![a-zA-Z0-9])'
             if _re.search(pattern, q_clean):
                 return topic_name
 
-    # 2. Check if this is a follow-up query that should inherit previous topic
+    # 3. Check if this is a follow-up query that should inherit previous topic
     follow_up_tokens = {
         "bhai", "nhi", "nahi", "smj", "samj", "samjh", "smjh", "aaya", "aya",
         "video", "videos", "vid", "vids", "yt", "youtube", "channel", "channels",
@@ -650,8 +709,8 @@ def analyze_user_intent(
     topic_attempts: int = 0
 ) -> dict:
     """
-    MAIN FUNCTION: Analyze user's TRUE intent.
-    Recommends videos when user is frustrated, stuck, repeating, or explicitly asks for videos / channels.
+    MAIN FUNCTION: Analyze user's TRUE intent using LLM Semantic Classifier + Fallback Engine.
+    Recommends videos when user is frustrated, stuck, repeating, or asks for videos / channels in ANY words.
     """
     if conversation_history is None:
         conversation_history = []
@@ -668,9 +727,24 @@ def analyze_user_intent(
         "topic_attempts": topic_attempts
     }
 
-    q_lower = current_message.lower()
+    # 1. PRIORITY: Deep Semantic LLM Classifier
+    llm_res = classify_intent_with_llm(current_message, last_topic=topic)
+    if llm_res and isinstance(llm_res, dict):
+        if llm_res.get("topic") and len(llm_res["topic"].strip()) > 2:
+            topic = llm_res["topic"].lower().strip()
+            analysis["topic"] = topic
 
-    # Signals
+        if llm_res.get("is_video_requested") or llm_res.get("is_confused_or_frustrated"):
+            is_confused = llm_res.get("is_confused_or_frustrated", False)
+            analysis["intent"] = "confused" if is_confused else "clarify"
+            analysis["should_recommend_videos"] = True
+            analysis["recommendation_strength"] = "urgent"
+            analysis["reason"] = "User wants video/visual learning" if llm_res.get("is_video_requested") else "User expressed confusion/struggle"
+            analysis["explanation_style"] = "simpler"
+            return analysis
+
+    # 2. Fallback Pattern Engine
+    q_lower = current_message.lower()
     is_frustrated = any(phrase in q_lower for phrase in FRUSTRATION_PHRASES)
     is_asking_clarification = any(phrase in q_lower for phrase in CLARIFICATION_PHRASES)
     is_video_requested = any(_re.search(r'(?<![a-zA-Z0-9])' + _re.escape(v) + r'(?![a-zA-Z0-9])', q_lower) for v in VIDEO_REQUEST_SIGNALS)
@@ -691,9 +765,7 @@ def analyze_user_intent(
             max_similarity = max(similarities) if similarities else 0
             is_repeating = max_similarity > 0.60
 
-    # ===== DECISION LOGIC (PRIORITIZED) =====
-
-    # 1. Frustration / Stuck / Repeated (🚨 URGENT Mode)
+    # Decision Logic (Fallback)
     if is_frustrated or is_repeating:
         analysis["intent"] = "confused"
         analysis["should_recommend_videos"] = True
@@ -702,7 +774,6 @@ def analyze_user_intent(
         analysis["explanation_style"] = "basic"
         return analysis
 
-    # 2. Explicit Video / Channel Request (🚨 Urgent Video Mode)
     if is_video_requested:
         analysis["intent"] = "clarify" if topic_attempts <= 1 else "confused"
         analysis["should_recommend_videos"] = True
@@ -711,7 +782,6 @@ def analyze_user_intent(
         analysis["explanation_style"] = "simpler"
         return analysis
 
-    # 3. Third+ Attempt
     if topic_attempts >= 2:
         analysis["intent"] = "confused"
         analysis["should_recommend_videos"] = True
@@ -720,7 +790,6 @@ def analyze_user_intent(
         analysis["explanation_style"] = "simpler"
         return analysis
 
-    # 4. Clarification Request (Attempt 2)
     if is_asking_clarification and topic_attempts >= 1:
         analysis["intent"] = "clarify"
         analysis["should_recommend_videos"] = False
@@ -728,7 +797,6 @@ def analyze_user_intent(
         analysis["explanation_style"] = "simpler"
         return analysis
 
-    # 5. Normal Initial Learning (First time asking without frustration)
     analysis["intent"] = "initial"
     analysis["should_recommend_videos"] = False
     analysis["reason"] = "First time asking - provide explanation only"
