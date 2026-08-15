@@ -22,7 +22,7 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <!-- GIS loaded synchronously so it's ready before any user click -->
     <script src="https://accounts.google.com/gsi/client"></script>
-    <link rel="stylesheet" href="style.css?v=20260816_v1">
+    <link rel="stylesheet" href="style.css?v=20260816_v2">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
     <script>
@@ -305,9 +305,13 @@
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><line x1="9" y1="15" x2="15" y2="15"/></svg>
                     <span>Exam Predictor</span>
                 </button>
-                <button id="nav-leaderboard" class="sidebar-link" title="View Top 10 Contributors Leaderboard" onclick="if(window.showLeaderboardState){window.showLeaderboardState();}">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"></path><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"></path><path d="M4 22h16"></path><path d="M10 14.66V17c0 .55-.45 1-1 1H7c-.55 0-1-.45-1-1v-2.34"></path><path d="M14 14.66V17c0 .55.45 1 1 1h2c.55 0 1-.45 1-1v-2.34"></path><path d="M18 2H6v7a6 6 0 0 0 12 0V2z"></path></svg>
+                <button id="nav-leaderboard-btn" class="sidebar-link" title="Leaderboard" onclick="showLeaderboardState()">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2z"/></svg>
                     <span>Leaderboard</span>
+                </button>
+                <button id="nav-weakness-btn" class="sidebar-link" title="Concept Weakness Profiler" onclick="showWeaknessProfile()">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="3"/><line x1="12" y1="2" x2="12" y2="5"/><line x1="12" y1="19" x2="12" y2="22"/><line x1="2" y1="12" x2="5" y2="12"/><line x1="19" y1="12" x2="22" y2="12"/></svg>
+                    <span>Concept Profiler</span>
                 </button>
                 <button id="nav-new-chat-btn" class="sidebar-link" title="Knowledge Builder" onclick="if(window.showChatState){window.showChatState();}">
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14" stroke-linecap="round"/></svg>
@@ -474,6 +478,17 @@
                                 <div class="card-content">
                                     <h3>Rankings & Activity</h3>
                                     <p>View contributor rankings, activity metrics, and contribution scores.</p>
+                                </div>
+                                <span class="card-arrow-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg></span>
+                            </div>
+
+                            <div id="card-weakness-btn" class="landing-feature-card card-weakness" role="button" tabindex="0" onclick="showWeaknessProfile()">
+                                <div class="card-icon-box icon-rose">
+                                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="3"/><line x1="12" y1="2" x2="12" y2="5"/><line x1="12" y1="19" x2="12" y2="22"/><line x1="2" y1="12" x2="5" y2="12"/><line x1="19" y1="12" x2="22" y2="12"/></svg>
+                                </div>
+                                <div class="card-content">
+                                    <h3>Concept Weakness Profiler</h3>
+                                    <p>Academic Edge: track weak concepts, unlock prerequisite blockers & adapt practice.</p>
                                 </div>
                                 <span class="card-arrow-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg></span>
                             </div>
@@ -1075,6 +1090,165 @@
         </div>
     </div>
 
+    <!-- Concept Weakness Profiler Modal (Academic Edge) -->
+    <div id="weakness-profile-modal" class="modal-overlay hidden" style="display: none;">
+        <div class="modal-card weakness-profile-dialog" style="max-width: 880px; width: 92vw; max-height: 88vh; overflow-y: auto;">
+            <div class="modal-header" style="border-bottom: 1px solid rgba(255,255,255,0.08); padding-bottom: 14px;">
+                <div style="display: flex; align-items: center; gap: 10px;">
+                    <span style="display: inline-flex; align-items: center; justify-content: center; width: 34px; height: 34px; border-radius: 10px; background: rgba(244, 63, 94, 0.15); color: #f43f5e; font-size: 18px;">🎯</span>
+                    <div>
+                        <h3 style="margin: 0; font-size: 19px; font-weight: 800; color: #ffffff;">Concept Weakness Profiler</h3>
+                        <p style="margin: 2px 0 0 0; font-size: 12.5px; color: #a1a1aa;">Academic Edge: detect foundational gaps blocking your exams and master prerequisites.</p>
+                    </div>
+                </div>
+                <button type="button" onclick="closeWeaknessModal()" class="btn-close-modal" aria-label="Close Modal">&times;</button>
+            </div>
+
+            <div id="weakness-loading-spinner" style="padding: 40px; text-align: center; color: #818cf8;">
+                <div class="loading-dots"><span></span><span></span><span></span></div>
+                <p style="font-size: 13px; color: #a1a1aa; margin-top: 10px;">Analyzing conceptual graphs across your chats...</p>
+            </div>
+
+            <div id="weakness-modal-content" style="display: none; padding-top: 16px;">
+                <!-- KPI Metrics Ribbon -->
+                <div class="weakness-kpi-ribbon">
+                    <div class="weakness-kpi-pill kpi-critical">
+                        <span class="kpi-num" id="kpi-critical-count">0</span>
+                        <span class="kpi-lbl">Critical Gaps</span>
+                    </div>
+                    <div class="weakness-kpi-pill kpi-foundational">
+                        <span class="kpi-num" id="kpi-foundational-count">0</span>
+                        <span class="kpi-lbl">Foundational Blockers</span>
+                    </div>
+                    <div class="weakness-kpi-pill kpi-mastery">
+                        <span class="kpi-num" id="kpi-avg-mastery">0%</span>
+                        <span class="kpi-lbl">Avg Concept Mastery</span>
+                    </div>
+                    <div class="weakness-kpi-pill kpi-total">
+                        <span class="kpi-num" id="kpi-total-weaknesses">0</span>
+                        <span class="kpi-lbl">Tracked Weaknesses</span>
+                    </div>
+                </div>
+
+                <!-- Section: Critical (Must Fix Before Exam) -->
+                <div id="weakness-critical-section" class="weakness-category-box" style="margin-top: 18px;">
+                    <div class="weakness-section-title" style="color: #f43f5e; display: flex; align-items: center; gap: 8px;">
+                        <span>🚨 Critical Weaknesses (Must Fix Before Exam)</span>
+                    </div>
+                    <div id="weakness-critical-list" class="weakness-cards-grid"></div>
+                </div>
+
+                <!-- Section: Foundational Gaps (Blocks Multiple Topics) -->
+                <div id="weakness-foundational-section" class="weakness-category-box" style="margin-top: 18px;">
+                    <div class="weakness-section-title" style="color: #f59e0b; display: flex; align-items: center; gap: 8px;">
+                        <span>📚 Foundational Gaps (Blocks Multiple Downstream Topics)</span>
+                    </div>
+                    <div id="weakness-foundational-list" class="weakness-cards-grid"></div>
+                </div>
+
+                <!-- Section: Secondary Weaknesses -->
+                <div id="weakness-secondary-section" class="weakness-category-box" style="margin-top: 18px; display: none;">
+                    <div class="weakness-section-title" style="color: #38bdf8; display: flex; align-items: center; gap: 8px;">
+                        <span>💡 Secondary & Developing Concepts</span>
+                    </div>
+                    <div id="weakness-secondary-list" class="weakness-cards-grid"></div>
+                </div>
+
+                <!-- Interactive Prerequisite Dependency Explorer -->
+                <div class="weakness-dependency-explorer" style="margin-top: 24px; padding: 16px; background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.07); border-radius: 12px;">
+                    <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px;">
+                        <h4 style="margin: 0; font-size: 14px; color: #ffffff; display: flex; align-items: center; gap: 6px;">
+                            <span>🕸️ Prerequisite Dependency Graph</span>
+                        </h4>
+                        <span style="font-size: 11.5px; color: #94a3b8;">42 Core Engineering Relationships</span>
+                    </div>
+                    <div id="concept-dependency-chips" style="display: flex; flex-wrap: wrap; gap: 8px;"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Adaptive Practice Session Modal -->
+    <div id="adaptive-practice-modal" class="modal-overlay hidden" style="display: none;">
+        <div class="modal-card adaptive-practice-dialog" style="max-width: 640px; width: 92vw;">
+            <div class="modal-header" style="border-bottom: 1px solid rgba(255,255,255,0.08); padding-bottom: 12px;">
+                <div>
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                        <span class="practice-diff-badge diff-easy" id="practice-difficulty-badge">EASY</span>
+                        <h3 id="practice-concept-title" style="margin: 0; font-size: 17px; font-weight: 700; color: #ffffff;">Concept Practice</h3>
+                    </div>
+                    <p id="practice-progress-text" style="margin: 3px 0 0 0; font-size: 12px; color: #a1a1aa;">Question 1 of 3 | Adaptive Engine Active</p>
+                </div>
+                <button type="button" onclick="closePracticeModal()" class="btn-close-modal" aria-label="Close Practice">&times;</button>
+            </div>
+
+            <!-- Active Question Container -->
+            <div id="practice-question-container" style="padding-top: 14px;">
+                <div class="practice-q-prompt" id="practice-question-text" style="font-size: 15px; font-weight: 600; color: #f1f5f9; line-height: 1.5; margin-bottom: 16px;">
+                    Question statement loading...
+                </div>
+
+                <!-- MCQ Options Container -->
+                <div id="practice-options-container" class="practice-options-list"></div>
+
+                <!-- Text input for numerical/conceptual if not MCQ -->
+                <div id="practice-text-container" style="display: none; margin-bottom: 16px;">
+                    <input type="text" id="practice-text-answer" placeholder="Type your answer here..." style="width: 100%; padding: 12px 14px; font-size: 14px; background: #11141a; border: 1px solid #27272a; border-radius: 10px; color: #ffffff; box-sizing: border-box;">
+                </div>
+
+                <!-- Hint Toggle Accordion -->
+                <div style="margin: 12px 0;">
+                    <button type="button" onclick="togglePracticeHint()" style="background: none; border: none; color: #818cf8; font-size: 12.5px; cursor: pointer; display: flex; align-items: center; gap: 4px; padding: 0;">
+                        <span>💡 Need a Concept Hint?</span>
+                    </button>
+                    <div id="practice-hint-box" style="display: none; margin-top: 6px; padding: 10px 14px; background: rgba(99, 102, 241, 0.08); border-left: 3px solid #6366f1; border-radius: 6px; font-size: 12.5px; color: #c7d2fe; line-height: 1.4;"></div>
+                </div>
+
+                <!-- Submit / Next Actions -->
+                <div style="display: flex; gap: 10px; margin-top: 18px;">
+                    <button type="button" id="btn-submit-practice-answer" onclick="submitPracticeCurrentAnswer()" class="btn-auth-primary" style="flex: 1;">Submit Answer</button>
+                    <button type="button" id="btn-next-practice-question" onclick="nextPracticeQuestion()" class="btn-auth-primary" style="flex: 1; display: none; background: linear-gradient(135deg, #10b981 0%, #059669 100%);">Next Question →</button>
+                </div>
+
+                <!-- Feedback & Explanation Card (Shown after submitting) -->
+                <div id="practice-feedback-card" style="display: none; margin-top: 16px; padding: 14px; border-radius: 10px;">
+                    <div id="practice-feedback-banner" style="font-weight: 700; font-size: 14px; margin-bottom: 6px;"></div>
+                    <div id="practice-adaptation-banner" style="display: none; font-size: 12px; font-weight: 700; color: #f59e0b; margin-bottom: 8px;"></div>
+                    <div id="practice-explanation-text" style="font-size: 13px; color: #e2e8f0; line-height: 1.5;"></div>
+                    <div id="practice-concept-note-text" style="font-size: 12px; color: #94a3b8; margin-top: 6px; border-top: 1px solid rgba(255,255,255,0.06); padding-top: 6px;"></div>
+                </div>
+            </div>
+
+            <!-- Session Summary Screen (Shown upon completion) -->
+            <div id="practice-summary-container" style="display: none; padding: 24px 10px; text-align: center;">
+                <div style="width: 56px; height: 56px; margin: 0 auto 12px auto; border-radius: 50%; background: rgba(16, 185, 129, 0.15); display: flex; align-items: center; justify-content: center; color: #10b981; font-size: 28px;">🎉</div>
+                <h3 style="margin: 0; font-size: 20px; font-weight: 800; color: #ffffff;">Practice Session Complete!</h3>
+                <p id="practice-summary-subtext" style="margin: 4px 0 16px 0; font-size: 13px; color: #a1a1aa;">Great effort! Your concept foundation is strengthening.</p>
+                
+                <div class="practice-summary-stats-box">
+                    <div class="summary-stat-item">
+                        <span class="stat-val" id="summary-score-val">0/0</span>
+                        <span class="stat-lbl">Accuracy</span>
+                    </div>
+                    <div class="summary-stat-item">
+                        <span class="stat-val" id="summary-mastery-val">0%</span>
+                        <span class="stat-lbl">New Mastery</span>
+                    </div>
+                    <div class="summary-stat-item">
+                        <span class="stat-val" id="summary-time-val">0s</span>
+                        <span class="stat-lbl">Time Taken</span>
+                    </div>
+                </div>
+
+                <div id="summary-mastery-badge-box" style="margin-top: 16px;">
+                    <span id="summary-mastery-badge" style="padding: 6px 14px; border-radius: 20px; font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px;">NOVICE</span>
+                </div>
+
+                <button type="button" onclick="closePracticeModal(); showWeaknessProfile();" class="btn-auth-primary" style="margin-top: 20px; width: 100%;">View Updated Concept Profile →</button>
+            </div>
+        </div>
+    </div>
+
     <!-- In-App Video Player Modal (ChatGPT / Perplexity Style) -->
     <div id="yt-player-modal" class="hidden" style="display: none;">
         <div class="yt-player-card">
@@ -1102,6 +1276,6 @@
     </div>
 
     <!-- Main JavaScript Link -->
-    <script src="app.js?v=20260816_v1"></script>
+    <script src="app.js?v=20260816_v2"></script>
 </body>
 </html>

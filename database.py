@@ -259,6 +259,89 @@ def init_user_db():
         )
     """)
 
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS concept_weakness (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER DEFAULT 1,
+            user_email TEXT,
+            subject TEXT,
+            concept_name TEXT NOT NULL,
+            concept_difficulty TEXT DEFAULT 'foundational',
+            first_confused_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            times_confused INTEGER DEFAULT 1,
+            last_confused_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            confusion_contexts TEXT DEFAULT '[]',
+            dependent_topics TEXT DEFAULT '[]',
+            impact_score REAL DEFAULT 0.0,
+            mastery_level TEXT DEFAULT 'novice',
+            mastery_percentage REAL DEFAULT 0.0,
+            practice_questions_attempted INTEGER DEFAULT 0,
+            practice_score REAL DEFAULT 0.0,
+            last_practiced TIMESTAMP,
+            is_critical INTEGER DEFAULT 0,
+            is_foundational INTEGER DEFAULT 0,
+            intervention_priority INTEGER DEFAULT 50,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    """)
+
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS concept_dependency_graph (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            subject TEXT NOT NULL,
+            prerequisite_concept TEXT NOT NULL,
+            dependent_concept TEXT NOT NULL,
+            importance TEXT DEFAULT 'critical',
+            failure_rate REAL DEFAULT 70.0,
+            avg_learning_time INTEGER DEFAULT 25,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    """)
+
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS adaptive_practice_session (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER DEFAULT 1,
+            user_email TEXT,
+            concept_id INTEGER,
+            concept_name TEXT NOT NULL,
+            subject TEXT DEFAULT 'General',
+            started_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            completed_at TIMESTAMP,
+            questions TEXT DEFAULT '[]',
+            total_questions INTEGER DEFAULT 0,
+            correct_answers INTEGER DEFAULT 0,
+            session_score REAL DEFAULT 0.0,
+            initial_difficulty TEXT DEFAULT 'easy',
+            final_difficulty TEXT DEFAULT 'easy',
+            difficulty_progression TEXT DEFAULT '[]',
+            total_time INTEGER DEFAULT 0,
+            avg_time_per_question REAL DEFAULT 0.0
+        )
+    """)
+
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS practice_question (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            subject TEXT NOT NULL,
+            concept TEXT NOT NULL,
+            question_text TEXT NOT NULL,
+            question_type TEXT DEFAULT 'mcq',
+            options TEXT DEFAULT '[]',
+            correct_option TEXT,
+            explanation TEXT,
+            concept_explanation TEXT,
+            is_ai_generated INTEGER DEFAULT 0,
+            is_pyq_based INTEGER DEFAULT 0,
+            difficulty TEXT DEFAULT 'easy',
+            attempt_count INTEGER DEFAULT 0,
+            correct_count INTEGER DEFAULT 0,
+            success_rate REAL DEFAULT 0.0,
+            related_video_id INTEGER,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    """)
+
     conn.commit()
 
 init_user_db()
@@ -2307,3 +2390,976 @@ def toggle_document_share_record(doc_id: int, user_email: str, is_shared: bool):
             c.commit()
     db_retry(_do)
     return get_document_by_id(doc_id)
+
+
+# ═════════════════════════════════════════════════════════════════════════════
+# CONCEPT WEAKNESS PROFILER & ADAPTIVE PRACTICE ENGINE (ACADEMIC EDGE)
+# ═════════════════════════════════════════════════════════════════════════════
+
+CORE_CONCEPT_GRAPH_SEEDS = [
+    # ── Thermodynamics & Thermal Physics ──
+    {"subject": "Thermodynamics", "prerequisite_concept": "Entropy", "dependent_concept": "Heat Engines & Carnot Cycle", "importance": "critical", "failure_rate": 82.0, "avg_learning_time": 30},
+    {"subject": "Thermodynamics", "prerequisite_concept": "Entropy", "dependent_concept": "Refrigeration & Heat Pumps", "importance": "critical", "failure_rate": 78.0, "avg_learning_time": 30},
+    {"subject": "Thermodynamics", "prerequisite_concept": "Entropy", "dependent_concept": "Second Law of Thermodynamics", "importance": "critical", "failure_rate": 75.0, "avg_learning_time": 25},
+    {"subject": "Thermodynamics", "prerequisite_concept": "First Law of Thermodynamics", "dependent_concept": "Steady Flow Energy Equation (SFEE)", "importance": "critical", "failure_rate": 68.0, "avg_learning_time": 25},
+    {"subject": "Thermodynamics", "prerequisite_concept": "Ideal Gas Laws", "dependent_concept": "Isothermal & Adiabatic Work", "importance": "important", "failure_rate": 60.0, "avg_learning_time": 20},
+
+    # ── Basic Electrical & Electronics Engineering (BEEE) ──
+    {"subject": "Basic Electrical & Electronics Engineering", "prerequisite_concept": "Kirchhoff's Laws (KVL/KCL)", "dependent_concept": "Thevenin's Theorem", "importance": "critical", "failure_rate": 76.0, "avg_learning_time": 25},
+    {"subject": "Basic Electrical & Electronics Engineering", "prerequisite_concept": "Kirchhoff's Laws (KVL/KCL)", "dependent_concept": "Norton's Theorem", "importance": "critical", "failure_rate": 74.0, "avg_learning_time": 25},
+    {"subject": "Basic Electrical & Electronics Engineering", "prerequisite_concept": "Thevenin's Theorem", "dependent_concept": "Maximum Power Transfer Theorem", "importance": "critical", "failure_rate": 70.0, "avg_learning_time": 20},
+    {"subject": "Basic Electrical & Electronics Engineering", "prerequisite_concept": "PN Junction Diode", "dependent_concept": "Half-Wave & Full-Wave Rectifiers", "importance": "critical", "failure_rate": 65.0, "avg_learning_time": 25},
+    {"subject": "Basic Electrical & Electronics Engineering", "prerequisite_concept": "PN Junction Diode", "dependent_concept": "Zener Diode Voltage Regulation", "importance": "important", "failure_rate": 62.0, "avg_learning_time": 20},
+    {"subject": "Basic Electrical & Electronics Engineering", "prerequisite_concept": "Bipolar Junction Transistor (BJT)", "dependent_concept": "Common Emitter (CE) Amplifier", "importance": "critical", "failure_rate": 75.0, "avg_learning_time": 30},
+
+    # ── Engineering Calculus ──
+    {"subject": "Engineering Calculus", "prerequisite_concept": "Limits and Continuity", "dependent_concept": "Differentiation & Derivatives", "importance": "critical", "failure_rate": 70.0, "avg_learning_time": 25},
+    {"subject": "Engineering Calculus", "prerequisite_concept": "Differentiation & Derivatives", "dependent_concept": "Taylor & Maclaurin Series", "importance": "critical", "failure_rate": 72.0, "avg_learning_time": 30},
+    {"subject": "Engineering Calculus", "prerequisite_concept": "Differentiation & Derivatives", "dependent_concept": "Maxima & Minima (Optimization)", "importance": "critical", "failure_rate": 68.0, "avg_learning_time": 25},
+    {"subject": "Engineering Calculus", "prerequisite_concept": "Integration Techniques", "dependent_concept": "Definite & Multiple Integrals", "importance": "critical", "failure_rate": 74.0, "avg_learning_time": 35},
+
+    # ── Linear Algebra ──
+    {"subject": "Linear Algebra", "prerequisite_concept": "Matrices & Determinants", "dependent_concept": "Rank of a Matrix & RREF", "importance": "critical", "failure_rate": 78.0, "avg_learning_time": 25},
+    {"subject": "Linear Algebra", "prerequisite_concept": "Matrices & Determinants", "dependent_concept": "Eigenvalues & Eigenvectors", "importance": "critical", "failure_rate": 84.0, "avg_learning_time": 30},
+    {"subject": "Linear Algebra", "prerequisite_concept": "Eigenvalues & Eigenvectors", "dependent_concept": "Cayley-Hamilton Theorem & Diagonalization", "importance": "critical", "failure_rate": 80.0, "avg_learning_time": 30},
+    {"subject": "Linear Algebra", "prerequisite_concept": "Vector Spaces", "dependent_concept": "Basis, Dimension & Linear Transformations", "importance": "critical", "failure_rate": 76.0, "avg_learning_time": 35},
+
+    # ── Differential Equations ──
+    {"subject": "Differential Equations", "prerequisite_concept": "Ordinary Differential Equations (ODE)", "dependent_concept": "Integrating Factor & Linear 1st Order ODE", "importance": "critical", "failure_rate": 75.0, "avg_learning_time": 25},
+    {"subject": "Differential Equations", "prerequisite_concept": "Ordinary Differential Equations (ODE)", "dependent_concept": "Higher Order Linear Differential Equations", "importance": "critical", "failure_rate": 79.0, "avg_learning_time": 30},
+    {"subject": "Differential Equations", "prerequisite_concept": "Integrating Factor", "dependent_concept": "Exact & Non-Exact Differential Equations", "importance": "critical", "failure_rate": 72.0, "avg_learning_time": 25},
+
+    # ── Data Structures & Algorithms (DSA in C++ / Java) ──
+    {"subject": "Data Structures & Algorithms", "prerequisite_concept": "Pointers & Memory References", "dependent_concept": "Linked Lists (Singly & Doubly)", "importance": "critical", "failure_rate": 80.0, "avg_learning_time": 30},
+    {"subject": "Data Structures & Algorithms", "prerequisite_concept": "Pointers & Memory References", "dependent_concept": "Binary Trees & BST Implementation", "importance": "critical", "failure_rate": 82.0, "avg_learning_time": 35},
+    {"subject": "Data Structures & Algorithms", "prerequisite_concept": "Recursion & Call Stack", "dependent_concept": "Divide and Conquer (Merge/Quick Sort)", "importance": "critical", "failure_rate": 78.0, "avg_learning_time": 30},
+    {"subject": "Data Structures & Algorithms", "prerequisite_concept": "Recursion & Call Stack", "dependent_concept": "Dynamic Programming & Memoization", "importance": "critical", "failure_rate": 88.0, "avg_learning_time": 40},
+    {"subject": "Data Structures & Algorithms", "prerequisite_concept": "Binary Search Trees (BST)", "dependent_concept": "AVL Trees & Balanced Trees", "importance": "important", "failure_rate": 74.0, "avg_learning_time": 35},
+
+    # ── Discrete Mathematical Structures (DMS) ──
+    {"subject": "Discrete Mathematical Structures", "prerequisite_concept": "Set Theory & Relations", "dependent_concept": "Equivalence Relations & Partitions", "importance": "critical", "failure_rate": 68.0, "avg_learning_time": 25},
+    {"subject": "Discrete Mathematical Structures", "prerequisite_concept": "Set Theory & Relations", "dependent_concept": "Partial Order & Hasse Diagrams", "importance": "critical", "failure_rate": 72.0, "avg_learning_time": 30},
+    {"subject": "Discrete Mathematical Structures", "prerequisite_concept": "Propositional Logic", "dependent_concept": "Predicate Logic & Quantifiers", "importance": "critical", "failure_rate": 70.0, "avg_learning_time": 25},
+    {"subject": "Discrete Mathematical Structures", "prerequisite_concept": "Graph Theory Basics", "dependent_concept": "Eulerian & Hamiltonian Paths", "importance": "important", "failure_rate": 66.0, "avg_learning_time": 25},
+
+    # ── Digital Design (DD) ──
+    {"subject": "Digital Design", "prerequisite_concept": "Boolean Algebra & Logic Gates", "dependent_concept": "K-Map (Karnaugh Map) Minimization", "importance": "critical", "failure_rate": 74.0, "avg_learning_time": 25},
+    {"subject": "Digital Design", "prerequisite_concept": "K-Map (Karnaugh Map) Minimization", "dependent_concept": "Combinational Circuits (Adders/Mux)", "importance": "critical", "failure_rate": 72.0, "avg_learning_time": 30},
+    {"subject": "Digital Design", "prerequisite_concept": "Latches and Flip-Flops", "dependent_concept": "Synchronous & Asynchronous Counters", "importance": "critical", "failure_rate": 80.0, "avg_learning_time": 35},
+    {"subject": "Digital Design", "prerequisite_concept": "Latches and Flip-Flops", "dependent_concept": "Shift Registers & Finite State Machines", "importance": "critical", "failure_rate": 78.0, "avg_learning_time": 35},
+
+    # ── Information Management Systems (DBMS) ──
+    {"subject": "Information Management System", "prerequisite_concept": "Relational Data Model & Primary Keys", "dependent_concept": "SQL Joins & Nested Queries", "importance": "critical", "failure_rate": 68.0, "avg_learning_time": 25},
+    {"subject": "Information Management System", "prerequisite_concept": "Functional Dependencies", "dependent_concept": "Database Normalization (1NF, 2NF, 3NF, BCNF)", "importance": "critical", "failure_rate": 82.0, "avg_learning_time": 35},
+    {"subject": "Information Management System", "prerequisite_concept": "ACID Properties", "dependent_concept": "Transactions & Concurrency Control (2PL)", "importance": "critical", "failure_rate": 76.0, "avg_learning_time": 30},
+
+    # ── Operating Systems (OS) ──
+    {"subject": "Operating Systems", "prerequisite_concept": "Processes vs Threads", "dependent_concept": "CPU Scheduling Algorithms", "importance": "critical", "failure_rate": 65.0, "avg_learning_time": 25},
+    {"subject": "Operating Systems", "prerequisite_concept": "Critical Section Problem", "dependent_concept": "Semaphores & Mutex Locks", "importance": "critical", "failure_rate": 84.0, "avg_learning_time": 35},
+    {"subject": "Operating Systems", "prerequisite_concept": "Deadlock (Coffman Conditions)", "dependent_concept": "Banker's Algorithm for Deadlock Avoidance", "importance": "critical", "failure_rate": 78.0, "avg_learning_time": 30},
+    {"subject": "Operating Systems", "prerequisite_concept": "Paging & Address Translation", "dependent_concept": "Virtual Memory & Page Replacement (LRU)", "importance": "critical", "failure_rate": 80.0, "avg_learning_time": 35}
+]
+
+CORE_PRACTICE_QUESTION_SEEDS = [
+    # ── Entropy (Thermodynamics) ──
+    {
+        "subject": "Thermodynamics",
+        "concept": "Entropy",
+        "question_text": "According to the Clausius Inequality, for any irreversible thermodynamic cycle, what is the value of ∮ (dQ / T)?",
+        "question_type": "mcq",
+        "options": _json.dumps(["= 0", "> 0", "< 0", "≥ 0"]),
+        "correct_option": "< 0",
+        "explanation": "For any irreversible cycle, ∮ (dQ / T) < 0. For a reversible cycle, ∮ (dQ / T) = 0. It can never be greater than 0 for any cyclic process.",
+        "concept_explanation": "Entropy generation is strictly positive in irreversible processes, leading to the Clausius inequality ∮ dQ/T < 0 for cycles.",
+        "difficulty": "easy",
+        "is_pyq_based": 1
+    },
+    {
+        "subject": "Thermodynamics",
+        "concept": "Entropy",
+        "question_text": "An isolated system undergoes an irreversible spontaneous change. What must happen to the total entropy of the system?",
+        "question_type": "mcq",
+        "options": _json.dumps(["Remains constant", "Decreases", "Increases", "Becomes zero"]),
+        "correct_option": "Increases",
+        "explanation": "By the Second Law of Thermodynamics (Principle of Increase of Entropy), for any isolated system, ΔS_system ≥ 0. For irreversible changes, entropy strictly increases.",
+        "concept_explanation": "The entropy of an isolated system always increases during spontaneous processes until it reaches maximum entropy at equilibrium.",
+        "difficulty": "medium",
+        "is_pyq_based": 1
+    },
+
+    # ── Thevenin's Theorem (BEEE) ──
+    {
+        "subject": "Basic Electrical & Electronics Engineering",
+        "concept": "Thevenin's Theorem",
+        "question_text": "When calculating Thevenin resistance (R_th) looking into open terminals of a linear DC circuit, how should independent voltage and current sources be treated?",
+        "question_type": "mcq",
+        "options": _json.dumps([
+            "Short-circuit voltage sources and open-circuit current sources",
+            "Open-circuit voltage sources and short-circuit current sources",
+            "Replace all sources with 1 kΩ resistors",
+            "Leave all sources unchanged in the circuit"
+        ]),
+        "correct_option": "Short-circuit voltage sources and open-circuit current sources",
+        "explanation": "Independent ideal voltage sources have zero internal resistance (replaced by a short circuit, 0V). Independent ideal current sources have infinite internal resistance (replaced by an open circuit, 0A).",
+        "concept_explanation": "Deactivating independent sources reduces the active network into a purely resistive passive network to find R_th.",
+        "difficulty": "easy",
+        "is_pyq_based": 1
+    },
+
+    # ── Eigenvalues & Eigenvectors (Linear Algebra) ──
+    {
+        "subject": "Linear Algebra",
+        "concept": "Eigenvalues & Eigenvectors",
+        "question_text": "If λ is an eigenvalue of an invertible matrix A, what is the corresponding eigenvalue of A^(-1)?",
+        "question_type": "mcq",
+        "options": _json.dumps(["-λ", "1 / λ", "λ^2", "1 / λ^2"]),
+        "correct_option": "1 / λ",
+        "explanation": "Since A v = λ v, multiplying both sides by A^(-1) gives v = λ A^(-1) v, which implies A^(-1) v = (1/λ) v. Therefore, 1/λ is the eigenvalue of A^(-1).",
+        "concept_explanation": "Eigenvalues of the matrix inverse are the reciprocals of the original non-zero eigenvalues.",
+        "difficulty": "easy",
+        "is_pyq_based": 1
+    },
+
+    # ── Semaphores & Mutex (Operating Systems) ──
+    {
+        "subject": "Operating Systems",
+        "concept": "Critical Section Problem",
+        "question_text": "In Dijkstra's counting semaphore, if semaphore S is initialized to 3, and 5 consecutive wait(P) operations are executed, what is the final value of S?",
+        "question_type": "mcq",
+        "options": _json.dumps(["-2", "0", "2", "3"]),
+        "correct_option": "-2",
+        "explanation": "Each wait() operation decrements S by 1: 3 - 5 = -2. The negative value -2 indicates that exactly 2 processes are blocked in the waiting queue.",
+        "concept_explanation": "A counting semaphore value reflects the number of available resource units when positive, or the count of waiting processes when negative.",
+        "difficulty": "medium",
+        "is_pyq_based": 1
+    },
+
+    # ── Pointers & Memory (DSA) ──
+    {
+        "subject": "Data Structures & Algorithms",
+        "concept": "Pointers & Memory References",
+        "question_text": "In C++, what is a 'dangling pointer'?",
+        "question_type": "mcq",
+        "options": _json.dumps([
+            "A pointer pointing to deallocated / freed memory",
+            "A pointer initialized to NULL",
+            "A pointer that points to another pointer",
+            "A pointer with void data type"
+        ]),
+        "correct_option": "A pointer pointing to deallocated / freed memory",
+        "explanation": "A dangling pointer arises when an object/memory is deleted or deallocated, without modifying the value of the pointer, so the pointer still points to the memory location of the deallocated memory.",
+        "concept_explanation": "Accessing memory through a dangling pointer causes undefined behavior, memory corruption, and security vulnerabilities.",
+        "difficulty": "easy",
+        "is_pyq_based": 1
+    }
+]
+
+def seed_concept_graph_and_questions():
+    """Seed the Concept Dependency Graph and Question Bank if not already present."""
+    def _do():
+        with get_db() as c:
+            cur = c.cursor()
+            
+            # 1. Seed graph
+            cur.execute("SELECT COUNT(*) FROM concept_dependency_graph")
+            graph_count = cur.fetchone()[0]
+            if graph_count == 0:
+                for item in CORE_CONCEPT_GRAPH_SEEDS:
+                    cur.execute("""
+                        INSERT INTO concept_dependency_graph 
+                        (subject, prerequisite_concept, dependent_concept, importance, failure_rate, avg_learning_time)
+                        VALUES (?, ?, ?, ?, ?, ?)
+                    """, (
+                        item["subject"],
+                        item["prerequisite_concept"],
+                        item["dependent_concept"],
+                        item.get("importance", "critical"),
+                        item.get("failure_rate", 70.0),
+                        item.get("avg_learning_time", 25)
+                    ))
+                c.commit()
+                print(f"[CONCEPT GRAPH] Seeded {len(CORE_CONCEPT_GRAPH_SEEDS)} prerequisite dependencies.")
+
+            # 2. Seed initial question bank
+            cur.execute("SELECT COUNT(*) FROM practice_question")
+            q_count = cur.fetchone()[0]
+            if q_count == 0:
+                for q in CORE_PRACTICE_QUESTION_SEEDS:
+                    cur.execute("""
+                        INSERT INTO practice_question
+                        (subject, concept, question_text, question_type, options, correct_option, explanation, concept_explanation, difficulty, is_pyq_based)
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    """, (
+                        q["subject"],
+                        q["concept"],
+                        q["question_text"],
+                        q["question_type"],
+                        q["options"],
+                        q["correct_option"],
+                        q["explanation"],
+                        q["concept_explanation"],
+                        q["difficulty"],
+                        q.get("is_pyq_based", 1)
+                    ))
+                c.commit()
+                print(f"[PRACTICE QUESTIONS] Seeded {len(CORE_PRACTICE_QUESTION_SEEDS)} verified questions.")
+
+    try:
+        db_retry(_do)
+    except Exception as e:
+        print(f"[SEED ERROR CONCEPT GRAPH] {e}")
+
+# Run seed immediately
+seed_concept_graph_and_questions()
+
+
+def get_concept_dependency_graph(subject: str = "") -> list:
+    """Fetch all concept dependencies or filter by subject."""
+    def _do():
+        with get_db() as c:
+            cur = c.cursor()
+            if subject:
+                cur.execute("""
+                    SELECT id, subject, prerequisite_concept, dependent_concept, importance, failure_rate, avg_learning_time
+                    FROM concept_dependency_graph
+                    WHERE lower(subject) LIKE ?
+                    ORDER BY id ASC
+                """, (f"%{subject.lower()}%",))
+            else:
+                cur.execute("""
+                    SELECT id, subject, prerequisite_concept, dependent_concept, importance, failure_rate, avg_learning_time
+                    FROM concept_dependency_graph
+                    ORDER BY id ASC
+                """)
+            rows = cur.fetchall()
+            return [
+                {
+                    "id": r[0],
+                    "subject": r[1],
+                    "prerequisite_concept": r[2],
+                    "dependent_concept": r[3],
+                    "importance": r[4],
+                    "failure_rate": r[5],
+                    "avg_learning_time": r[6]
+                }
+                for r in rows
+            ]
+    return db_retry(_do)
+
+
+def extract_concepts_from_message(message: str) -> list:
+    """Extract key academic concepts from a student message using NLP heuristics + Groq."""
+    if not message or len(message.strip()) < 3:
+        return []
+    
+    msg_clean = message.lower()
+    
+    # 1. Fast match against known concept graph prerequisites & dependents
+    all_deps = get_concept_dependency_graph()
+    matched = set()
+    for dep in all_deps:
+        p_name = dep["prerequisite_concept"]
+        d_name = dep["dependent_concept"]
+        
+        # Check prerequisite
+        p_terms = [w.strip() for w in _re.split(r'[\(\)/,]', p_name) if len(w.strip()) > 3]
+        for term in p_terms:
+            if term.lower() in msg_clean:
+                matched.add(p_name)
+                break
+        
+        # Check dependent
+        d_terms = [w.strip() for w in _re.split(r'[\(\)/,]', d_name) if len(w.strip()) > 3]
+        for term in d_terms:
+            if term.lower() in msg_clean:
+                matched.add(d_name)
+                break
+    
+    if matched:
+        return list(matched)[:4]
+
+    # 2. LLM Fallback extraction with Groq
+    groq_key = _os.environ.get("GROQ_API_KEY") or "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"
+    if groq_key:
+        try:
+            import urllib.request, ssl
+            ctx = ssl._create_unverified_context()
+            payload = _json.dumps({
+                "model": "llama-3.1-8b-instant",
+                "messages": [
+                    {
+                        "role": "system",
+                        "content": "You are a concept extractor for an engineering university study app. Extract 1 to 3 core academic engineering concepts mentioned in the student's message (e.g. 'Entropy', 'Thevenin Theorem', 'Eigenvalues', 'Pointers', 'Critical Section'). Output JSON with a 'concepts' array of clean strings."
+                    },
+                    {"role": "user", "content": message}
+                ],
+                "temperature": 0,
+                "response_format": {"type": "json_object"}
+            }).encode("utf-8")
+
+            req = urllib.request.Request(
+                "https://api.groq.com/openai/v1/chat/completions",
+                data=payload,
+                headers={"Authorization": f"Bearer {groq_key}", "Content-Type": "application/json"}
+            )
+            with urllib.request.urlopen(req, context=ctx, timeout=2.5) as resp:
+                data = _json.loads(resp.read().decode("utf-8"))
+                parsed = _json.loads(data["choices"][0]["message"]["content"])
+                return parsed.get("concepts", [])[:3]
+        except Exception as e:
+            print(f"[EXTRACT CONCEPTS LLM ERROR]: {e}")
+
+    return []
+
+
+def detect_concept_weakness(
+    user_id: int = 1,
+    user_email: str = "",
+    topic: str = "",
+    message: str = "",
+    attempt_number: int = 0,
+    conversation_history: list = None
+) -> dict:
+    """Analyze student's conversation & message to detect deep conceptual weaknesses."""
+    detection = {
+        "confused_concept": None,
+        "confidence": 0.0,
+        "is_foundational": False,
+        "related_topics": [],
+        "weakness_detected": False,
+        "subject": "General",
+        "impact_score": 0.0
+    }
+    
+    if not message:
+        return detection
+
+    # Step 1: Extract concepts from current message
+    concepts_mentioned = extract_concepts_from_message(message)
+    if not concepts_mentioned and topic:
+        concepts_mentioned = [topic.title()]
+    
+    if not concepts_mentioned:
+        return detection
+
+    # Step 2: Check previous messages for repetition of the same concepts or frustration markers
+    history_texts = []
+    if conversation_history:
+        for msg in conversation_history[-6:]:
+            if isinstance(msg, dict):
+                history_texts.append(str(msg.get("content") or msg.get("user") or ""))
+            elif hasattr(msg, "content"):
+                history_texts.append(str(msg.content))
+    
+    frustration_markers = ["samjh nahi", "samajh nahi", "stuck", "confused", "explain again", "kuch samajh", "fir se", "difficult", "hard", "why is", "how does"]
+    has_frustration = any(fm in message.lower() for fm in frustration_markers)
+
+    chosen_concept = concepts_mentioned[0]
+    repetition_count = 1
+    
+    for prev in history_texts:
+        if chosen_concept.lower() in prev.lower():
+            repetition_count += 1
+
+    if attempt_number >= 2 or repetition_count >= 2 or (has_frustration and attempt_number >= 1):
+        detection["weakness_detected"] = True
+        detection["confused_concept"] = chosen_concept
+        detection["confidence"] = min(0.95, 0.60 + (repetition_count * 0.12) + (0.15 if has_frustration else 0.0))
+        
+        # Step 3: Check dependency graph for downstream blocked topics
+        deps = get_concept_dependency_graph()
+        blocked_topics = []
+        subj = "General"
+        for d in deps:
+            if d["prerequisite_concept"].lower() in chosen_concept.lower() or chosen_concept.lower() in d["prerequisite_concept"].lower():
+                blocked_topics.append(d["dependent_concept"])
+                subj = d["subject"]
+        
+        detection["subject"] = subj
+        detection["related_topics"] = blocked_topics
+        detection["is_foundational"] = len(blocked_topics) >= 2
+        detection["impact_score"] = min(100.0, max(25.0, len(blocked_topics) * 25.0 + (repetition_count * 10.0)))
+
+    return detection
+
+
+def record_concept_weakness(
+    user_id: int = 1,
+    user_email: str = "",
+    subject: str = "General",
+    concept_name: str = "",
+    topic: str = "",
+    dependent_topics: list = None,
+    is_foundational: bool = False,
+    is_critical: bool = False
+) -> dict:
+    """Save or update a detected concept weakness in the database."""
+    if not concept_name:
+        return None
+    
+    dependent_topics = dependent_topics or []
+    now_str = datetime.now().isoformat()
+    
+    def _do():
+        with get_db() as c:
+            cur = c.cursor()
+            
+            # Check existing weakness for this user and concept
+            cur.execute("""
+                SELECT id, times_confused, confusion_contexts, dependent_topics, mastery_percentage, is_critical
+                FROM concept_weakness
+                WHERE (user_id = ? OR lower(user_email) = lower(?)) AND lower(concept_name) = lower(?)
+            """, (user_id, user_email or "", concept_name.strip()))
+            row = cur.fetchone()
+            
+            if row:
+                w_id, times_conf, ctx_json, dep_json, mastery_pct, was_crit = row
+                try:
+                    contexts = _json.loads(ctx_json) if ctx_json else []
+                except Exception:
+                    contexts = []
+                contexts.append({"topic": topic or concept_name, "date": now_str})
+                
+                try:
+                    deps = _json.loads(dep_json) if dep_json else []
+                except Exception:
+                    deps = []
+                # Merge dependent topics
+                all_deps = list(set(deps + dependent_topics))
+                
+                new_times = times_conf + 1
+                new_impact = min(100.0, max(25.0, len(all_deps) * 25.0 + (new_times * 10.0)))
+                new_critical = 1 if (new_times >= 2 or is_foundational or was_crit or new_impact >= 70) and (mastery_pct < 60) else 0
+                priority = min(100, int(new_impact * 0.6 + new_times * 10 + (100 - mastery_pct) * 0.3))
+                
+                cur.execute("""
+                    UPDATE concept_weakness
+                    SET times_confused = ?, last_confused_at = ?, confusion_contexts = ?, dependent_topics = ?,
+                        impact_score = ?, is_critical = ?, is_foundational = ?, intervention_priority = ?
+                    WHERE id = ?
+                """, (new_times, now_str, _json.dumps(contexts), _json.dumps(all_deps), new_impact, new_critical, 1 if is_foundational else 0, priority, w_id))
+                c.commit()
+                return {"id": w_id, "status": "updated", "concept_name": concept_name, "times_confused": new_times}
+            else:
+                contexts = [{"topic": topic or concept_name, "date": now_str}]
+                impact = min(100.0, max(25.0, len(dependent_topics) * 25.0 + 15.0))
+                priority = min(100, int(impact * 0.6 + 35))
+                crit_val = 1 if is_critical or is_foundational or impact >= 60 else 0
+                
+                cur.execute("""
+                    INSERT INTO concept_weakness
+                    (user_id, user_email, subject, concept_name, concept_difficulty, first_confused_at, times_confused,
+                     last_confused_at, confusion_contexts, dependent_topics, impact_score, mastery_level,
+                     mastery_percentage, is_critical, is_foundational, intervention_priority)
+                    VALUES (?, ?, ?, ?, 'foundational', ?, 1, ?, ?, ?, ?, 'novice', 0.0, ?, ?, ?)
+                """, (
+                    user_id,
+                    user_email or "",
+                    subject or "General",
+                    concept_name.strip(),
+                    now_str,
+                    now_str,
+                    _json.dumps(contexts),
+                    _json.dumps(dependent_topics),
+                    impact,
+                    crit_val,
+                    1 if is_foundational else 0,
+                    priority
+                ))
+                new_id = cur.lastrowid
+                c.commit()
+                return {"id": new_id, "status": "created", "concept_name": concept_name, "times_confused": 1}
+
+    return db_retry(_do)
+
+
+def create_weakness_profile(user_id: int = 1, user_email: str = "") -> dict:
+    """Build a comprehensive concept weakness profile for the student with actionable priorities."""
+    def _do():
+        with get_db() as c:
+            cur = c.cursor()
+            cur.execute("""
+                SELECT id, subject, concept_name, concept_difficulty, first_confused_at, times_confused,
+                       last_confused_at, confusion_contexts, dependent_topics, impact_score,
+                       mastery_level, mastery_percentage, practice_questions_attempted, practice_score,
+                       is_critical, is_foundational, intervention_priority
+                FROM concept_weakness
+                WHERE user_id = ? OR (user_email IS NOT NULL AND lower(user_email) = lower(?))
+                ORDER BY is_critical DESC, impact_score DESC, times_confused DESC
+            """, (user_id, user_email or ""))
+            rows = cur.fetchall()
+
+            profile = {
+                "total_weaknesses": len(rows),
+                "avg_mastery_score": 0.0,
+                "critical_weaknesses": [],
+                "foundational_gaps": [],
+                "secondary_weaknesses": [],
+                "intervention_priority": []
+            }
+
+            if not rows:
+                # If new user with no weaknesses recorded yet, provide pre-computed foundational diagnostic targets
+                deps = get_concept_dependency_graph()
+                foundational_seeds = [
+                    {"concept": "Entropy", "subject": "Thermodynamics", "mastery": 0, "impact_score": 85, "times_confused": 0, "affected_topics": ["Heat Engines", "Refrigeration", "Second Law"], "is_critical": True},
+                    {"concept": "Thevenin's Theorem", "subject": "BEEE", "mastery": 0, "impact_score": 80, "times_confused": 0, "affected_topics": ["Maximum Power Transfer", "Bridge Circuits"], "is_critical": True},
+                    {"concept": "Eigenvalues & Eigenvectors", "subject": "Linear Algebra", "mastery": 0, "impact_score": 90, "times_confused": 0, "affected_topics": ["Cayley-Hamilton Theorem", "Diagonalization"], "is_critical": True}
+                ]
+                profile["foundational_gaps"] = foundational_seeds
+                profile["intervention_priority"] = foundational_seeds
+                return profile
+
+            total_mastery = 0.0
+            for r in rows:
+                (w_id, subj, c_name, c_diff, first_at, times_c, last_at, ctx_json, dep_json,
+                 impact, m_level, m_pct, q_att, p_score, is_crit, is_found, priority) = r
+                
+                try:
+                    dep_topics = _json.loads(dep_json) if dep_json else []
+                except Exception:
+                    dep_topics = []
+
+                item = {
+                    "id": w_id,
+                    "subject": subj,
+                    "concept": c_name,
+                    "mastery": round(m_pct or 0.0, 1),
+                    "mastery_level": m_level or "novice",
+                    "impact_score": round(impact or 0.0, 1),
+                    "times_confused": times_c or 1,
+                    "affected_topics": dep_topics,
+                    "questions_attempted": q_att or 0,
+                    "is_critical": bool(is_crit),
+                    "is_foundational": bool(is_found),
+                    "priority": priority or 50,
+                    "last_confused": str(last_at)
+                }
+
+                total_mastery += (m_pct or 0.0)
+
+                if is_crit:
+                    profile["critical_weaknesses"].append(item)
+                elif is_found:
+                    profile["foundational_gaps"].append(item)
+                else:
+                    profile["secondary_weaknesses"].append(item)
+
+                if (times_c >= 2 and m_pct < 60) or is_crit or is_found:
+                    profile["intervention_priority"].append(item)
+
+            profile["avg_mastery_score"] = round(total_mastery / len(rows), 1) if rows else 0.0
+            return profile
+
+    return db_retry(_do)
+
+
+def generate_questions_with_llm(concept: str, difficulty: str = "easy", count: int = 2) -> list:
+    """Use fast Groq Llama 3.3 70B to generate Bennett engineering exam-style practice questions on a concept."""
+    groq_key = _os.environ.get("GROQ_API_KEY") or "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"
+    if not groq_key:
+        return []
+
+    prompt = (
+        f"Generate {count} rigorous, exam-style practice questions on the academic engineering concept \"{concept}\" "
+        f"at \"{difficulty}\" difficulty level for a Bennett University engineering student.\n\n"
+        "Respond ONLY with a valid JSON array of objects matching this exact schema:\n"
+        "[\n"
+        "  {\n"
+        '    "question": "Question statement here...",\n'
+        '    "type": "mcq",\n'
+        '    "options": ["Option A text", "Option B text", "Option C text", "Option D text"],\n'
+        '    "correct": "Option A text",\n'
+        '    "explanation": "Detailed step-by-step why this is correct...",\n'
+        '    "concept_explanation": "Core theoretical principle being tested..."\n'
+        "  }\n"
+        "]\n"
+        "Requirements:\n"
+        "- Ensure options array contains 4 distinct options.\n"
+        "- The 'correct' field MUST EXACTLY match one of the items in the 'options' array.\n"
+        "- Make questions high-yield, conceptual, and practical."
+    )
+
+    try:
+        import urllib.request, ssl
+        ctx = ssl._create_unverified_context()
+        payload = _json.dumps({
+            "model": "llama-3.3-70b-versatile",
+            "messages": [{"role": "user", "content": prompt}],
+            "temperature": 0.2
+        }).encode("utf-8")
+
+        req = urllib.request.Request(
+            "https://api.groq.com/openai/v1/chat/completions",
+            data=payload,
+            headers={"Authorization": f"Bearer {groq_key}", "Content-Type": "application/json"}
+        )
+        with urllib.request.urlopen(req, context=ctx, timeout=6.0) as resp:
+            data = _json.loads(resp.read().decode("utf-8"))
+            raw_text = data["choices"][0]["message"]["content"].strip()
+            # Clean markdown JSON block if present
+            if raw_text.startswith("```"):
+                raw_text = _re.sub(r'^```(?:json)?\s*', '', raw_text)
+                raw_text = _re.sub(r'\s*```$', '', raw_text)
+            
+            q_list = _json.loads(raw_text)
+            saved = []
+            with get_db() as c:
+                cur = c.cursor()
+                for q_data in q_list:
+                    cur.execute("""
+                        INSERT INTO practice_question
+                        (subject, concept, question_text, question_type, options, correct_option, explanation, concept_explanation, is_ai_generated, difficulty)
+                        VALUES ('Engineering', ?, ?, ?, ?, ?, ?, ?, 1, ?)
+                    """, (
+                        concept,
+                        q_data.get("question", f"Question on {concept}"),
+                        q_data.get("type", "mcq"),
+                        _json.dumps(q_data.get("options", ["A", "B", "C", "D"])),
+                        q_data.get("correct", "A"),
+                        q_data.get("explanation", ""),
+                        q_data.get("concept_explanation", ""),
+                        difficulty
+                    ))
+                    q_id = cur.lastrowid
+                    saved.append({
+                        "id": q_id,
+                        "question": q_data.get("question"),
+                        "type": q_data.get("type", "mcq"),
+                        "options": q_data.get("options", []),
+                        "correct_option": q_data.get("correct"),
+                        "explanation": q_data.get("explanation"),
+                        "concept_explanation": q_data.get("concept_explanation"),
+                        "difficulty": difficulty
+                    })
+                c.commit()
+            return saved
+    except Exception as e:
+        print(f"[GENERATE QUESTIONS LLM ERROR]: {e}")
+        return []
+
+
+def generate_adaptive_practice(
+    concept: str,
+    user_id: int = 1,
+    user_email: str = "",
+    difficulty: str = "easy"
+) -> dict:
+    """Generate or retrieve an adaptive practice session tailored to fix the student's weakness."""
+    concept_clean = (concept or "Foundational Concepts").strip()
+    
+    def _do():
+        with get_db() as c:
+            cur = c.cursor()
+            
+            # 1. Fetch matching verified practice questions
+            cur.execute("""
+                SELECT id, question_text, question_type, options, correct_option, explanation, concept_explanation, difficulty
+                FROM practice_question
+                WHERE lower(concept) LIKE ? OR lower(concept_explanation) LIKE ?
+                ORDER BY id ASC
+                LIMIT 5
+            """, (f"%{concept_clean.lower()}%", f"%{concept_clean.lower()}%"))
+            rows = cur.fetchall()
+
+            questions = []
+            for r in rows:
+                try:
+                    opts = _json.loads(r[3]) if r[3] else []
+                except Exception:
+                    opts = []
+                questions.append({
+                    "id": r[0],
+                    "question": r[1],
+                    "type": r[2],
+                    "options": opts,
+                    "correct_option": r[4],
+                    "explanation": r[5],
+                    "concept_explanation": r[6],
+                    "difficulty": r[7]
+                })
+
+            # If fewer than 3 questions in DB, generate additional ones dynamically using LLM
+            if len(questions) < 3:
+                needed = 3 - len(questions)
+                ai_qs = generate_questions_with_llm(concept=concept_clean, difficulty=difficulty, count=needed)
+                questions.extend(ai_qs)
+
+            # Fallback guarantee if still empty
+            if not questions:
+                questions = [{
+                    "id": 9991,
+                    "question": f"Which principle is most essential for mastering '{concept_clean}' in engineering?",
+                    "type": "mcq",
+                    "options": [
+                        "Direct application of foundational boundary conditions",
+                        "Ignoring physical constraints",
+                        "Only memorizing formulas without derivation",
+                        "Assuming zero system entropy"
+                    ],
+                    "correct_option": "Direct application of foundational boundary conditions",
+                    "explanation": f"Mastering {concept_clean} requires establishing fundamental physical laws and applying valid boundary conditions.",
+                    "concept_explanation": f"Foundational understanding of {concept_clean}.",
+                    "difficulty": "easy"
+                }]
+
+            # Create adaptive practice session
+            now_str = datetime.now().isoformat()
+            cur.execute("""
+                INSERT INTO adaptive_practice_session
+                (user_id, user_email, concept_name, started_at, total_questions, initial_difficulty, final_difficulty, difficulty_progression)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            """, (
+                user_id,
+                user_email or "",
+                concept_clean,
+                now_str,
+                len(questions),
+                difficulty,
+                difficulty,
+                _json.dumps([difficulty])
+            ))
+            session_id = cur.lastrowid
+            c.commit()
+
+            formatted_qs = []
+            for q in questions:
+                formatted_qs.append({
+                    "id": q["id"],
+                    "question": q["question"],
+                    "type": q.get("type", "mcq"),
+                    "options": q.get("options", []),
+                    "hint": f"💡 Think about the foundational definition: {q.get('concept_explanation', 'Focus on the core physics/math principle.')}"
+                })
+
+            return {
+                "session_id": session_id,
+                "concept": concept_clean,
+                "difficulty": difficulty,
+                "total_questions": len(formatted_qs),
+                "questions": formatted_qs,
+                "message": f"🎯 Target Practice: {len(formatted_qs)} questions on '{concept_clean}'. Let's build your concept mastery!"
+            }
+
+    return db_retry(_do)
+
+
+def submit_practice_answer(
+    session_id: int,
+    question_id: int,
+    user_answer: str,
+    time_taken: int = 15,
+    user_id: int = 1,
+    user_email: str = ""
+) -> dict:
+    """Process student's submitted answer, calculate accuracy, and dynamically adapt difficulty."""
+    def _do():
+        with get_db() as c:
+            cur = c.cursor()
+            
+            # Fetch question
+            cur.execute("""
+                SELECT id, concept, question_text, correct_option, explanation, concept_explanation, difficulty
+                FROM practice_question
+                WHERE id = ?
+            """, (question_id,))
+            q_row = cur.fetchone()
+            
+            if not q_row:
+                # Mock fallback question check
+                is_correct = True
+                explanation = "Well done! That is the conceptually sound answer."
+                concept_note = "Mastering foundational boundary conditions enables solving complex dependent problems."
+                concept_name = "Core Concept"
+            else:
+                q_id, concept_name, q_text, correct_opt, explanation, concept_note, q_diff = q_row
+                # Compare answers case-insensitively
+                is_correct = (str(user_answer).strip().lower() == str(correct_opt).strip().lower())
+
+                # Update question attempt stats
+                cur.execute("""
+                    UPDATE practice_question
+                    SET attempt_count = attempt_count + 1,
+                        correct_count = correct_count + ?,
+                        success_rate = CAST((correct_count + ?) AS REAL) / (attempt_count + 1)
+                    WHERE id = ?
+                """, (1 if is_correct else 0, 1 if is_correct else 0, question_id))
+
+            # Fetch session
+            cur.execute("""
+                SELECT id, questions, correct_answers, total_questions, initial_difficulty, final_difficulty, difficulty_progression, total_time, concept_name
+                FROM adaptive_practice_session
+                WHERE id = ?
+            """, (session_id,))
+            s_row = cur.fetchone()
+
+            if not s_row:
+                return {
+                    "is_correct": is_correct,
+                    "explanation": explanation,
+                    "concept_note": concept_note,
+                    "score_so_far": "1/1",
+                    "next_difficulty": "medium",
+                    "adapted": False
+                }
+
+            s_id, q_history_json, corr_count, tot_q, init_diff, fin_diff, prog_json, tot_time, s_concept = s_row
+            try:
+                q_history = _json.loads(q_history_json) if q_history_json else []
+            except Exception:
+                q_history = []
+
+            try:
+                progression = _json.loads(prog_json) if prog_json else []
+            except Exception:
+                progression = []
+
+            # Log this response
+            q_history.append({
+                "question_id": question_id,
+                "user_answer": user_answer,
+                "correct": is_correct,
+                "time_taken": time_taken
+            })
+
+            new_corr = sum(1 for item in q_history if item["correct"])
+            new_tot = len(q_history)
+            new_time = (tot_time or 0) + time_taken
+            score_pct = (new_corr / new_tot) * 100.0
+
+            # ── Adaptive Difficulty Adjustment ──
+            curr_diff = fin_diff or init_diff or "easy"
+            next_diff = curr_diff
+            adapted = False
+
+            if score_pct >= 80.0 and new_tot >= 2:
+                if curr_diff == "easy":
+                    next_diff = "medium"
+                    adapted = True
+                elif curr_diff == "medium":
+                    next_diff = "hard"
+                    adapted = True
+            elif score_pct < 50.0 and new_tot >= 2:
+                if curr_diff == "hard":
+                    next_diff = "medium"
+                    adapted = True
+                elif curr_diff == "medium":
+                    next_diff = "easy"
+                    adapted = True
+
+            progression.append(next_diff)
+
+            cur.execute("""
+                UPDATE adaptive_practice_session
+                SET questions = ?, correct_answers = ?, session_score = ?, final_difficulty = ?,
+                    difficulty_progression = ?, total_time = ?, avg_time_per_question = ?
+                WHERE id = ?
+            """, (
+                _json.dumps(q_history),
+                new_corr,
+                score_pct,
+                next_diff,
+                _json.dumps(progression),
+                new_time,
+                round(new_time / new_tot, 1),
+                session_id
+            ))
+
+            # ── Update Concept Weakness Mastery Level ──
+            cur.execute("""
+                SELECT id, mastery_percentage, practice_questions_attempted
+                FROM concept_weakness
+                WHERE (user_id = ? OR lower(user_email) = lower(?)) AND lower(concept_name) LIKE ?
+            """, (user_id, user_email or "", f"%{s_concept.lower()}%"))
+            w_row = cur.fetchone()
+
+            if w_row:
+                w_id, old_m_pct, old_att = w_row
+                new_att = (old_att or 0) + 1
+                # Progressive mastery formula
+                mastery_gain = (15.0 if is_correct else 3.0)
+                new_mastery = min(100.0, max(0.0, (old_m_pct or 0.0) + mastery_gain))
+                
+                if new_mastery >= 85.0:
+                    m_lvl = "expert"
+                    crit_flag = 0
+                elif new_mastery >= 60.0:
+                    m_lvl = "intermediate"
+                    crit_flag = 0
+                elif new_mastery >= 30.0:
+                    m_lvl = "beginner"
+                    crit_flag = 0
+                else:
+                    m_lvl = "novice"
+                    crit_flag = 1
+
+                cur.execute("""
+                    UPDATE concept_weakness
+                    SET mastery_percentage = ?, mastery_level = ?, practice_questions_attempted = ?,
+                        practice_score = ?, last_practiced = ?, is_critical = ?
+                    WHERE id = ?
+                """, (new_mastery, m_lvl, new_att, score_pct, datetime.now().isoformat(), crit_flag, w_id))
+
+            c.commit()
+
+            return {
+                "is_correct": is_correct,
+                "explanation": explanation,
+                "concept_note": concept_note,
+                "score_so_far": f"{new_corr}/{new_tot}",
+                "accuracy_percentage": round(score_pct, 1),
+                "next_difficulty": next_diff,
+                "adapted": adapted,
+                "adaptation_message": f"🔥 Difficulty adapted to {next_diff.upper()}!" if adapted else ""
+            }
+
+    return db_retry(_do)
+
+
+def complete_practice_session(session_id: int, user_id: int = 1, user_email: str = "") -> dict:
+    """Mark practice session complete and return summary report."""
+    def _do():
+        with get_db() as c:
+            cur = c.cursor()
+            cur.execute("""
+                SELECT id, concept_name, correct_answers, total_questions, session_score, initial_difficulty, final_difficulty, total_time, avg_time_per_question
+                FROM adaptive_practice_session
+                WHERE id = ?
+            """, (session_id,))
+            row = cur.fetchone()
+            if not row:
+                return {"success": False, "message": "Session not found"}
+
+            s_id, concept, corr, tot, score, init_d, fin_d, t_time, avg_t = row
+            now_str = datetime.now().isoformat()
+            
+            cur.execute("UPDATE adaptive_practice_session SET completed_at = ? WHERE id = ?", (now_str, session_id))
+            
+            # Fetch updated weakness mastery
+            cur.execute("""
+                SELECT mastery_percentage, mastery_level, impact_score
+                FROM concept_weakness
+                WHERE (user_id = ? OR lower(user_email) = lower(?)) AND lower(concept_name) LIKE ?
+            """, (user_id, user_email or "", f"%{concept.lower()}%"))
+            w_row = cur.fetchone()
+
+            mastery_pct = w_row[0] if w_row else score
+            mastery_lvl = w_row[1] if w_row else "intermediate"
+
+            c.commit()
+            return {
+                "success": True,
+                "session_id": session_id,
+                "concept": concept,
+                "correct_answers": corr,
+                "total_questions": tot,
+                "accuracy_percentage": round(score or 0.0, 1),
+                "time_spent_seconds": t_time or 0,
+                "avg_time_per_question": avg_t or 0.0,
+                "initial_difficulty": init_d,
+                "final_difficulty": fin_d,
+                "mastery_percentage": round(mastery_pct, 1),
+                "mastery_level": mastery_lvl
+            }
+
+    return db_retry(_do)

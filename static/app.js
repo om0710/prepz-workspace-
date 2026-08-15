@@ -2407,6 +2407,13 @@ function initializeDocPilotApp() {
                             } else if (parsed.text) {
                                 accumulatedResponse += parsed.text;
                                 startTypewriterLoop();
+                            } else if (parsed.concept_weakness) {
+                                pendingConceptWeakness = parsed.concept_weakness;
+                                console.log("[SSE CONCEPT WEAKNESS RECEIVED]", pendingConceptWeakness);
+                                const cwToRender = pendingConceptWeakness;
+                                setTimeout(() => {
+                                    renderInChatConceptWeakness(cwToRender, assistantBubble);
+                                }, 120);
                             } else if (parsed.video_rec) {
                                 pendingVideoRec = parsed.video_rec;
                                 console.log("[SSE VIDEO REC RECEIVED]", pendingVideoRec);
@@ -2427,6 +2434,10 @@ function initializeDocPilotApp() {
             if (!renderTimer) {
                 updateBubbleUI(accumulatedResponse, true);
                 fetchThreads();
+                if (pendingConceptWeakness) {
+                    const cwToRender = pendingConceptWeakness;
+                    setTimeout(() => renderInChatConceptWeakness(cwToRender, assistantBubble), 120);
+                }
                 if (pendingVideoRec) {
                     const recToRender = pendingVideoRec;
                     setTimeout(() => renderVideoRecommendation(recToRender, assistantBubble), 100);
@@ -4260,3 +4271,441 @@ window.toggleFilePrivacy = async function(filename, isPrivate) {
         console.error("toggleFilePrivacy error:", err);
     }
 };
+
+// ═════════════════════════════════════════════════════════════════════════════
+// CONCEPT WEAKNESS PROFILER & ADAPTIVE PRACTICE (ACADEMIC EDGE)
+// ═════════════════════════════════════════════════════════════════════════════
+
+let currentPracticeSession = null;
+let currentQuestionIndex = 0;
+let selectedPracticeAnswer = null;
+let questionStartTime = Date.now();
+
+// ── Open / Close Profiler Modal ──
+window.showWeaknessProfile = async function() {
+    const modal = document.getElementById("weakness-profile-modal");
+    if (!modal) return;
+    modal.classList.remove("hidden");
+    modal.style.display = "flex";
+
+    const spinner = document.getElementById("weakness-loading-spinner");
+    const content = document.getElementById("weakness-modal-content");
+    if (spinner) spinner.style.display = "block";
+    if (content) content.style.display = "none";
+
+    try {
+        const user = window.currentUser || JSON.parse(localStorage.getItem("docpilot-user") || "{}");
+        const email = user.email || "";
+        const res = await fetch(`/api/weaknesses/profile?user_email=${encodeURIComponent(email)}`);
+        const profile = await res.json();
+        
+        // Also fetch graph dependencies for explorer
+        const gRes = await fetch("/api/weaknesses/graph");
+        const gData = await gRes.json();
+
+        if (spinner) spinner.style.display = "none";
+        if (content) content.style.display = "block";
+
+        renderWeaknessProfile(profile);
+        renderConceptGraphChips(gData.dependencies || []);
+    } catch (err) {
+        console.error("Error loading weakness profile:", err);
+        if (spinner) spinner.innerHTML = `<span style="color:#ef4444;">Failed to load concept profile.</span>`;
+    }
+};
+
+window.closeWeaknessModal = function() {
+    const modal = document.getElementById("weakness-profile-modal");
+    if (modal) {
+        modal.classList.add("hidden");
+        modal.style.display = "none";
+    }
+};
+
+function renderWeaknessProfile(profile) {
+    if (!profile) return;
+
+    // KPI Metrics
+    const critCount = document.getElementById("kpi-critical-count");
+    const foundCount = document.getElementById("kpi-foundational-count");
+    const avgMastery = document.getElementById("kpi-avg-mastery");
+    const totWeak = document.getElementById("kpi-total-weaknesses");
+
+    const criticalList = profile.critical_weaknesses || [];
+    const foundationalList = profile.foundational_gaps || [];
+    const secondaryList = profile.secondary_weaknesses || [];
+
+    if (critCount) critCount.textContent = criticalList.length;
+    if (foundCount) foundCount.textContent = foundationalList.length;
+    if (avgMastery) avgMastery.textContent = `${Math.round(profile.avg_mastery_score || 0)}%`;
+    if (totWeak) totWeak.textContent = profile.total_weaknesses || (criticalList.length + foundationalList.length + secondaryList.length);
+
+    // Section 1: Critical Weaknesses
+    const critContainer = document.getElementById("weakness-critical-list");
+    if (critContainer) {
+        if (criticalList.length === 0) {
+            critContainer.innerHTML = `<div style="padding: 12px; font-size: 13px; color: #94a3b8; background: rgba(255,255,255,0.02); border-radius: 8px;">✨ No critical weaknesses detected right now! Keep maintaining high mastery.</div>`;
+        } else {
+            critContainer.innerHTML = criticalList.map(item => createWeaknessCardHtml(item, 'critical')).join('');
+        }
+    }
+
+    // Section 2: Foundational Gaps
+    const foundContainer = document.getElementById("weakness-foundational-list");
+    if (foundContainer) {
+        if (foundationalList.length === 0) {
+            foundContainer.innerHTML = `<div style="padding: 12px; font-size: 13px; color: #94a3b8; background: rgba(255,255,255,0.02); border-radius: 8px;">✨ All foundational engineering prerequisites are currently verified solid.</div>`;
+        } else {
+            foundContainer.innerHTML = foundationalList.map(item => createWeaknessCardHtml(item, 'foundational')).join('');
+        }
+    }
+
+    // Section 3: Secondary Weaknesses
+    const secSection = document.getElementById("weakness-secondary-section");
+    const secContainer = document.getElementById("weakness-secondary-list");
+    if (secContainer && secondaryList.length > 0) {
+        if (secSection) secSection.style.display = "block";
+        secContainer.innerHTML = secondaryList.map(item => createWeaknessCardHtml(item, 'secondary')).join('');
+    } else if (secSection) {
+        secSection.style.display = "none";
+    }
+}
+
+function createWeaknessCardHtml(item, type) {
+    const concept = item.concept || item.concept_name || "Core Principle";
+    const subject = item.subject || "Engineering";
+    const mastery = Math.round(item.mastery || 0);
+    const affected = (item.affected_topics || item.dependent_topics || []).slice(0, 3);
+    const times = item.times_confused || 0;
+
+    let affectedHtml = "";
+    if (affected && affected.length > 0) {
+        affectedHtml = `<div class="weakness-blocked-text">⚠️ Blocks understanding of: <strong>${affected.join(', ')}</strong></div>`;
+    }
+
+    return `
+        <div class="weakness-card">
+            <div class="weakness-card-info">
+                <div class="weakness-card-title-row">
+                    <span class="weakness-concept-name">${escapeHtmlLocal(concept)}</span>
+                    <span class="weakness-subject-tag">${escapeHtmlLocal(subject)}</span>
+                    ${times >= 2 ? `<span style="font-size: 10.5px; background: rgba(239, 68, 68, 0.15); color: #f87171; padding: 2px 6px; border-radius: 4px; font-weight: 700;">Confused ${times}x</span>` : ''}
+                </div>
+                ${affectedHtml}
+                <div class="weakness-progress-row">
+                    <div class="weakness-progress-bar-bg">
+                        <div class="weakness-progress-fill" style="width: ${Math.max(5, mastery)}%;"></div>
+                    </div>
+                    <span class="weakness-progress-pct">${mastery}%</span>
+                </div>
+            </div>
+            <button type="button" class="btn-start-practice" onclick="closeWeaknessModal(); startAdaptivePractice('${escapeHtmlLocal(concept).replace(/'/g, "\\'")}', 'easy');">
+                <span>▶ Practice & Fix</span>
+            </button>
+        </div>
+    `;
+}
+
+function renderConceptGraphChips(dependencies) {
+    const container = document.getElementById("concept-dependency-chips");
+    if (!container || !dependencies) return;
+
+    container.innerHTML = dependencies.slice(0, 12).map(dep => {
+        return `
+            <div style="padding: 6px 10px; border-radius: 8px; background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.07); font-size: 11.5px; color: #cbd5e1; display: inline-flex; align-items: center; gap: 6px; cursor: pointer; transition: all 0.2s ease;" onclick="closeWeaknessModal(); startAdaptivePractice('${escapeHtmlLocal(dep.prerequisite_concept).replace(/'/g, "\\'")}', 'easy');" title="Click to practice prerequisite ${escapeHtmlLocal(dep.prerequisite_concept)}">
+                <span style="color: #f43f5e; font-weight: 700;">${escapeHtmlLocal(dep.prerequisite_concept)}</span>
+                <span style="color: #64748b;">➔</span>
+                <span style="color: #94a3b8;">${escapeHtmlLocal(dep.dependent_concept)}</span>
+            </div>
+        `;
+    }).join('');
+}
+
+// ── In-Chat Weakness Notification Card ──
+window.renderInChatConceptWeakness = function(payload, container) {
+    if (!payload || !container) return;
+
+    // Check if already rendered in container
+    if (container.querySelector(".in-chat-weakness-alert")) return;
+
+    const concept = payload.concept || "Key Principle";
+    const affected = (payload.related_topics || []).slice(0, 2);
+    const affectedMsg = affected.length > 0 ? `Affects downstream mastery of <strong>${affected.join(', ')}</strong>.` : "";
+
+    const alertDiv = document.createElement("div");
+    alertDiv.className = "in-chat-weakness-alert";
+    alertDiv.innerHTML = `
+        <div class="in-chat-weakness-header">
+            <span class="in-chat-weakness-badge">🎯 ACADEMIC EDGE WEAKNESS DETECTED</span>
+            <span style="font-size: 11px; color: #94a3b8;">Root Concept Blocker</span>
+        </div>
+        <div style="font-size: 13.5px; color: #f1f5f9; line-height: 1.4;">
+            I noticed you're encountering repeated friction with <strong>${escapeHtmlLocal(concept)}</strong>. ${affectedMsg}
+        </div>
+        <div style="display: flex; gap: 10px; margin-top: 4px;">
+            <button type="button" class="btn-start-practice" style="padding: 7px 14px; font-size: 12px;" onclick="startAdaptivePractice('${escapeHtmlLocal(concept).replace(/'/g, "\\'")}', 'easy')">
+                <span>⚡ Fix with 3-Min Adaptive Practice</span>
+            </button>
+            <button type="button" style="padding: 7px 12px; font-size: 12px; background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.12); color: #cbd5e1; border-radius: 8px; cursor: pointer;" onclick="showWeaknessProfile()">
+                View Full Concept Profile
+            </button>
+        </div>
+    `;
+
+    container.appendChild(alertDiv);
+    if (typeof scrollToBottom === "function") scrollToBottom();
+};
+
+// ── Interactive Adaptive Practice Engine ──
+window.startAdaptivePractice = async function(concept, difficulty = "easy") {
+    const modal = document.getElementById("adaptive-practice-modal");
+    if (!modal) return;
+
+    modal.classList.remove("hidden");
+    modal.style.display = "flex";
+
+    const qContainer = document.getElementById("practice-question-container");
+    const sContainer = document.getElementById("practice-summary-container");
+    if (qContainer) qContainer.style.display = "block";
+    if (sContainer) sContainer.style.display = "none";
+
+    const conceptTitle = document.getElementById("practice-concept-title");
+    if (conceptTitle) conceptTitle.textContent = `Practice: ${concept}`;
+
+    const qPrompt = document.getElementById("practice-question-text");
+    if (qPrompt) qPrompt.textContent = `Generating personalized adaptive questions for "${concept}"...`;
+
+    try {
+        const user = window.currentUser || JSON.parse(localStorage.getItem("docpilot-user") || "{}");
+        const email = user.email || "";
+        const res = await fetch(`/api/practice/generate?concept=${encodeURIComponent(concept)}&difficulty=${difficulty}&user_email=${encodeURIComponent(email)}`);
+        const sessionData = await res.json();
+
+        currentPracticeSession = sessionData;
+        currentQuestionIndex = 0;
+        selectedPracticeAnswer = null;
+
+        renderPracticeCurrentQuestion();
+    } catch (err) {
+        console.error("Error generating adaptive practice:", err);
+        if (qPrompt) qPrompt.innerHTML = `<span style="color:#ef4444;">Failed to generate practice session. Please try again.</span>`;
+    }
+};
+
+window.closePracticeModal = function() {
+    const modal = document.getElementById("adaptive-practice-modal");
+    if (modal) {
+        modal.classList.add("hidden");
+        modal.style.display = "none";
+    }
+    currentPracticeSession = null;
+};
+
+function renderPracticeCurrentQuestion() {
+    if (!currentPracticeSession || !currentPracticeSession.questions) return;
+    const questions = currentPracticeSession.questions;
+    if (currentQuestionIndex >= questions.length) {
+        finishPracticeSession();
+        return;
+    }
+
+    const q = questions[currentQuestionIndex];
+    selectedPracticeAnswer = null;
+    questionStartTime = Date.now();
+
+    // Reset controls & feedback
+    const diffBadge = document.getElementById("practice-difficulty-badge");
+    const progressText = document.getElementById("practice-progress-text");
+    const qPrompt = document.getElementById("practice-question-text");
+    const optsContainer = document.getElementById("practice-options-container");
+    const feedbackCard = document.getElementById("practice-feedback-card");
+    const hintBox = document.getElementById("practice-hint-box");
+    const submitBtn = document.getElementById("btn-submit-practice-answer");
+    const nextBtn = document.getElementById("btn-next-practice-question");
+
+    const currentDiff = (currentPracticeSession.difficulty || "easy").toUpperCase();
+    if (diffBadge) {
+        diffBadge.textContent = currentDiff;
+        diffBadge.className = `practice-diff-badge diff-${currentDiff.toLowerCase()}`;
+    }
+
+    if (progressText) {
+        progressText.textContent = `Question ${currentQuestionIndex + 1} of ${questions.length} | Adaptive Engine Active`;
+    }
+
+    if (qPrompt) qPrompt.textContent = q.question;
+
+    if (feedbackCard) feedbackCard.style.display = "none";
+    if (hintBox) {
+        hintBox.style.display = "none";
+        hintBox.textContent = q.hint || "Focus on the fundamental physical equation or definition.";
+    }
+    if (submitBtn) submitBtn.style.display = "block";
+    if (nextBtn) nextBtn.style.display = "none";
+
+    // Render Options
+    if (optsContainer) {
+        const letters = ["A", "B", "C", "D"];
+        const options = q.options || [];
+        optsContainer.innerHTML = options.map((opt, idx) => {
+            const letter = letters[idx] || (idx + 1);
+            return `
+                <button type="button" class="practice-option-btn" id="practice-opt-${idx}" onclick="selectPracticeOption(${idx}, '${escapeHtmlLocal(opt).replace(/'/g, "\\'")}')">
+                    <span class="practice-opt-letter">${letter}</span>
+                    <span>${escapeHtmlLocal(opt)}</span>
+                </button>
+            `;
+        }).join('');
+    }
+}
+
+window.selectPracticeOption = function(idx, optText) {
+    selectedPracticeAnswer = optText;
+    const allBtns = document.querySelectorAll(".practice-option-btn");
+    allBtns.forEach((btn, i) => {
+        if (i === idx) btn.classList.add("selected");
+        else btn.classList.remove("selected");
+    });
+};
+
+window.togglePracticeHint = function() {
+    const hintBox = document.getElementById("practice-hint-box");
+    if (!hintBox) return;
+    hintBox.style.display = (hintBox.style.display === "none" || !hintBox.style.display) ? "block" : "none";
+};
+
+window.submitPracticeCurrentAnswer = async function() {
+    if (!selectedPracticeAnswer) {
+        alert("Please select an answer option before submitting.");
+        return;
+    }
+
+    if (!currentPracticeSession || !currentPracticeSession.questions) return;
+    const q = currentPracticeSession.questions[currentQuestionIndex];
+    const timeTaken = Math.max(3, Math.round((Date.now() - questionStartTime) / 1000));
+
+    const submitBtn = document.getElementById("btn-submit-practice-answer");
+    if (submitBtn) {
+        submitBtn.disabled = true;
+        submitBtn.textContent = "Evaluating...";
+    }
+
+    try {
+        const user = window.currentUser || JSON.parse(localStorage.getItem("docpilot-user") || "{}");
+        const email = user.email || "";
+
+        const res = await fetch(`/api/practice/${currentPracticeSession.session_id}/answer`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                question_id: q.id,
+                user_answer: selectedPracticeAnswer,
+                time_taken: timeTaken,
+                user_id: 1,
+                user_email: email
+            })
+        });
+        const evalResult = await res.json();
+
+        // Update UI
+        const feedbackCard = document.getElementById("practice-feedback-card");
+        const banner = document.getElementById("practice-feedback-banner");
+        const adaptBanner = document.getElementById("practice-adaptation-banner");
+        const explText = document.getElementById("practice-explanation-text");
+        const conceptNote = document.getElementById("practice-concept-note-text");
+        const nextBtn = document.getElementById("btn-next-practice-question");
+
+        if (feedbackCard) {
+            feedbackCard.style.display = "block";
+            if (evalResult.is_correct) {
+                feedbackCard.style.background = "rgba(16, 185, 129, 0.12)";
+                feedbackCard.style.border = "1px solid rgba(16, 185, 129, 0.35)";
+                if (banner) {
+                    banner.innerHTML = `<span style="color: #10b981;">✅ Correct! Outstanding conceptual reasoning.</span>`;
+                }
+            } else {
+                feedbackCard.style.background = "rgba(239, 68, 68, 0.12)";
+                feedbackCard.style.border = "1px solid rgba(239, 68, 68, 0.35)";
+                if (banner) {
+                    banner.innerHTML = `<span style="color: #ef4444;">❌ Incorrect. Let's understand why:</span>`;
+                }
+            }
+        }
+
+        if (evalResult.adapted && adaptBanner) {
+            adaptBanner.style.display = "block";
+            adaptBanner.textContent = evalResult.adaptation_message || `🔥 Difficulty adapted to ${evalResult.next_difficulty.toUpperCase()}!`;
+            currentPracticeSession.difficulty = evalResult.next_difficulty;
+        } else if (adaptBanner) {
+            adaptBanner.style.display = "none";
+        }
+
+        if (explText) explText.textContent = evalResult.explanation || "";
+        if (conceptNote) conceptNote.innerHTML = `<strong>Theoretical Principle:</strong> ${escapeHtmlLocal(evalResult.concept_note || '')}`;
+
+        if (submitBtn) submitBtn.style.display = "none";
+        if (nextBtn) nextBtn.style.display = "block";
+
+    } catch (err) {
+        console.error("Error submitting answer:", err);
+        alert("Error evaluating answer. Continuing...");
+    } finally {
+        if (submitBtn) {
+            submitBtn.disabled = false;
+            submitBtn.textContent = "Submit Answer";
+        }
+    }
+};
+
+window.nextPracticeQuestion = function() {
+    currentQuestionIndex += 1;
+    renderPracticeCurrentQuestion();
+};
+
+async function finishPracticeSession() {
+    if (!currentPracticeSession) return;
+
+    const qContainer = document.getElementById("practice-question-container");
+    const sContainer = document.getElementById("practice-summary-container");
+    if (qContainer) qContainer.style.display = "none";
+    if (sContainer) sContainer.style.display = "block";
+
+    try {
+        const user = window.currentUser || JSON.parse(localStorage.getItem("docpilot-user") || "{}");
+        const email = user.email || "";
+
+        const res = await fetch(`/api/practice/${currentPracticeSession.session_id}/complete?user_email=${encodeURIComponent(email)}`, {
+            method: "POST"
+        });
+        const summary = await res.json();
+
+        const scoreVal = document.getElementById("summary-score-val");
+        const masteryVal = document.getElementById("summary-mastery-val");
+        const timeVal = document.getElementById("summary-time-val");
+        const badge = document.getElementById("summary-mastery-badge");
+
+        if (scoreVal) scoreVal.textContent = `${summary.correct_answers}/${summary.total_questions}`;
+        if (masteryVal) masteryVal.textContent = `${Math.round(summary.mastery_percentage || 0)}%`;
+        if (timeVal) timeVal.textContent = `${summary.time_spent_seconds || 0}s`;
+
+        if (badge) {
+            const lvl = (summary.mastery_level || "intermediate").toUpperCase();
+            badge.textContent = `Mastery: ${lvl}`;
+            if (lvl === "EXPERT") {
+                badge.style.background = "rgba(16, 185, 129, 0.2)";
+                badge.style.color = "#34d399";
+                badge.style.border = "1px solid #10b981";
+            } else if (lvl === "INTERMEDIATE") {
+                badge.style.background = "rgba(99, 102, 241, 0.2)";
+                badge.style.color = "#818cf8";
+                badge.style.border = "1px solid #6366f1";
+            } else {
+                badge.style.background = "rgba(245, 158, 11, 0.2)";
+                badge.style.color = "#fbbf24";
+                badge.style.border = "1px solid #f59e0b";
+            }
+        }
+    } catch (err) {
+        console.error("Error completing practice session:", err);
+    }
+}

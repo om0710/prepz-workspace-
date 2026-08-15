@@ -4413,3 +4413,361 @@ button, a[role="button"], input[type="button"], input[type="submit"] {
     text-overflow: ellipsis !important;
     margin-top: 2px !important;
 }
+
+/* ═════════════════════════════════════════════════════════════════════════════
+   CONCEPT WEAKNESS PROFILER & ADAPTIVE PRACTICE STYLES (ACADEMIC EDGE)
+   ═════════════════════════════════════════════════════════════════════════════ */
+
+.icon-rose {
+    background: rgba(244, 63, 94, 0.12) !important;
+    color: #f43f5e !important;
+    border: 1px solid rgba(244, 63, 94, 0.25) !important;
+}
+
+.card-weakness:hover {
+    border-color: rgba(244, 63, 94, 0.4) !important;
+    box-shadow: 0 10px 30px -10px rgba(244, 63, 94, 0.25) !important;
+}
+
+/* Modal Layout */
+.weakness-profile-dialog {
+    background: #0f1319 !important;
+    border: 1px solid rgba(244, 63, 94, 0.25) !important;
+    box-shadow: 0 25px 60px -15px rgba(0, 0, 0, 0.95), 0 0 35px rgba(244, 63, 94, 0.12) !important;
+    border-radius: 18px !important;
+}
+
+/* KPI Ribbon */
+.weakness-kpi-ribbon {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 12px;
+    margin-bottom: 20px;
+}
+
+.weakness-kpi-pill {
+    padding: 14px 16px;
+    border-radius: 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.07);
+    transition: all 0.2s ease;
+}
+
+.weakness-kpi-pill .kpi-num {
+    font-size: 24px;
+    font-weight: 800;
+    line-height: 1;
+}
+
+.weakness-kpi-pill .kpi-lbl {
+    font-size: 12px;
+    color: #94a3b8;
+    font-weight: 500;
+}
+
+.weakness-kpi-pill.kpi-critical {
+    border-color: rgba(244, 63, 94, 0.3);
+    background: linear-gradient(135deg, rgba(244, 63, 94, 0.08) 0%, rgba(244, 63, 94, 0.02) 100%);
+}
+.weakness-kpi-pill.kpi-critical .kpi-num { color: #f43f5e; }
+
+.weakness-kpi-pill.kpi-foundational {
+    border-color: rgba(245, 158, 11, 0.3);
+    background: linear-gradient(135deg, rgba(245, 158, 11, 0.08) 0%, rgba(245, 158, 11, 0.02) 100%);
+}
+.weakness-kpi-pill.kpi-foundational .kpi-num { color: #f59e0b; }
+
+.weakness-kpi-pill.kpi-mastery {
+    border-color: rgba(16, 185, 129, 0.3);
+    background: linear-gradient(135deg, rgba(16, 185, 129, 0.08) 0%, rgba(16, 185, 129, 0.02) 100%);
+}
+.weakness-kpi-pill.kpi-mastery .kpi-num { color: #10b981; }
+
+.weakness-kpi-pill.kpi-total {
+    border-color: rgba(99, 102, 241, 0.3);
+    background: linear-gradient(135deg, rgba(99, 102, 241, 0.08) 0%, rgba(99, 102, 241, 0.02) 100%);
+}
+.weakness-kpi-pill.kpi-total .kpi-num { color: #818cf8; }
+
+/* Category Section & Cards */
+.weakness-section-title {
+    font-size: 14px;
+    font-weight: 700;
+    margin-bottom: 12px;
+}
+
+.weakness-cards-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.weakness-card {
+    background: rgba(255, 255, 255, 0.025);
+    border: 1px solid rgba(255, 255, 255, 0.07);
+    border-radius: 12px;
+    padding: 14px 16px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    transition: all 0.2s ease;
+}
+
+.weakness-card:hover {
+    background: rgba(255, 255, 255, 0.045);
+    border-color: rgba(255, 255, 255, 0.15);
+    transform: translateY(-1px);
+}
+
+.weakness-card-info {
+    flex: 1;
+    min-width: 0;
+}
+
+.weakness-card-title-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 4px;
+}
+
+.weakness-concept-name {
+    font-size: 15px;
+    font-weight: 700;
+    color: #ffffff;
+}
+
+.weakness-subject-tag {
+    font-size: 11px;
+    padding: 2px 7px;
+    border-radius: 6px;
+    background: rgba(255, 255, 255, 0.08);
+    color: #cbd5e1;
+}
+
+.weakness-blocked-text {
+    font-size: 12px;
+    color: #fca5a5;
+    margin-top: 4px;
+    line-height: 1.4;
+}
+
+.weakness-progress-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 6px;
+}
+
+.weakness-progress-bar-bg {
+    flex: 1;
+    height: 6px;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 3px;
+    overflow: hidden;
+}
+
+.weakness-progress-fill {
+    height: 100%;
+    border-radius: 3px;
+    background: linear-gradient(90deg, #f43f5e 0%, #10b981 100%);
+    transition: width 0.4s ease;
+}
+
+.weakness-progress-pct {
+    font-size: 11.5px;
+    font-weight: 700;
+    color: #94a3b8;
+    min-width: 32px;
+    text-align: right;
+}
+
+.btn-start-practice {
+    padding: 8px 16px;
+    border-radius: 10px;
+    font-size: 12.5px;
+    font-weight: 700;
+    background: linear-gradient(135deg, #f43f5e 0%, #e11d48 100%);
+    color: #ffffff;
+    border: none;
+    cursor: pointer;
+    white-space: nowrap;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    transition: all 0.2s ease;
+    box-shadow: 0 4px 12px rgba(244, 63, 94, 0.3);
+}
+
+.btn-start-practice:hover {
+    transform: scale(1.03);
+    box-shadow: 0 6px 18px rgba(244, 63, 94, 0.45);
+}
+
+/* Adaptive Practice Session Modal */
+.adaptive-practice-dialog {
+    background: #0d1117 !important;
+    border: 1px solid rgba(99, 102, 241, 0.3) !important;
+    box-shadow: 0 25px 60px -15px rgba(0, 0, 0, 0.95), 0 0 35px rgba(99, 102, 241, 0.15) !important;
+    border-radius: 18px !important;
+}
+
+.practice-diff-badge {
+    font-size: 10.5px;
+    font-weight: 800;
+    padding: 3px 8px;
+    border-radius: 6px;
+    letter-spacing: 0.5px;
+}
+
+.practice-diff-badge.diff-easy {
+    background: rgba(16, 185, 129, 0.15);
+    color: #34d399;
+    border: 1px solid rgba(16, 185, 129, 0.3);
+}
+
+.practice-diff-badge.diff-medium {
+    background: rgba(245, 158, 11, 0.15);
+    color: #fbbf24;
+    border: 1px solid rgba(245, 158, 11, 0.3);
+}
+
+.practice-diff-badge.diff-hard {
+    background: rgba(239, 68, 68, 0.15);
+    color: #f87171;
+    border: 1px solid rgba(239, 68, 68, 0.3);
+}
+
+.practice-options-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-bottom: 16px;
+}
+
+.practice-option-btn {
+    width: 100%;
+    text-align: left;
+    padding: 12px 16px;
+    border-radius: 10px;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    color: #f1f5f9;
+    font-size: 13.5px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    transition: all 0.2s ease;
+    box-sizing: border-box;
+}
+
+.practice-option-btn:hover {
+    background: rgba(255, 255, 255, 0.06);
+    border-color: rgba(99, 102, 241, 0.4);
+}
+
+.practice-option-btn.selected {
+    background: rgba(99, 102, 241, 0.15);
+    border-color: #6366f1;
+    color: #ffffff;
+    font-weight: 600;
+}
+
+.practice-option-btn.correct-highlight {
+    background: rgba(16, 185, 129, 0.18) !important;
+    border-color: #10b981 !important;
+    color: #ffffff !important;
+}
+
+.practice-option-btn.wrong-highlight {
+    background: rgba(239, 68, 68, 0.18) !important;
+    border-color: #ef4444 !important;
+    color: #ffffff !important;
+}
+
+.practice-opt-letter {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 24px;
+    height: 24px;
+    border-radius: 6px;
+    background: rgba(255, 255, 255, 0.08);
+    font-size: 11.5px;
+    font-weight: 700;
+    color: #cbd5e1;
+    flex-shrink: 0;
+}
+
+.practice-option-btn.selected .practice-opt-letter {
+    background: #6366f1;
+    color: #ffffff;
+}
+
+.practice-summary-stats-box {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 10px;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.07);
+    border-radius: 12px;
+    padding: 14px;
+    margin-top: 12px;
+}
+
+.summary-stat-item {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.summary-stat-item .stat-val {
+    font-size: 20px;
+    font-weight: 800;
+    color: #ffffff;
+}
+
+.summary-stat-item .stat-lbl {
+    font-size: 11px;
+    color: #94a3b8;
+}
+
+/* In-Chat Weakness Alert Card */
+.in-chat-weakness-alert {
+    margin: 12px 0;
+    padding: 14px 16px;
+    border-radius: 12px;
+    background: linear-gradient(135deg, rgba(244, 63, 94, 0.1) 0%, rgba(15, 23, 42, 0.4) 100%);
+    border: 1px solid rgba(244, 63, 94, 0.35);
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    animation: alertFadeIn 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes alertFadeIn {
+    from { opacity: 0; transform: translateY(4px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.in-chat-weakness-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.in-chat-weakness-badge {
+    font-size: 11px;
+    font-weight: 800;
+    padding: 3px 8px;
+    border-radius: 6px;
+    background: rgba(244, 63, 94, 0.2);
+    color: #f43f5e;
+    letter-spacing: 0.5px;
+}
+

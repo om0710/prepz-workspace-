@@ -434,6 +434,13 @@ class RatePlaylistRequest(BaseModel):
     was_helpful: bool
     watched_percentage: Optional[int] = 30
 
+class PracticeAnswerRequest(BaseModel):
+    question_id: int
+    user_answer: str
+    time_taken: Optional[int] = 15
+    user_id: Optional[int] = 1
+    user_email: Optional[str] = None
+
 @app.post("/chat")
 async def chat_stream(request: ChatRequest):
     if request.user_email:
@@ -504,6 +511,41 @@ async def chat_stream(request: ChatRequest):
             except Exception as dbe:
                 print(f"[CONTEXT DB UPDATE ERROR] {dbe}")
 
+            # ── Detect Concept Weakness (Academic Edge) ──
+            try:
+                weakness_det = detect_concept_weakness(
+                    user_id=1,
+                    user_email=request.user_email or "",
+                    topic=detected_topic,
+                    message=request.query,
+                    attempt_number=topic_attempts,
+                    conversation_history=history
+                )
+                if weakness_det.get("weakness_detected"):
+                    record_concept_weakness(
+                        user_id=1,
+                        user_email=request.user_email or "",
+                        subject=weakness_det.get("subject", "General"),
+                        concept_name=weakness_det.get("confused_concept", detected_topic),
+                        topic=detected_topic,
+                        dependent_topics=weakness_det.get("related_topics", []),
+                        is_foundational=weakness_det.get("is_foundational", False),
+                        is_critical=weakness_det.get("is_foundational", False) or topic_attempts >= 2
+                    )
+                    weakness_payload = json.dumps({
+                        "detected": True,
+                        "concept": weakness_det.get("confused_concept", detected_topic),
+                        "subject": weakness_det.get("subject", "General"),
+                        "is_foundational": weakness_det.get("is_foundational", False),
+                        "related_topics": weakness_det.get("related_topics", []),
+                        "impact_score": weakness_det.get("impact_score", 50.0),
+                        "message": f"Academic Edge Alert: You seem stuck on '{weakness_det.get('confused_concept')}'. This foundational concept affects {len(weakness_det.get('related_topics', []))} topics. Master it now with targeted adaptive practice!"
+                    })
+                    print(f"[STREAM EMIT CONCEPT_WEAKNESS] {weakness_payload[:120]}...")
+                    await queue.put(f"__CONCEPT_WEAKNESS__:{weakness_payload}")
+            except Exception as cwe:
+                print(f"[CONCEPT WEAKNESS DETECT ERROR] {cwe}")
+
             # Emit video recommendation if needed
             print(f"[STREAM] Checking video rec: should={intent_result.get('should_recommend_videos')} strength={intent_result.get('recommendation_strength')} topic='{detected_topic}'")
             if intent_result.get("should_recommend_videos"):
@@ -554,6 +596,9 @@ async def chat_stream(request: ChatRequest):
             elif isinstance(token, str) and token.startswith("__STATUS__:"):
                 status_msg = token[len("__STATUS__:"):]
                 yield f"data: {json.dumps({'status': status_msg})}\n\n"
+            elif isinstance(token, str) and token.startswith("__CONCEPT_WEAKNESS__:"):
+                w_json = token[len("__CONCEPT_WEAKNESS__:"):]
+                yield f"data: {json.dumps({'concept_weakness': json.loads(w_json)})}\n\n"
             elif isinstance(token, str) and token.startswith("__VIDEO_REC__:"):
                 rec_json = token[len("__VIDEO_REC__:"):]
                 yield f"data: {json.dumps({'video_rec': json.loads(rec_json)})}\n\n"
@@ -639,7 +684,43 @@ async def exam_chat_api(request: ApiChatRequest):
             strength=intent_analysis["recommendation_strength"]
         )
 
-        return {
+        # Detect Concept Weakness
+        concept_weakness_data = None
+        try:
+            weakness_det = detect_concept_weakness(
+                user_id=request.user_id or 1,
+                user_email="",
+                topic=topic,
+                message=request.message,
+                attempt_number=topic_attempts,
+                conversation_history=history
+            )
+            if weakness_det.get("weakness_detected"):
+                record_concept_weakness(
+                    user_id=request.user_id or 1,
+                    user_email="",
+                    subject=weakness_det.get("subject", request.subject or "General"),
+                    concept_name=weakness_det.get("confused_concept", topic),
+                    topic=topic,
+                    dependent_topics=weakness_det.get("related_topics", []),
+                    is_foundational=weakness_det.get("is_foundational", False),
+                    is_critical=weakness_det.get("is_foundational", False) or topic_attempts >= 2
+                )
+                concept_weakness_data = {
+                    "detected": True,
+                    "concept": weakness_det.get("confused_concept", topic),
+                    "subject": weakness_det.get("subject", "General"),
+                    "is_foundational": weakness_det.get("is_foundational", False),
+                    "related_topics": weakness_det.get("related_topics", []),
+                    "impact_score": weakness_det.get("impact_score", 50.0),
+                    "message": f"Academic Edge Alert: I noticed you're stuck on '{weakness_det.get('confused_concept')}'. This concept affects {len(weakness_det.get('related_topics', []))} topics. Let's do targeted adaptive practice to master it!",
+                    "offer_practice": True,
+                    "practice_link": f"/api/practice/generate?concept={weakness_det.get('confused_concept')}&user_id={request.user_id or 1}"
+                }
+        except Exception as cwe:
+            print(f"[API CHAT CONCEPT WEAKNESS ERROR] {cwe}")
+
+        res_payload = {
             "status": "success",
             "explanation": explanation,
             "intent": intent_analysis["intent"],
@@ -652,6 +733,9 @@ async def exam_chat_api(request: ApiChatRequest):
             "session_id": session_id,
             "next_action": get_next_action_message(intent_analysis["recommendation_strength"], topic_attempts + 1)
         }
+        if concept_weakness_data:
+            res_payload["concept_weakness"] = concept_weakness_data
+        return res_payload
     except Exception as e:
         print(f"[API CHAT ERROR] {e}")
         return {
@@ -691,6 +775,72 @@ async def seed_channels_endpoint(admin_token: Optional[str] = None):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+# ── Part 6: Concept Weakness Profiler & Adaptive Practice Endpoints ───────────
+@app.get("/api/weaknesses/profile")
+async def get_weakness_profile_api(request: Request, user_id: int = 1, user_email: Optional[str] = None):
+    """Return student's full concept weakness profile with critical gaps and priorities."""
+    email = user_email
+    if not email:
+        user_token = request.headers.get("X-Access-Token") or request.cookies.get("auth_token")
+        if user_token:
+            verified = verify_signed_token(user_token)
+            if verified:
+                email = verified.get("email")
+    profile = create_weakness_profile(user_id=user_id, user_email=email or "")
+    return profile
+
+@app.get("/api/weaknesses/graph")
+async def get_weakness_graph_api(subject: str = ""):
+    """Return subject concept dependency graph."""
+    deps = get_concept_dependency_graph(subject=subject)
+    return {"success": True, "dependencies": deps}
+
+@app.get("/api/practice/generate")
+async def generate_practice_api(request: Request, concept: str, difficulty: str = "easy", user_id: int = 1, user_email: Optional[str] = None):
+    """Generate or retrieve an adaptive practice session for a concept."""
+    email = user_email
+    if not email:
+        user_token = request.headers.get("X-Access-Token") or request.cookies.get("auth_token")
+        if user_token:
+            verified = verify_signed_token(user_token)
+            if verified:
+                email = verified.get("email")
+    session_data = generate_adaptive_practice(concept=concept, user_id=user_id, user_email=email or "", difficulty=difficulty)
+    return session_data
+
+@app.post("/api/practice/{session_id}/answer")
+async def submit_practice_answer_api(session_id: int, req: PracticeAnswerRequest, request: Request):
+    """Submit user answer for adaptive evaluation and difficulty progression."""
+    email = req.user_email
+    if not email:
+        user_token = request.headers.get("X-Access-Token") or request.cookies.get("auth_token")
+        if user_token:
+            verified = verify_signed_token(user_token)
+            if verified:
+                email = verified.get("email")
+    res = submit_practice_answer(
+        session_id=session_id,
+        question_id=req.question_id,
+        user_answer=req.user_answer,
+        time_taken=req.time_taken or 15,
+        user_id=req.user_id or 1,
+        user_email=email or ""
+    )
+    return res
+
+@app.post("/api/practice/{session_id}/complete")
+async def complete_practice_session_api(session_id: int, request: Request, user_id: int = 1, user_email: Optional[str] = None):
+    """Finalize practice session and return mastery progress report."""
+    email = user_email
+    if not email:
+        user_token = request.headers.get("X-Access-Token") or request.cookies.get("auth_token")
+        if user_token:
+            verified = verify_signed_token(user_token)
+            if verified:
+                email = verified.get("email")
+    res = complete_practice_session(session_id=session_id, user_id=user_id, user_email=email or "")
+    return res
+
 from database import (
     create_user, get_user_by_email, verify_password,
     record_upload, get_file_uploads_metadata, delete_upload_record,
@@ -706,7 +856,10 @@ from database import (
     analyze_user_intent, get_recommended_videos, get_or_create_conversation,
     get_recent_messages, rate_playlist_record, get_next_action_message,
     extract_topic_from_query, BENNETT_CHANNELS, seed_bennett_channels_if_needed,
-    update_conversation_context_record
+    update_conversation_context_record,
+    get_concept_dependency_graph, detect_concept_weakness, record_concept_weakness,
+    create_weakness_profile, generate_adaptive_practice, submit_practice_answer,
+    complete_practice_session
 )
 from fastapi import Form
 from typing import Optional
