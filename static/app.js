@@ -2599,7 +2599,7 @@ function initializeDocPilotApp() {
                 <span class="rec-title">${rec.recommendation_message || cfg.label}</span>
             </div>
             ${intentInfo}
-            <div class="video-cards-scroll">
+            <div class="videos-grid video-cards-scroll">
                 ${videosHtml}
             </div>
             ${nextActionHtml}

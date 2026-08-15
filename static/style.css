@@ -2264,11 +2264,21 @@ button, a[role="button"], input[type="button"], input[type="submit"] {
     letter-spacing: -0.01em;
 }
 
-.videos-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-    gap: 14px;
-    margin-top: 10px;
+.videos-grid,
+.video-cards-scroll {
+    display: grid !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 16px !important;
+    margin-top: 14px !important;
+    width: 100% !important;
+    box-sizing: border-box !important;
+}
+
+@media (max-width: 768px) {
+    .videos-grid,
+    .video-cards-scroll {
+        grid-template-columns: 1fr !important;
+    }
 }
 
 .video-card {
@@ -2360,6 +2370,7 @@ button, a[role="button"], input[type="button"], input[type="submit"] {
     font-family: var(--font-mono, monospace);
 }
 
+.video-actions,
 .video-actions-row {
     display: flex;
     gap: 8px;
@@ -2416,26 +2427,23 @@ button, a[role="button"], input[type="button"], input[type="submit"] {
     transform: translateY(-1px);
 }
 
+.video-feedback,
 .rate-buttons {
     display: flex;
     gap: 8px;
     margin-top: auto;
 }
 
-.rate-buttons button {
+.video-feedback button,
+.rate-buttons button,
+.btn-helpful,
+.btn-not-helpful {
     flex: 1;
     padding: 6px 10px;
     border: 1px solid rgba(255, 255, 255, 0.07);
     background: rgba(255, 255, 255, 0.03);
     color: var(--text-muted, #94a3b8);
     border-radius: 8px;
-    cursor: pointer;
-    font-size: 11.5px;
-    font-weight: 500;
-    transition: all 0.2s ease;
-}
-
-.rate-buttons button:hover {
     border-color: rgba(255, 255, 255, 0.18);
     background: rgba(255, 255, 255, 0.08);
     color: #ffffff;
