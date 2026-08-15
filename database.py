@@ -1426,11 +1426,49 @@ def get_recommended_videos(
 
         topic_clean = (topic or "").lower().strip()
         keywords = TOPIC_TO_FACULTY_MAP.get(topic_clean, [topic_clean])
+        INCOMPATIBLE_PAIRS = [
+            ("python", ["java", "c++", "calculus", "electronics", "database", "discrete", "digital", "operating"]),
+            ("java", ["python", "c++", "calculus", "electronics", "database", "discrete", "digital", "operating"]),
+            ("c++", ["python", "java", "calculus", "electronics", "database", "discrete", "digital", "operating"]),
+            ("dsa", ["python", "java", "calculus", "electronics", "database", "discrete", "digital", "operating"]),
+            ("calculus", ["probability", "statistics", "matrix", "matrices", "differential equations", "ode", "pde", "electronics", "java", "python"]),
+            ("differential", ["calculus", "probability", "statistics", "matrix", "matrices", "electronics", "java", "python"]),
+            ("linear", ["calculus", "differential", "probability", "statistics", "electronics", "java", "python"]),
+            ("matrices", ["calculus", "differential", "probability", "statistics", "electronics", "java", "python"]),
+            ("probability", ["calculus", "matrices", "linear algebra", "differential", "electronics", "java", "python"]),
+            ("discrete", ["operating systems", "information management", "digital design", "electronics", "java", "python"]),
+            ("dms", ["operating systems", "information management", "digital design", "electronics", "java", "python"]),
+            ("digital", ["operating systems", "information management", "discrete", "basic electrical", "java", "python"]),
+            ("dld", ["operating systems", "information management", "discrete", "basic electrical", "java", "python"]),
+            ("dd", ["operating systems", "information management", "discrete", "basic electrical", "java", "python"]),
+            ("information", ["operating systems", "discrete", "digital design", "java", "python"]),
+            ("dbms", ["operating systems", "discrete", "digital design", "java", "python"]),
+            ("ims", ["operating systems", "discrete", "digital design", "java", "python"]),
+            ("operating", ["information management", "discrete", "digital design", "java", "python"]),
+            ("os", ["information management", "discrete", "digital design", "java", "python"]),
+            ("electronics", ["calculus", "differential", "linear algebra", "probability", "digital design", "discrete", "java", "python", "dbms", "os"])
+        ]
 
         scored = []
         for r in rows:
             p_id, ch, inst, subj, top, url, diff, score, t_ratings, h_count, t_vids, avg_dur = r
             text = f"{ch} {inst} {subj} {top}".lower()
+            subj_lower = (subj or "").lower()
+            top_lower = (top or "").lower()
+
+            # Strict cross-subject incompatibility check
+            is_incompatible = False
+            for target_topic, forbidden_terms in INCOMPATIBLE_PAIRS:
+                if target_topic in topic_clean:
+                    for forbidden in forbidden_terms:
+                        if (forbidden in subj_lower or forbidden in top_lower) and target_topic not in subj_lower and target_topic not in top_lower:
+                            is_incompatible = True
+                            break
+                if is_incompatible:
+                    break
+            
+            if is_incompatible:
+                continue
             
             match_score = 0
             # Direct keyword hits
