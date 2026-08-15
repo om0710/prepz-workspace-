@@ -410,12 +410,118 @@ BENNETT_CHANNELS = [
         "total_videos": 72,
         "helpfulness_score": 5.0,
         "total_ratings": 210,
-        "helpful_count": 208
+        "helpful_count": 208,
+        "semester": 3
+    },
+    {
+        "channel_name": "Gate Smashers",
+        "instructor": "Varun Singla",
+        "subject": "Information Management System",
+        "topic": "DBMS, SQL & Information Management",
+        "playlist_url": "https://youtube.com/playlist?list=PLxCzCOWd7aiFAN6I8CuViBuCdJgiOkT2Y",
+        "difficulty": "Beginner",
+        "best_for": ["exam prep", "concepts", "sql"],
+        "avg_duration": 15,
+        "total_videos": 128,
+        "helpfulness_score": 4.9,
+        "total_ratings": 145,
+        "helpful_count": 142,
+        "semester": 3
+    },
+    {
+        "channel_name": "Knowledge Gate",
+        "instructor": "Sanchit Jain",
+        "subject": "Information Management System",
+        "topic": "Relational DBMS, Normalization & ACID",
+        "playlist_url": "https://youtube.com/playlist?list=PLmXKhU9FNesR1rSES7oLdJaNFgmuj0SYV",
+        "difficulty": "Intermediate",
+        "best_for": ["deep learning", "gate prep"],
+        "avg_duration": 20,
+        "total_videos": 95,
+        "helpfulness_score": 4.8,
+        "total_ratings": 110,
+        "helpful_count": 106,
+        "semester": 3
+    },
+    {
+        "channel_name": "Gajendra Purohit",
+        "instructor": "Dr. Gajendra Purohit",
+        "subject": "Probability and Statistics",
+        "topic": "Probability & Random Variables 2.0",
+        "playlist_url": "https://youtube.com/playlist?list=PLU6SqdYcYsfJPF-4HphQQ8OceDtqhlSW8",
+        "difficulty": "Beginner",
+        "best_for": ["exam prep", "foundation"],
+        "avg_duration": 22,
+        "total_videos": 48,
+        "helpfulness_score": 4.9,
+        "total_ratings": 130,
+        "helpful_count": 127,
+        "semester": 3
+    },
+    {
+        "channel_name": "Gajendra Purohit",
+        "instructor": "Dr. Gajendra Purohit",
+        "subject": "Probability and Statistics",
+        "topic": "Engineering Statistics & Distributions",
+        "playlist_url": "https://youtube.com/playlist?list=PLU6SqdYcYsfLRq3tu-g_hvkHDcorrtcBK",
+        "difficulty": "Intermediate",
+        "best_for": ["deep learning", "exam prep"],
+        "avg_duration": 24,
+        "total_videos": 42,
+        "helpfulness_score": 4.8,
+        "total_ratings": 95,
+        "helpful_count": 92,
+        "semester": 3
+    },
+    {
+        "channel_name": "Tending to Infinity",
+        "instructor": "Shaurya / Prashant",
+        "subject": "Probability and Statistics",
+        "topic": "Probability & Statistics Complete Series",
+        "playlist_url": "https://youtube.com/playlist?list=PLn3Wz38keZOeMt_qcBF6jkv3kKfyBuuTr",
+        "difficulty": "Beginner",
+        "best_for": ["exam prep", "clear concepts"],
+        "avg_duration": 28,
+        "total_videos": 55,
+        "helpfulness_score": 4.8,
+        "total_ratings": 85,
+        "helpful_count": 82,
+        "semester": 3
+    },
+    {
+        "channel_name": "Apna College",
+        "instructor": "Shradha Khapra",
+        "subject": "Data Structures & Algorithms in C++",
+        "topic": "C++ & DSA Complete Course",
+        "playlist_url": "https://youtube.com/playlist?list=PLfqMhTWNBTe137I_EPQd34TsgV6IO55pt",
+        "difficulty": "Beginner",
+        "best_for": ["foundation", "placements", "exam prep"],
+        "avg_duration": 32,
+        "total_videos": 85,
+        "helpfulness_score": 4.9,
+        "total_ratings": 160,
+        "helpful_count": 156,
+        "semester": 3
+    },
+    {
+        "channel_name": "College Wallah",
+        "instructor": "Physics Wallah Team",
+        "subject": "Data Structures & Algorithms in C++",
+        "topic": "C++ and DSA Foundation Course",
+        "playlist_url": "https://youtube.com/playlist?list=PLxgZQoSe9cg0df_GxVjz3DD_Gck5tMXAd",
+        "difficulty": "Beginner",
+        "best_for": ["foundation", "step by step"],
+        "avg_duration": 30,
+        "total_videos": 72,
+        "helpfulness_score": 4.8,
+        "total_ratings": 120,
+        "helpful_count": 116,
+        "semester": 3
     }
 ]
 
 def seed_bennett_channels_if_needed():
-    """Populate database with Bennett University recommended channels if table empty."""
+    """Populate database with Bennett University recommended channels, ensuring all 3rd sem courses exist."""
     def _do():
         cursor = conn.cursor()
         cursor.execute("""
@@ -438,27 +544,30 @@ def seed_bennett_channels_if_needed():
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
         """)
-        count = cursor.execute("SELECT COUNT(*) FROM youtube_playlist").fetchone()[0]
-        if count == 0:
-            for ch in BENNETT_CHANNELS:
+        for ch in BENNETT_CHANNELS:
+            existing = cursor.execute(
+                "SELECT id FROM youtube_playlist WHERE playlist_url = ? OR (channel_name = ? AND topic = ?)",
+                (ch["playlist_url"], ch["channel_name"], ch["topic"])
+            ).fetchone()
+            if not existing:
                 cursor.execute("""
                     INSERT INTO youtube_playlist (
                         channel_name, instructor, subject, topic, playlist_url,
                         difficulty, university, semester, helpfulness_score,
                         total_ratings, helpful_count, total_videos, avg_duration, best_for
-                    ) VALUES (?, ?, ?, ?, ?, ?, 'Bennett University', 1, ?, ?, ?, ?, ?, ?)
+                    ) VALUES (?, ?, ?, ?, ?, ?, 'Bennett University', ?, ?, ?, ?, ?, ?, ?)
                 """, (
                     ch["channel_name"], ch["instructor"], ch["subject"], ch["topic"], ch["playlist_url"],
-                    ch["difficulty"], ch.get("helpfulness_score", 4.5), ch.get("total_ratings", 20),
-                    ch.get("helpful_count", 19), ch.get("total_videos", 40), ch.get("avg_duration", 20),
+                    ch["difficulty"], ch.get("semester", 3), ch.get("helpfulness_score", 4.8), ch.get("total_ratings", 50),
+                    ch.get("helpful_count", 48), ch.get("total_videos", 40), ch.get("avg_duration", 20),
                     _json.dumps(ch.get("best_for", ["exam prep", "foundation"]))
                 ))
-            for ch in BENNETT_CHANNELS:
+            else:
                 cursor.execute("""
-                    UPDATE youtube_playlist SET playlist_url = ? WHERE channel_name = ? AND topic = ?
-                """, (ch["playlist_url"], ch["channel_name"], ch["topic"]))
-            conn.commit()
-            print(f"[SEED] Seeded & synced {len(BENNETT_CHANNELS)} Bennett University channels.")
+                    UPDATE youtube_playlist SET playlist_url = ?, instructor = ?, subject = ?, topic = ? WHERE id = ?
+                """, (ch["playlist_url"], ch["instructor"], ch["subject"], ch["topic"], existing[0]))
+        conn.commit()
+        print(f"[SEED] Seeded & synced {len(BENNETT_CHANNELS)} Bennett University channels.")
     db_retry(_do)
 
 seed_bennett_channels_if_needed()
@@ -577,6 +686,9 @@ TOPIC_KW = {
     "power systems": ["power factor", "three phase", "transmission line", "load flow", "fault analysis", "generator", "bus admittance"],
     "control systems": ["bode plot", "root locus", "nyquist plot", "transfer function", "pid controller", "state space", "stability"],
     "operating systems": ["operating system", "operating systems", "deadlock", "deadlocks", "scheduling", "semaphore", "semaphores", "paging", "virtual memory", "process management", "banker's algorithm", "concurrency"],
+    "information management system": ["information management system", "information management", "ims", "database management system", "database management", "dbms", "database", "databases", "sql", "normalization", "relational database", "acid properties"],
+    "probability and statistics": ["probability and statistics", "probability & statistics", "statistics and probability", "probability", "statistics", "stats", "p&s", "random variable", "random variables", "bayes theorem", "poisson distribution", "normal distribution", "binomial distribution", "hypothesis testing"],
+    "dsa with c++": ["dsa with c++", "c++ dsa", "cpp dsa", "dsa in c++", "c++ data structures", "dsa in cpp", "dsa cpp", "c++", "cpp"],
     "data structures": ["data structure", "data structures", "dsa", "linked list", "linked lists", "binary tree", "binary trees", "heap", "bst", "sorting", "searching", "graph traversal", "avl tree", "stack", "queue"],
     "dbms": ["database", "databases", "dbms", "sql", "normalization", "transaction", "acid", "join", "indexing", "relational algebra", "b+ tree"],
     "computer networks": ["computer network", "computer networks", "networking", "network", "networks", "tcp", "ip", "http", "dns", "routing", "osi model", "ethernet", "subnet", "congestion control"],
@@ -908,7 +1020,23 @@ TOPIC_TO_FACULTY_MAP = {
     "mechanics": ["mechanics", "statics", "dynamics", "pradeep giri"],
     "thermodynamics": ["thermodynamics", "entropy", "heat", "mechanical"],
     "fluid mechanics": ["fluid", "bernoulli", "mechanical"],
-    "digital electronics": ["digital", "logic gate", "flip flop", "neso academy"]
+    "digital electronics": ["digital", "logic gate", "flip flop", "neso academy"],
+    "information management system": ["information management", "ims", "dbms", "database", "sql", "gate smashers", "knowledge gate", "varun singla", "sanchit jain"],
+    "information management": ["information management", "ims", "dbms", "database", "sql", "gate smashers", "knowledge gate", "varun singla", "sanchit jain"],
+    "ims": ["information management", "ims", "dbms", "database", "sql", "gate smashers", "knowledge gate", "varun singla", "sanchit jain"],
+    "dbms": ["information management", "ims", "dbms", "database", "sql", "gate smashers", "knowledge gate", "varun singla", "sanchit jain"],
+    "database": ["information management", "ims", "dbms", "database", "sql", "gate smashers", "knowledge gate", "varun singla", "sanchit jain"],
+    "probability and statistics": ["probability", "statistics", "stats", "p&s", "gajendra purohit", "tending to infinity", "random variables", "distributions"],
+    "probability": ["probability", "statistics", "stats", "p&s", "gajendra purohit", "tending to infinity"],
+    "statistics": ["probability", "statistics", "stats", "p&s", "gajendra purohit", "tending to infinity"],
+    "stats": ["probability", "statistics", "stats", "p&s", "gajendra purohit", "tending to infinity"],
+    "p&s": ["probability", "statistics", "stats", "p&s", "gajendra purohit", "tending to infinity"],
+    "dsa with c++": ["c++", "cpp", "dsa", "shradha khapra", "apna college", "college wallah", "data structures"],
+    "c++ dsa": ["c++", "cpp", "dsa", "shradha khapra", "apna college", "college wallah", "data structures"],
+    "cpp dsa": ["c++", "cpp", "dsa", "shradha khapra", "apna college", "college wallah", "data structures"],
+    "dsa cpp": ["c++", "cpp", "dsa", "shradha khapra", "apna college", "college wallah", "data structures"],
+    "cpp": ["c++", "cpp", "dsa", "shradha khapra", "apna college", "college wallah", "data structures"],
+    "c++": ["c++", "cpp", "dsa", "shradha khapra", "apna college", "college wallah", "data structures"]
 }
 
 def get_recommended_videos(
@@ -1046,6 +1174,9 @@ def _extract_topic_keywords(query: str) -> str:
         "fluid mechanics": ["bernoulli", "navier stokes", "viscosity", "reynolds number", "venturimeter", "fluid flow", "pipe flow"],
         "operating systems": ["operating system", "deadlock", "scheduling", "semaphore", "paging", "virtual memory", "process management", "banker's algorithm"],
         "data structures": ["data structure", "linked list", "binary tree", "heap", "bst", "sorting", "searching", "graph traversal", "avl tree"],
+        "dsa with c++": ["dsa with c++", "c++ dsa", "cpp dsa", "dsa in c++", "c++ data structures", "dsa cpp", "c++", "cpp"],
+        "information management system": ["information management", "ims", "database management", "dbms", "sql", "relational algebra", "normalization", "acid properties"],
+        "probability and statistics": ["probability and statistics", "probability & statistics", "statistics", "probability", "stats", "p&s", "random variable", "bayes theorem", "poisson distribution", "normal distribution", "binomial distribution", "hypothesis testing"],
         "dbms": ["database", "dbms", "sql", "normalization", "transaction", "acid", "join", "indexing", "relational algebra", "b+ tree"],
         "computer networks": ["network", "tcp", "ip", "http", "dns", "routing", "osi", "ethernet", "subnet", "congestion control"],
         "algorithms": ["algorithm", "complexity", "big o", "dynamic programming", "greedy", "backtracking", "divide and conquer", "dijkstra"],
@@ -1096,7 +1227,12 @@ def _extract_topic_nlp(query: str, last_topic: str = "", recent_queries: list = 
     """Use Groq LLM or keyword fallback to extract main topic, inheriting last_topic if follow-up."""
     q_clean = query.strip().lower()
     
-    # 1. Expanded follow-up tokens & phrases (e.g. 'suggest some video for it', 'bhai video do', 'isko explain karo')
+    # 1. Check explicit keyword dictionary FIRST for instant 100% accurate detection
+    kw_topic = _extract_topic_keywords(query)
+    if kw_topic != "general":
+        return kw_topic
+
+    # 2. Expanded follow-up tokens & phrases (e.g. 'suggest some video for it', 'bhai video do', 'isko explain karo')
     follow_up_tokens = {
         "bhai", "nhi", "nahi", "smj", "samj", "samjh", "smjh", "aaya", "aya",
         "video", "videos", "tutorial", "tutorials", "tutorilas", "some", "again",
@@ -1112,14 +1248,9 @@ def _extract_topic_nlp(query: str, last_topic: str = "", recent_queries: list = 
     has_video_word = any(v in q_clean for v in ["video", "tutorial", "youtube", "lecture", "playlist", "animation"])
     has_frustration_word = any(f in q_clean for f in ["smj", "samj", "nhi", "nahi", "stuck", "confusing", "again", "fir"])
     
-    if (is_mostly_followup or (has_video_word and ("it" in q_clean or "this" in q_clean or len(words) <= 6)) or (has_frustration_word and len(words) <= 6)) and last_topic and last_topic != "general":
+    if (is_mostly_followup or (has_video_word and ("it" in q_clean or "this" in q_clean or len(words) <= 4)) or (has_frustration_word and len(words) <= 4)) and last_topic and last_topic != "general":
         print(f"[NLP TOPIC] Reusing last_topic '{last_topic}' for query: '{query}'")
         return last_topic
-
-    # 2. Check keyword dictionary
-    kw_topic = _extract_topic_keywords(query)
-    if kw_topic != "general":
-        return kw_topic
 
     # 3. Call Groq for zero-shot topic extraction
     try:
