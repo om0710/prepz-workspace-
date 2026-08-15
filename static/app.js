@@ -2600,36 +2600,71 @@ function initializeDocPilotApp() {
         const title = btn.getAttribute("data-title") || btn.dataset.title || "Bennett Verified Lecture";
         const channel = btn.getAttribute("data-channel") || btn.dataset.channel || "Faculty Lecture Series";
         
-        let targetUrl = url;
+        window.openYtPlayerModal(url, title, channel);
+    };
+
+    window.openYtPlayerModal = function(url, title, channel) {
+        const modal = document.getElementById("yt-player-modal");
+        const iframe = document.getElementById("yt-player-iframe");
+        const titleEl = document.getElementById("yt-player-title");
+        const channelEl = document.getElementById("yt-player-channel");
+        const extLink = document.getElementById("yt-player-external-link");
+
+        if (!modal) return;
+
+        if (titleEl) titleEl.textContent = title || "Bennett Verified Lecture";
+        if (channelEl) channelEl.textContent = channel || "Faculty Lecture Series";
+        if (extLink) extLink.href = url || "#";
+
+        let videoId = "3d6DsjIBzJ4";
         try {
             const parsed = new URL(url);
             const listId = parsed.searchParams.get("list");
             const vid = parsed.searchParams.get("v");
             if (listId && KNOWN_PLAYLIST_FIRST_VIDEOS[listId]) {
-                const firstVid = KNOWN_PLAYLIST_FIRST_VIDEOS[listId];
-                targetUrl = `https://www.youtube.com/watch?v=${firstVid}&list=${listId}`;
+                videoId = KNOWN_PLAYLIST_FIRST_VIDEOS[listId];
             } else if (vid) {
-                targetUrl = `https://www.youtube.com/watch?v=${vid}`;
+                videoId = vid;
             }
         } catch (e) {}
 
-        const win = window.open(targetUrl, "_blank", "noopener,noreferrer");
-        if (win) {
-            win.focus();
+        if (iframe) {
+            // Using youtube-nocookie embed with autoplay enabled for true in-app embedded playback
+            iframe.src = `https://www.youtube-nocookie.com/embed/${videoId}?autoplay=1&enablejsapi=1&rel=0`;
+        }
+
+        modal.classList.remove("hidden");
+        modal.style.display = "flex";
+    };
+
+    window.closeYtPlayerModal = function() {
+        const modal = document.getElementById("yt-player-modal");
+        const iframe = document.getElementById("yt-player-iframe");
+        if (iframe) iframe.src = "";
+        if (modal) {
+            modal.classList.add("hidden");
+            modal.style.display = "none";
         }
     };
 
-    window.openYtPlayerModal = function(url, title, channel) {
-        window.playVideoInApp({ getAttribute: () => url, dataset: { url, title, channel } });
-    };
-
-    // Global Click Delegation for In-App Player
+    // Global Click Delegation for In-App Player & Poster Clicks
     document.addEventListener("click", function(e) {
-        const btn = e.target.closest(".btn-watch-inapp, .btn-launch-inapp");
+        const btn = e.target.closest(".btn-watch-inapp, .btn-launch-inapp, .video-poster-box");
         if (btn) {
             e.preventDefault();
             e.stopPropagation();
             window.playVideoInApp(btn);
+        }
+
+        const ytModal = document.getElementById("yt-player-modal");
+        if (ytModal && e.target === ytModal) {
+            window.closeYtPlayerModal();
+        }
+    });
+
+    document.addEventListener("keydown", function(e) {
+        if (e.key === "Escape") {
+            window.closeYtPlayerModal();
         }
     });
 

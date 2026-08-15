@@ -2511,9 +2511,9 @@ button, a[role="button"], input[type="button"], input[type="submit"] {
 .yt-player-card {
     width: 100%;
     max-width: 900px;
-    background: #0f1015;
-    border: 1px solid rgba(239, 68, 68, 0.35);
-    box-shadow: 0 25px 60px -15px rgba(0, 0, 0, 0.9), 0 0 40px rgba(239, 68, 68, 0.18);
+    background: #0e1013;
+    border: 1px solid rgba(255, 107, 0, 0.3);
+    box-shadow: 0 25px 60px -15px rgba(0, 0, 0, 0.9), 0 0 35px rgba(255, 107, 0, 0.15);
     border-radius: 18px;
     overflow: hidden;
     display: flex;
@@ -2529,8 +2529,8 @@ button, a[role="button"], input[type="button"], input[type="submit"] {
     width: 420px !important;
     max-width: 90vw !important;
     z-index: 100000 !important;
-    border-color: #ef4444 !important;
-    box-shadow: 0 15px 40px rgba(0, 0, 0, 0.95), 0 0 25px rgba(239, 68, 68, 0.4) !important;
+    border-color: #ff6b00 !important;
+    box-shadow: 0 15px 40px rgba(0, 0, 0, 0.95), 0 0 25px rgba(255, 107, 0, 0.3) !important;
     border-radius: 14px !important;
 }
 
@@ -2562,7 +2562,7 @@ button, a[role="button"], input[type="button"], input[type="submit"] {
     display: inline-block;
     font-size: 11px;
     font-weight: 700;
-    color: #ef4444;
+    color: #ff6b00;
     text-transform: uppercase;
     letter-spacing: 0.5px;
     margin-bottom: 2px;
@@ -2607,9 +2607,9 @@ button, a[role="button"], input[type="button"], input[type="submit"] {
 }
 
 .btn-yt-external:hover {
-    background: #ef4444;
+    background: #ff6b00;
     color: #ffffff !important;
-    border-color: #ef4444;
+    border-color: #ff851a;
 }
 
 .btn-yt-pip {
