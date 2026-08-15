@@ -2454,6 +2454,11 @@ function initializeDocPilotApp() {
         "PLBlnK6fEyqRitWLDxMrzVQK8813oqG797": "vBURTt97EkA", // NESO Academy OS
         "PLT3bOBUU3L9hADhGPsZjSddwAC3BvJDnl": "3d6DsjIBzJ4", // Pradeep Giri Mechanics
         
+        // Electronics Engineering
+        "PLPIwNooIb9vhiZRRq1fEWXvSLz7VMeqSh": "rttcOFKPphQ", // Perfect Computer Engineer Electronics
+        "PLDN15nk5uLiCSOqr7-rUz6-GtdTAjlvul": "dZyKXdvzSz0", // Tikle's Academy Electronics
+        "PLUuxbQ0j_xJDs0boYXfxAmAkYF-w0hl6P": "3wVlmnpClJs", // Love You Science Electronics
+        
         // 3rd Semester Courses
         "PLxCzCOWd7aiFAN6I8CuViBuCdJgiOkT2Y": "kBdlM6hNDAE", // Gate Smashers Information Management System (DBMS)
         "PLmXKhU9FNesR1rSES7oLdJaNFgmuj0SYV": "BPHAr4QGGVE", // Knowledge Gate Information Management System (DBMS)

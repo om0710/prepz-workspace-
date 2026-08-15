@@ -517,6 +517,51 @@ BENNETT_CHANNELS = [
         "total_ratings": 120,
         "helpful_count": 116,
         "semester": 3
+    },
+    {
+        "channel_name": "Perfect Computer Engineer",
+        "instructor": "Perfect Computer Engineer",
+        "subject": "Basic Electronics Engineering",
+        "topic": "Basic Electronics & Semiconductor Devices",
+        "playlist_url": "https://youtube.com/playlist?list=PLPIwNooIb9vhiZRRq1fEWXvSLz7VMeqSh",
+        "difficulty": "Beginner",
+        "best_for": ["exam prep", "step by step"],
+        "avg_duration": 18,
+        "total_videos": 42,
+        "helpfulness_score": 4.9,
+        "total_ratings": 98,
+        "helpful_count": 96,
+        "semester": 1
+    },
+    {
+        "channel_name": "Tikle's Academy",
+        "instructor": "Tikle's Academy",
+        "subject": "Basic Electronics Engineering",
+        "topic": "BJT, Op-Amps, Transistors & Diodes",
+        "playlist_url": "https://youtube.com/playlist?list=PLDN15nk5uLiCSOqr7-rUz6-GtdTAjlvul",
+        "difficulty": "Intermediate",
+        "best_for": ["numerical problem solving", "exam prep"],
+        "avg_duration": 22,
+        "total_videos": 55,
+        "helpfulness_score": 4.8,
+        "total_ratings": 120,
+        "helpful_count": 116,
+        "semester": 1
+    },
+    {
+        "channel_name": "Love You Science",
+        "instructor": "Love You Science",
+        "subject": "Basic Electronics Engineering",
+        "topic": "Analog & Digital Electronics Concepts",
+        "playlist_url": "https://youtube.com/playlist?list=PLUuxbQ0j_xJDs0boYXfxAmAkYF-w0hl6P",
+        "difficulty": "Beginner",
+        "best_for": ["clear concepts", "visual explanations"],
+        "avg_duration": 20,
+        "total_videos": 48,
+        "helpfulness_score": 4.8,
+        "total_ratings": 85,
+        "helpful_count": 82,
+        "semester": 1
     }
 ]
 
@@ -676,7 +721,7 @@ def calculate_similarity(msg1: str, msg2: str) -> float:
 
 # ── Core Academic Topics Dictionary ──────────────────────────────────────────
 TOPIC_KW = {
-    "electronics": ["basic electronics", "analog electronics", "digital electronics", "electronics", "electronic", "semiconductor", "diode", "bjt", "opamp", "transistor", "fet", "mosfet"],
+    "electronics": ["basic electronics", "analog electronics", "digital electronics", "electronics", "electronic", "semiconductor", "diode", "bjt", "opamp", "transistor", "fet", "mosfet", "ece"],
     "calculus": ["calculus", "differential calculus", "integral calculus", "differentiation", "integration", "derivative", "derivatives", "integral", "integrals", "limit", "limits", "continuity", "maxima", "minima", "taylor series", "maclaurin", "multivariable calculus"],
     "differential equations": ["differential equation", "differential equations", "ode", "pde", "exact differential", "bernoulli equation", "linear differential"],
     "linear algebra": ["eigenvalue", "eigenvalues", "eigenvector", "eigenvectors", "matrix", "matrices", "determinant", "determinants", "rank of matrix", "linear transformation", "vector space"],
@@ -999,9 +1044,10 @@ TOPIC_TO_FACULTY_MAP = {
     "thevenin theorem": ["thevenin", "network", "circuit", "electrical", "kvl", "kcl", "umesh dhande", "engineers ki pathshala", "neso academy"],
     "electrical circuits": ["circuit", "circuits", "electrical", "electronics", "neso academy", "umesh dhande"],
     "electrical machines": ["electrical", "motor", "transformer", "circuits", "neso academy"],
-    "electronics": ["electronics", "circuits", "electrical", "neso academy", "umesh dhande", "engineers ki pathshala"],
-    "basic electronics": ["electronics", "circuits", "electrical", "neso academy", "umesh dhande", "engineers ki pathshala"],
-    "ece": ["electronics", "circuits", "electrical", "neso academy", "umesh dhande", "engineers ki pathshala"],
+    "electronics": ["electronics", "perfect computer engineer", "tikle's academy", "tikle", "love you science", "semiconductor", "diode", "bjt", "transistor", "op-amp", "electronic"],
+    "basic electronics": ["electronics", "perfect computer engineer", "tikle's academy", "tikle", "love you science", "semiconductor", "diode", "bjt", "transistor", "op-amp", "electronic"],
+    "analog electronics": ["electronics", "perfect computer engineer", "tikle's academy", "tikle", "love you science", "semiconductor", "diode", "bjt", "transistor", "op-amp", "electronic"],
+    "ece": ["electronics", "perfect computer engineer", "tikle's academy", "tikle", "love you science", "semiconductor", "diode", "bjt", "transistor", "op-amp", "electronic"],
     "calculus": ["calculus", "math", "differentiation", "integration", "derivative", "differential", "gajendra purohit", "vishwakarma"],
     "math": ["calculus", "math", "differentiation", "integration", "derivative", "differential", "gajendra purohit", "vishwakarma"],
     "maths": ["calculus", "math", "differentiation", "integration", "derivative", "differential", "gajendra purohit", "vishwakarma"],
