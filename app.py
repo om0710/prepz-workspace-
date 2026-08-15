@@ -512,7 +512,7 @@ async def chat_stream(request: ChatRequest):
                     topic=detected_topic,
                     difficulty_level=intent_result.get("video_difficulty", "Beginner"),
                     mode="exam",
-                    limit=3
+                    limit=4
                 )
                 strength = intent_result.get("recommendation_strength", "medium")
                 if strength == "urgent":
@@ -614,11 +614,11 @@ async def exam_chat_api(request: ApiChatRequest):
         recommendation_message = ""
         if intent_analysis["should_recommend_videos"]:
             recommended_videos = get_recommended_videos(
-                subject=request.subject or "Introduction to Electrical & Electronics",
+                subject=request.subject or "Basic Electrical & Electronics Engineering",
                 topic=topic,
                 difficulty_level=intent_analysis["video_difficulty"],
                 mode=request.mode or "exam",
-                limit=3
+                limit=4
             )
             strength = intent_analysis["recommendation_strength"]
             if strength == "urgent":

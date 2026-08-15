@@ -712,7 +712,7 @@ def calculate_similarity(msg1: str, msg2: str) -> float:
 
 # ── Core Academic Topics Dictionary ──────────────────────────────────────────
 TOPIC_KW = {
-    "electronics": ["basic electronics", "basic electrical", "analog electronics", "digital electronics", "electrical engineering", "electronics engineering", "electrical and electronics", "electrical & electronics", "electricals", "electrical", "electronics", "electronic", "bee", "beee", "ece", "semiconductor", "diode", "bjt", "opamp", "transistor", "fet", "mosfet"],
+    "electronics": ["basic electronics", "basic electrical", "analog electronics", "digital electronics", "electrical engineering", "electronics engineering", "electrical and electronics", "electrical & electronics", "electricals", "electrical", "electronics", "electronic", "elctronics", "electonics", "electornics", "electircal", "elec", "bee", "beee", "ece", "semiconductor", "diode", "bjt", "opamp", "transistor", "fet", "mosfet"],
     "calculus": ["calculus", "differential calculus", "integral calculus", "differentiation", "integration", "derivative", "derivatives", "integral", "integrals", "limit", "limits", "continuity", "maxima", "minima", "taylor series", "maclaurin", "multivariable calculus"],
     "differential equations": ["differential equation", "differential equations", "ode", "pde", "exact differential", "bernoulli equation", "linear differential"],
     "linear algebra": ["eigenvalue", "eigenvalues", "eigenvector", "eigenvectors", "matrix", "matrices", "determinant", "determinants", "rank of matrix", "linear transformation", "vector space"],
@@ -1082,7 +1082,7 @@ def get_recommended_videos(
     topic: str = "",
     difficulty_level: str = "Beginner",
     mode: str = "exam",
-    limit: int = 3
+    limit: int = 4
 ) -> list:
     """Get best verified YouTube playlists tailored directly to the student's exact topic."""
     def _do():
@@ -1203,7 +1203,7 @@ def get_next_action_message(recommendation_strength: str, attempt_number: int) -
 def _extract_topic_keywords(query: str) -> str:
     """Keyword-based academic topic extraction."""
     TOPIC_KW = {
-        "electronics": ["basic electronics", "basic electrical", "analog electronics", "digital electronics", "electrical engineering", "electronics engineering", "electrical and electronics", "electrical & electronics", "electricals", "electrical", "electronics", "electronic", "bee", "beee", "ece", "semiconductor", "diode", "bjt", "opamp", "transistor", "fet", "mosfet"],
+        "electronics": ["basic electronics", "basic electrical", "analog electronics", "digital electronics", "electrical engineering", "electronics engineering", "electrical and electronics", "electrical & electronics", "electricals", "electrical", "electronics", "electronic", "elctronics", "electonics", "electornics", "electircal", "elec", "bee", "beee", "ece", "semiconductor", "diode", "bjt", "opamp", "transistor", "fet", "mosfet"],
         "thevenin theorem": ["thevenin", "thevenin's", "norton", "kvl", "kcl", "maximum power transfer", "superposition theorem", "reciprocity"],
         "electrical circuits": ["circuit", "dependent source", "phasor", "impedance", "mesh analysis", "nodal analysis", "rlc circuit", "ac circuit", "kirchhoff"],
         "electrical machines": ["induction motor", "transformer", "rotating magnetic field", "rmf", "synchronous motor", "dc motor", "stator", "rotor", "armature", "torque slip"],

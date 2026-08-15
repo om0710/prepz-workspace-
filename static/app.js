@@ -2466,6 +2466,39 @@ function initializeDocPilotApp() {
         "PLxgZQoSe9cg0df_GxVjz3DD_Gck5tMXAd": "bL-o2xBENY0"  // College Wallah C++ and DSA Foundation
     };
 
+    function resolveYouTubeVideoId(url, channelName) {
+        try {
+            if (url) {
+                const parsed = new URL(url);
+                const listId = parsed.searchParams.get("list");
+                const vid = parsed.searchParams.get("v");
+                if (listId && KNOWN_PLAYLIST_FIRST_VIDEOS[listId]) {
+                    return KNOWN_PLAYLIST_FIRST_VIDEOS[listId];
+                }
+                if (vid && vid.length === 11) {
+                    return vid;
+                }
+            }
+        } catch (e) {}
+
+        const ch = (channelName || "").toLowerCase();
+        if (ch.includes("neso")) return "NEhH6C7Fzw4";
+        if (ch.includes("perfect computer")) return "rttcOFKPphQ";
+        if (ch.includes("tikle")) return "dZyKXdvzSz0";
+        if (ch.includes("engineers ki pathshala") || ch.includes("umesh dhande")) return "Vd2UJiIPbag";
+        if (ch.includes("gate smashers")) return "kBdlM6hNDAE";
+        if (ch.includes("knowledge gate")) return "BPHAr4QGGVE";
+        if (ch.includes("gajendra purohit") || ch.includes("purohit")) return "qNGDD_Rh8ps";
+        if (ch.includes("tending to infinity")) return "ze-ozGVF1j4";
+        if (ch.includes("apna college") || ch.includes("shradha")) return "z9bZufPHFLU";
+        if (ch.includes("college wallah")) return "bL-o2xBENY0";
+        if (ch.includes("harry")) return "7wnove7K-ZQ";
+        if (ch.includes("abdul bari")) return "0IAPZzGSbME";
+        if (ch.includes("vishwakarma")) return "BOlT6bM0jKU";
+
+        return "rttcOFKPphQ";
+    }
+
     function renderVideoRecommendation(rec, afterBubble) {
         if (!rec || !rec.videos || rec.videos.length === 0) return;
 
@@ -2501,7 +2534,6 @@ function initializeDocPilotApp() {
 
         const videosHtml = (rec.videos || []).map((v, i) => {
             const helpfulPct = v.helpful_percentage || (v.total_ratings > 0 ? Math.round(v.helpful_count / v.total_ratings * 100) : 92);
-            const totalVids = v.total_videos || 24;
             const avgDur = v.avg_duration || 20;
             const ratingScore = v.rating || 4.8;
             const totalR = v.total_ratings || 18;
@@ -2509,17 +2541,7 @@ function initializeDocPilotApp() {
             const instructorName = v.instructor ? `<p class="instructor"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display:inline;vertical-align:middle;margin-right:4px;"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>${v.instructor}</p>` : "";
             const playlistUrl = v.playlist_url || v.url || `https://www.youtube.com/results?search_query=${encodeURIComponent(topicLabel + ' Bennett University')}`;
 
-            let videoId = "3d6DsjIBzJ4";
-            try {
-                const parsed = new URL(playlistUrl);
-                const listId = parsed.searchParams.get("list");
-                const vid = parsed.searchParams.get("v");
-                if (listId && KNOWN_PLAYLIST_FIRST_VIDEOS[listId]) {
-                    videoId = KNOWN_PLAYLIST_FIRST_VIDEOS[listId];
-                } else if (vid) {
-                    videoId = vid;
-                }
-            } catch (e) {}
+            const videoId = resolveYouTubeVideoId(playlistUrl, channelName);
             const thumbUrl = `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`;
 
             return `
@@ -2544,20 +2566,20 @@ function initializeDocPilotApp() {
                         <span class="helpful">✅ ${helpfulPct}% helpful</span>
                     </div>
 
-                    <div class="video-actions-row">
-                        <button type="button" class="btn-watch-inapp btn-launch-inapp" onclick="window.playVideoInApp(this, '${v.id || i}')" data-url="${playlistUrl}" data-title="${(v.topic || topicLabel)}" data-channel="${channelName}">
-                            <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
+                    <div class="video-actions">
+                        <button type="button" class="btn-watch-inapp" onclick="window.playVideoInApp(this, '${v.id || i}')" data-url="${playlistUrl}" data-title="${(v.topic || topicLabel)}" data-channel="${channelName}">
+                            <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
                             <span>In-App Player</span>
                         </button>
                         <a href="${playlistUrl}" target="_blank" rel="noopener noreferrer" class="btn-watch-yt">
-                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
                             <span>YouTube ↗</span>
                         </a>
                     </div>
-                    
-                    <div class="rate-buttons" id="rate-btns-${v.id || i}">
-                        <button onclick="window.rateVideo(${v.id || i + 1}, 5, true, 'rate-btns-${v.id || i}')" class="btn-helpful">👍 Helpful</button>
-                        <button onclick="window.rateVideo(${v.id || i + 1}, 2, false, 'rate-btns-${v.id || i}')" class="btn-not-helpful">👎 Not helpful</button>
+
+                    <div class="video-feedback" id="feedback-${v.id || i}">
+                        <button onclick="ratePlaylist(${v.id || 0}, 5, true, this)" class="btn-helpful">👍 Helpful</button>
+                        <button onclick="ratePlaylist(${v.id || 0}, 2, false, this)" class="btn-not-helpful">👎 Not helpful</button>
                     </div>
                 </div>
             `;
@@ -2565,28 +2587,28 @@ function initializeDocPilotApp() {
 
         const nextActionHtml = rec.next_action ? `
             <div class="next-action">
-                <p><strong>${rec.next_action}</strong></p>
+                <span class="action-text">${rec.next_action}</span>
             </div>
         ` : "";
 
         const card = document.createElement("div");
-        card.className = `video-recommendations ${rec.strength || 'urgent'}`;
+        card.className = `video-recommendations ${cfg.cls}`;
         card.innerHTML = `
-            ${intentInfo}
-            <div class="rec-header">
-                <span class="rec-header-icon">${cfg.icon}</span>
-                <span class="rec-header-label">${rec.recommendation_message || cfg.label}</span>
+            <div class="video-rec-header">
+                <span class="rec-icon">${cfg.icon}</span>
+                <span class="rec-title">${rec.recommendation_message || cfg.label}</span>
             </div>
-            <div class="videos-grid">${videosHtml}</div>
+            ${intentInfo}
+            <div class="video-cards-scroll">
+                ${videosHtml}
+            </div>
             ${nextActionHtml}
         `;
 
-        console.log("[PREPZ VIDEO REC RENDERED]", rec);
-        const bubbleCard = (afterBubble && afterBubble.closest) ? afterBubble.closest(".msg-bubble-card") : null;
-        const msgItem = (afterBubble && afterBubble.closest) ? afterBubble.closest(".chat-message-item") : (afterBubble ? afterBubble.parentElement : null);
         const chatContainer = document.getElementById("chat-messages");
+        const msgItem = (afterBubble && afterBubble.closest) ? afterBubble.closest(".chat-message-item") : (chatContainer ? chatContainer.lastElementChild : null);
+        const bubbleCard = msgItem ? msgItem.querySelector(".msg-bubble-card") : null;
 
-        // Remove any old card inside this bubble or adjacent
         if (bubbleCard) {
             const old = bubbleCard.querySelector(".video-recommendations");
             if (old) old.remove();
@@ -2596,8 +2618,6 @@ function initializeDocPilotApp() {
                 msgItem.nextElementSibling.remove();
             }
             msgItem.parentElement.insertBefore(card, msgItem.nextSibling);
-        } else if (chatContainer) {
-            chatContainer.appendChild(card);
         }
 
         setTimeout(() => {
@@ -2628,17 +2648,7 @@ function initializeDocPilotApp() {
         if (channelEl) channelEl.textContent = channel || "Faculty Lecture Series";
         if (extLink) extLink.href = url || "#";
 
-        let videoId = "3d6DsjIBzJ4";
-        try {
-            const parsed = new URL(url);
-            const listId = parsed.searchParams.get("list");
-            const vid = parsed.searchParams.get("v");
-            if (listId && KNOWN_PLAYLIST_FIRST_VIDEOS[listId]) {
-                videoId = KNOWN_PLAYLIST_FIRST_VIDEOS[listId];
-            } else if (vid) {
-                videoId = vid;
-            }
-        } catch (e) {}
+        const videoId = resolveYouTubeVideoId(url, channel);
 
         if (iframe) {
             // Using youtube-nocookie embed with autoplay enabled for true in-app embedded playback
