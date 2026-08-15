@@ -2460,8 +2460,9 @@ function initializeDocPilotApp() {
         "PLxCzCOWd7aiFAN6I8CuViBuCdJgiOkT2Y": "kBdlM6hNDAE", // Gate Smashers Information Management System (DBMS)
         "PLBlnK6fEyqRiyryTrbKHX1Sh9luYI0dhX": "OMwgGL3lHlI", // NESO Academy DBMS / Information Management
         "PLU6SqdYcYsfJPF-4HphQQ8OceDtqhlSW8": "qNGDD_Rh8ps", // Gajendra Purohit Probability & Statistics 2.0
-        "PLU6SqdYcYsfLRq3tu-g_hvkHDcorrtcBK": "V3iEsLPAD68", // Gajendra Purohit Statistics & Probability
         "PLn3Wz38keZOeMt_qcBF6jkv3kKfyBuuTr": "ze-ozGVF1j4", // Tending to Infinity Probability & Statistics
+        "PLhLZ_zxDsyOIKbQfKFM05BLYRhUZ7JP-M": "uo34ZM030xQ", // Algorithm Unlocked Probability & Statistics
+        "PLT3bOBUU3L9jex8hXzVAszMS8NOILa7IV": "Y0_260pKtkA", // Pradeep Giri Academy Probability & Statistics
         "PLfqMhTWNBTe137I_EPQd34TsgV6IO55pt": "z9bZufPHFLU", // Apna College Shradha Khapra C++ DSA
         "PLxgZQoSe9cg0df_GxVjz3DD_Gck5tMXAd": "bL-o2xBENY0"  // College Wallah C++ and DSA Foundation
     };
@@ -2491,8 +2492,13 @@ function initializeDocPilotApp() {
         if (ch.includes("tikle")) return "dZyKXdvzSz0";
         if (ch.includes("engineers ki pathshala") || ch.includes("umesh dhande")) return "Vd2UJiIPbag";
         if (ch.includes("gate smashers")) return "kBdlM6hNDAE";
+        if (ch.includes("algorithm unlocked")) return "uo34ZM030xQ";
         if (ch.includes("gajendra purohit") || ch.includes("purohit")) return "qNGDD_Rh8ps";
         if (ch.includes("tending to infinity")) return "ze-ozGVF1j4";
+        if (ch.includes("pradeep giri")) {
+            if (u.includes("jex8hxzv") || u.includes("noila7iv") || u.includes("probab") || u.includes("stat")) return "Y0_260pKtkA";
+            return "3d6DsjIBzJ4";
+        }
         if (ch.includes("apna college") || ch.includes("shradha")) return "z9bZufPHFLU";
         if (ch.includes("college wallah")) return "bL-o2xBENY0";
         if (ch.includes("harry")) return "7wnove7K-ZQ";

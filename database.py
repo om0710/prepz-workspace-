@@ -461,21 +461,6 @@ BENNETT_CHANNELS = [
         "semester": 3
     },
     {
-        "channel_name": "Gajendra Purohit",
-        "instructor": "Dr. Gajendra Purohit",
-        "subject": "Probability and Statistics",
-        "topic": "Engineering Statistics & Distributions",
-        "playlist_url": "https://youtube.com/playlist?list=PLU6SqdYcYsfLRq3tu-g_hvkHDcorrtcBK",
-        "difficulty": "Intermediate",
-        "best_for": ["deep learning", "exam prep"],
-        "avg_duration": 24,
-        "total_videos": 42,
-        "helpfulness_score": 4.8,
-        "total_ratings": 95,
-        "helpful_count": 92,
-        "semester": 3
-    },
-    {
         "channel_name": "Tending to Infinity",
         "instructor": "Shaurya / Prashant",
         "subject": "Probability and Statistics",
@@ -488,6 +473,36 @@ BENNETT_CHANNELS = [
         "helpfulness_score": 4.8,
         "total_ratings": 85,
         "helpful_count": 82,
+        "semester": 3
+    },
+    {
+        "channel_name": "Algorithm Unlocked",
+        "instructor": "Algorithm Unlocked",
+        "subject": "Probability and Statistics",
+        "topic": "Probability Distributions, Bayes Theorem & Sampling",
+        "playlist_url": "https://youtube.com/playlist?list=PLhLZ_zxDsyOIKbQfKFM05BLYRhUZ7JP-M",
+        "difficulty": "Beginner",
+        "best_for": ["exam prep", "concept clarity", "numericals"],
+        "avg_duration": 20,
+        "total_videos": 35,
+        "helpfulness_score": 4.9,
+        "total_ratings": 115,
+        "helpful_count": 112,
+        "semester": 3
+    },
+    {
+        "channel_name": "Pradeep Giri Academy",
+        "instructor": "Pradeep Giri Academy",
+        "subject": "Probability and Statistics",
+        "topic": "Engineering Mathematics: Probability & Statistics",
+        "playlist_url": "https://youtube.com/playlist?list=PLT3bOBUU3L9jex8hXzVAszMS8NOILa7IV",
+        "difficulty": "Intermediate",
+        "best_for": ["step by step", "exam prep", "engineering math"],
+        "avg_duration": 25,
+        "total_videos": 40,
+        "helpfulness_score": 4.8,
+        "total_ratings": 95,
+        "helpful_count": 92,
         "semester": 3
     },
     {
@@ -580,6 +595,7 @@ def seed_bennett_channels_if_needed():
         cursor.execute("DELETE FROM youtube_playlist WHERE playlist_url LIKE '%PLBlnK6fEyqRhqJPDXcvYlLfXPh37L89g3%'")
         cursor.execute("DELETE FROM youtube_playlist WHERE channel_name = 'Love You Science'")
         cursor.execute("DELETE FROM youtube_playlist WHERE channel_name = 'Knowledge Gate' OR playlist_url LIKE '%PLmXKhU9FNesR1rSES7oLdJaNFgmuj0SYV%'")
+        cursor.execute("DELETE FROM youtube_playlist WHERE playlist_url LIKE '%PLU6SqdYcYsfLRq3tu-g_hvkHDcorrtcBK%'")
         
         for ch in BENNETT_CHANNELS:
             existing = cursor.execute(
@@ -1065,11 +1081,11 @@ TOPIC_TO_FACULTY_MAP = {
     "ims": ["information management", "ims", "dbms", "database", "sql", "gate smashers", "neso academy", "varun singla"],
     "dbms": ["information management", "ims", "dbms", "database", "sql", "gate smashers", "neso academy", "varun singla"],
     "database": ["information management", "ims", "dbms", "database", "sql", "gate smashers", "neso academy", "varun singla"],
-    "probability and statistics": ["probability", "statistics", "stats", "p&s", "gajendra purohit", "tending to infinity", "random variables", "distributions"],
-    "probability": ["probability", "statistics", "stats", "p&s", "gajendra purohit", "tending to infinity"],
-    "statistics": ["probability", "statistics", "stats", "p&s", "gajendra purohit", "tending to infinity"],
-    "stats": ["probability", "statistics", "stats", "p&s", "gajendra purohit", "tending to infinity"],
-    "p&s": ["probability", "statistics", "stats", "p&s", "gajendra purohit", "tending to infinity"],
+    "probability and statistics": ["probability", "statistics", "stats", "p&s", "gajendra purohit", "tending to infinity", "algorithm unlocked", "pradeep giri", "random variables", "distributions"],
+    "probability": ["probability", "statistics", "stats", "p&s", "gajendra purohit", "tending to infinity", "algorithm unlocked", "pradeep giri"],
+    "statistics": ["probability", "statistics", "stats", "p&s", "gajendra purohit", "tending to infinity", "algorithm unlocked", "pradeep giri"],
+    "stats": ["probability", "statistics", "stats", "p&s", "gajendra purohit", "tending to infinity", "algorithm unlocked", "pradeep giri"],
+    "p&s": ["probability", "statistics", "stats", "p&s", "gajendra purohit", "tending to infinity", "algorithm unlocked", "pradeep giri"],
     "dsa with c++": ["c++", "cpp", "dsa", "shradha khapra", "apna college", "college wallah", "data structures"],
     "c++ dsa": ["c++", "cpp", "dsa", "shradha khapra", "apna college", "college wallah", "data structures"],
     "cpp dsa": ["c++", "cpp", "dsa", "shradha khapra", "apna college", "college wallah", "data structures"],
