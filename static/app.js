@@ -2466,7 +2466,8 @@ function initializeDocPilotApp() {
         "PLhLZ_zxDsyOIKbQfKFM05BLYRhUZ7JP-M": "uo34ZM030xQ", // Algorithm Unlocked Probability & Statistics
         "PLT3bOBUU3L9jex8hXzVAszMS8NOILa7IV": "Y0_260pKtkA", // Pradeep Giri Academy Probability & Statistics
         "PLfqMhTWNBTe137I_EPQd34TsgV6IO55pt": "z9bZufPHFLU", // Apna College Shradha Khapra C++ DSA
-        "PLxgZQoSe9cg0df_GxVjz3DD_Gck5tMXAd": "bL-o2xBENY0"  // College Wallah C++ and DSA Foundation
+        "PLxgZQoSe9cg0df_GxVjz3DD_Gck5tMXAd": "bL-o2xBENY0", // College Wallah C++ and DSA Foundation
+        "PLdo5W4Nhv31bbKJzrsKfMpo_grxuLl8LU": "AT14lCXuMKI"  // Jenny's Lectures CS IT DSA Course
     };
 
     function resolveYouTubeVideoId(url, channelName) {
@@ -2508,6 +2509,7 @@ function initializeDocPilotApp() {
             if (u.includes("3yqwge") || u.includes("calculus") || u.includes("math")) return "bQ_B9cHBYfQ";
             return "3d6DsjIBzJ4";
         }
+        if (ch.includes("jenny")) return "AT14lCXuMKI";
         if (ch.includes("apna college") || ch.includes("shradha")) return "z9bZufPHFLU";
         if (ch.includes("college wallah")) return "bL-o2xBENY0";
         if (ch.includes("harry")) return "7wnove7K-ZQ";

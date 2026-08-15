@@ -568,6 +568,21 @@ BENNETT_CHANNELS = [
         "semester": 3
     },
     {
+        "channel_name": "Jenny's Lectures CS IT",
+        "instructor": "Jenny",
+        "subject": "Data Structures & Algorithms in C++",
+        "topic": "Data Structures & Algorithms Complete Placement Course",
+        "playlist_url": "https://youtube.com/playlist?list=PLdo5W4Nhv31bbKJzrsKfMpo_grxuLl8LU",
+        "difficulty": "Beginner",
+        "best_for": ["foundation", "visual explanations", "exam prep"],
+        "avg_duration": 25,
+        "total_videos": 90,
+        "helpfulness_score": 4.9,
+        "total_ratings": 185,
+        "helpful_count": 181,
+        "semester": 3
+    },
+    {
         "channel_name": "Perfect Computer Engineer",
         "instructor": "Perfect Computer Engineer",
         "subject": "Basic Electrical & Electronics Engineering",
@@ -1100,9 +1115,9 @@ TOPIC_TO_FACULTY_MAP = {
     "python programming": ["python", "programming", "code with harry", "apna college", "shradha khapra"],
     "python": ["python", "programming", "code with harry", "apna college", "shradha khapra"],
     "coding": ["python", "programming", "code with harry", "apna college", "shradha khapra", "abdul bari"],
-    "data structures": ["data structure", "dsa", "abdul bari", "tree", "graph", "algorithm", "apna college"],
-    "dsa": ["data structure", "dsa", "abdul bari", "tree", "graph", "algorithm", "apna college"],
-    "algorithms": ["algorithm", "algorithms", "abdul bari", "dynamic programming", "dsa"],
+    "data structures": ["data structure", "dsa", "abdul bari", "tree", "graph", "algorithm", "apna college", "shradha khapra", "jenny's lectures", "jenny", "college wallah"],
+    "dsa": ["data structure", "dsa", "abdul bari", "tree", "graph", "algorithm", "apna college", "shradha khapra", "jenny's lectures", "jenny", "college wallah"],
+    "algorithms": ["algorithm", "algorithms", "abdul bari", "dynamic programming", "dsa", "jenny's lectures", "jenny"],
     "engineering mechanics": ["mechanics", "statics", "dynamics", "pradeep giri"],
     "mechanics": ["mechanics", "statics", "dynamics", "pradeep giri"],
     "thermodynamics": ["thermodynamics", "entropy", "heat", "mechanical"],
@@ -1118,12 +1133,12 @@ TOPIC_TO_FACULTY_MAP = {
     "statistics": ["probability", "statistics", "stats", "p&s", "gajendra purohit", "tending to infinity", "algorithm unlocked", "pradeep giri"],
     "stats": ["probability", "statistics", "stats", "p&s", "gajendra purohit", "tending to infinity", "algorithm unlocked", "pradeep giri"],
     "p&s": ["probability", "statistics", "stats", "p&s", "gajendra purohit", "tending to infinity", "algorithm unlocked", "pradeep giri"],
-    "dsa with c++": ["c++", "cpp", "dsa", "shradha khapra", "apna college", "college wallah", "data structures"],
-    "c++ dsa": ["c++", "cpp", "dsa", "shradha khapra", "apna college", "college wallah", "data structures"],
-    "cpp dsa": ["c++", "cpp", "dsa", "shradha khapra", "apna college", "college wallah", "data structures"],
-    "dsa cpp": ["c++", "cpp", "dsa", "shradha khapra", "apna college", "college wallah", "data structures"],
-    "cpp": ["c++", "cpp", "dsa", "shradha khapra", "apna college", "college wallah", "data structures"],
-    "c++": ["c++", "cpp", "dsa", "shradha khapra", "apna college", "college wallah", "data structures"]
+    "dsa with c++": ["c++", "cpp", "dsa", "shradha khapra", "apna college", "college wallah", "jenny's lectures", "jenny", "abdul bari", "data structures"],
+    "c++ dsa": ["c++", "cpp", "dsa", "shradha khapra", "apna college", "college wallah", "jenny's lectures", "jenny", "abdul bari", "data structures"],
+    "cpp dsa": ["c++", "cpp", "dsa", "shradha khapra", "apna college", "college wallah", "jenny's lectures", "jenny", "abdul bari", "data structures"],
+    "dsa cpp": ["c++", "cpp", "dsa", "shradha khapra", "apna college", "college wallah", "jenny's lectures", "jenny", "abdul bari", "data structures"],
+    "cpp": ["c++", "cpp", "dsa", "shradha khapra", "apna college", "college wallah", "jenny's lectures", "jenny", "abdul bari", "data structures"],
+    "c++": ["c++", "cpp", "dsa", "shradha khapra", "apna college", "college wallah", "jenny's lectures", "jenny", "abdul bari", "data structures"]
 }
 
 def get_recommended_videos(
