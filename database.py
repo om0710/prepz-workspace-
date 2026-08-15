@@ -1057,12 +1057,12 @@ TOPIC_TO_FACULTY_MAP = {
     "basic electronics": ["electrical", "electronics", "thevenin", "umesh dhande", "engineers ki pathshala", "perfect computer engineer", "tikle's academy", "tikle", "neso academy"],
     "analog electronics": ["electrical", "electronics", "thevenin", "umesh dhande", "engineers ki pathshala", "perfect computer engineer", "tikle's academy", "tikle", "neso academy"],
     "ece": ["electrical", "electronics", "thevenin", "umesh dhande", "engineers ki pathshala", "perfect computer engineer", "tikle's academy", "tikle", "neso academy"],
-    "calculus": ["calculus", "math", "differentiation", "integration", "derivative", "differential", "gajendra purohit", "vishwakarma"],
-    "math": ["calculus", "math", "differentiation", "integration", "derivative", "differential", "gajendra purohit", "vishwakarma"],
-    "maths": ["calculus", "math", "differentiation", "integration", "derivative", "differential", "gajendra purohit", "vishwakarma"],
-    "mathematics": ["calculus", "math", "differentiation", "integration", "derivative", "differential", "gajendra purohit", "vishwakarma"],
-    "differential equations": ["calculus", "math", "differential equations", "vishwakarma", "gajendra purohit"],
-    "linear algebra": ["calculus", "math", "linear algebra", "matrices", "gajendra purohit"],
+    "calculus": ["calculus", "differential calculus", "integral calculus", "differentiation", "integration", "derivative", "derivatives", "integral", "integrals", "limit", "limits", "taylor", "vishwakarma"],
+    "math": ["calculus", "differentiation", "integration", "derivative", "differential", "vishwakarma"],
+    "maths": ["calculus", "differentiation", "integration", "derivative", "differential", "vishwakarma"],
+    "mathematics": ["calculus", "differentiation", "integration", "derivative", "differential", "vishwakarma"],
+    "differential equations": ["differential equations", "ode", "pde", "vishwakarma"],
+    "linear algebra": ["linear algebra", "matrices", "matrix", "eigenvalue"],
     "operating systems": ["operating", "os", "deadlock", "semaphore", "process", "gate smashers", "varun singla", "neso academy"],
     "os": ["operating", "os", "deadlock", "semaphore", "process", "gate smashers", "varun singla", "neso academy"],
     "python programming": ["python", "programming", "code with harry", "apna college", "shradha khapra"],
@@ -1125,15 +1125,39 @@ def get_recommended_videos(
             # Direct keyword hits
             for kw in keywords:
                 if kw in text:
-                    match_score += 15
+                    if kw in ["gajendra purohit", "pradeep giri", "neso academy", "apna college", "shradha khapra", "umesh dhande"]:
+                        match_score += 10
+                    else:
+                        match_score += 25
+            
             # Direct topic match
             if topic_clean and topic_clean in text:
-                match_score += 30
+                match_score += 40
+            
+            # Subject domain affinity
+            if "calculus" in topic_clean and "calculus" in subj.lower():
+                match_score += 60
+            elif "probability" in topic_clean and ("probability" in subj.lower() or "statistics" in subj.lower()):
+                match_score += 60
+            elif "electronics" in topic_clean and ("electrical" in subj.lower() or "electronics" in subj.lower()):
+                match_score += 60
+            elif "information management" in topic_clean and ("information" in subj.lower() or "dbms" in subj.lower()):
+                match_score += 60
+            elif "operating system" in topic_clean and "operating" in subj.lower():
+                match_score += 60
+            elif "python" in topic_clean and "python" in subj.lower():
+                match_score += 60
+            elif "c++" in topic_clean and "c++" in subj.lower():
+                match_score += 60
+            elif "mechanics" in topic_clean and "mechanics" in subj.lower():
+                match_score += 60
+
             # Exact subject match if provided
             if subject and subject.lower() in subj.lower():
-                match_score += 10
+                match_score += 20
 
-            if match_score > 0:
+            # Cutoff: must have strong topic/domain match (>= 35)
+            if match_score >= 35:
                 scored.append((match_score, {
                     "id": p_id,
                     "channel": ch,
