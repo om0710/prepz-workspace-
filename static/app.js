@@ -2444,24 +2444,24 @@ function initializeDocPilotApp() {
     const KNOWN_PLAYLIST_FIRST_VIDEOS = {
         // 1st & 2nd Semester Courses
         "PLU6SqdYcYsfIJRl8mo2Rv1MpdvmVD0YyI": "3d6DsjIBzJ4", // Gajendra Purohit Calculus
-        "PLdM-WZokR4tbCBA4mkvfk2vOH12eRPT2Y": "eY3jUf2F23E", // Vishwakarma Advanced Calculus
-        "PL9RcWoqXmzaLTYUdnzKhF4bYug3GjGcEc": "xIu1g8hW2qY", // Umesh Dhande Network Theorems
-        "PLBlnK6fEyqRhqJPDXcvYlLfXPh37L89g3": "1xWS7g1ZUPg", // NESO Academy Electrical Basics
+        "PLdM-WZokR4tbCBA4mkvfk2vOH12eRPT2Y": "BOlT6bM0jKU", // Vishwakarma Advanced Calculus
+        "PL9RcWoqXmzaLTYUdnzKhF4bYug3GjGcEc": "Vd2UJiIPbag", // Umesh Dhande Network Theorems
+        "PLBlnK6fEyqRhqJPDXcvYlLfXPh37L89g3": "p2b2Vb-cYCs", // NESO Academy Electrical Basics
         "PLGjplNEQ1it8-0CmoljS5yeV-GlKSUEt0": "ERCMXc8x7mc", // Apna College Python
         "PLu0W_9lII9agwh1XjRt242xIpHhPT2llg": "7wnove7K-ZQ", // Code With Harry Python
         "PLDN4rrl48XKpZkf03iYFl-O29szjTrs_O": "0IAPZzGSbME", // Abdul Bari DSA
         "PLxCzCOWd7aiGz9donHRrE9I3Mwn6XdP8p": "bkSWJJZNgf8", // Gate Smashers OS
-        "PLBlnK6fEyqRitWLDxMrzVQK8813oqG797": "2h3eWaEx88s", // NESO Academy OS
-        "PLT3bOBUU3L9hADhGPsZjSddwAC3BvJDnl": "x8K1N_404X8", // Pradeep Giri Mechanics
+        "PLBlnK6fEyqRitWLDxMrzVQK8813oqG797": "vBURTt97EkA", // NESO Academy OS
+        "PLT3bOBUU3L9hADhGPsZjSddwAC3BvJDnl": "3d6DsjIBzJ4", // Pradeep Giri Mechanics
         
         // 3rd Semester Courses
-        "PLxCzCOWd7aiFAN6I8CuViBuCdJgiOkT2Y": "kBdlM4ZdtGs", // Gate Smashers Information Management System (DBMS)
+        "PLxCzCOWd7aiFAN6I8CuViBuCdJgiOkT2Y": "kBdlM6hNDAE", // Gate Smashers Information Management System (DBMS)
         "PLmXKhU9FNesR1rSES7oLdJaNFgmuj0SYV": "BPHAr4QGGVE", // Knowledge Gate Information Management System (DBMS)
-        "PLU6SqdYcYsfJPF-4HphQQ8OceDtqhlSW8": "04Qf348D2iA", // Gajendra Purohit Probability & Statistics 2.0
-        "PLU6SqdYcYsfLRq3tu-g_hvkHDcorrtcBK": "Z73J4Y0GZkM", // Gajendra Purohit Statistics & Probability
-        "PLn3Wz38keZOeMt_qcBF6jkv3kKfyBuuTr": "Ea9L9lH2v9o", // Tending to Infinity Probability & Statistics
+        "PLU6SqdYcYsfJPF-4HphQQ8OceDtqhlSW8": "qNGDD_Rh8ps", // Gajendra Purohit Probability & Statistics 2.0
+        "PLU6SqdYcYsfLRq3tu-g_hvkHDcorrtcBK": "V3iEsLPAD68", // Gajendra Purohit Statistics & Probability
+        "PLn3Wz38keZOeMt_qcBF6jkv3kKfyBuuTr": "ze-ozGVF1j4", // Tending to Infinity Probability & Statistics
         "PLfqMhTWNBTe137I_EPQd34TsgV6IO55pt": "z9bZufPHFLU", // Apna College Shradha Khapra C++ DSA
-        "PLxgZQoSe9cg0df_GxVjz3DD_Gck5tMXAd": "V-WfC97P0_w"  // College Wallah C++ and DSA Foundation
+        "PLxgZQoSe9cg0df_GxVjz3DD_Gck5tMXAd": "bL-o2xBENY0"  // College Wallah C++ and DSA Foundation
     };
 
     function renderVideoRecommendation(rec, afterBubble) {
