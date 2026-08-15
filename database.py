@@ -446,6 +446,21 @@ BENNETT_CHANNELS = [
         "semester": 3
     },
     {
+        "channel_name": "NESO Academy",
+        "instructor": "NESO Academy",
+        "subject": "Information Management System",
+        "topic": "DBMS, Relational Model & SQL Complete Series",
+        "playlist_url": "https://youtube.com/playlist?list=PLBlnK6fEyqRiyryTrbKHX1Sh9luYI0dhX",
+        "difficulty": "Beginner",
+        "best_for": ["foundation", "exam prep", "concepts"],
+        "avg_duration": 18,
+        "total_videos": 80,
+        "helpfulness_score": 4.9,
+        "total_ratings": 135,
+        "helpful_count": 131,
+        "semester": 3
+    },
+    {
         "channel_name": "Gajendra Purohit",
         "instructor": "Dr. Gajendra Purohit",
         "subject": "Probability and Statistics",
@@ -1059,11 +1074,11 @@ TOPIC_TO_FACULTY_MAP = {
     "thermodynamics": ["thermodynamics", "entropy", "heat", "mechanical"],
     "fluid mechanics": ["fluid", "bernoulli", "mechanical"],
     "digital electronics": ["digital", "logic gate", "flip flop", "neso academy"],
-    "information management system": ["information management", "ims", "dbms", "database", "sql", "gate smashers", "knowledge gate", "varun singla", "sanchit jain"],
-    "information management": ["information management", "ims", "dbms", "database", "sql", "gate smashers", "knowledge gate", "varun singla", "sanchit jain"],
-    "ims": ["information management", "ims", "dbms", "database", "sql", "gate smashers", "knowledge gate", "varun singla", "sanchit jain"],
-    "dbms": ["information management", "ims", "dbms", "database", "sql", "gate smashers", "knowledge gate", "varun singla", "sanchit jain"],
-    "database": ["information management", "ims", "dbms", "database", "sql", "gate smashers", "knowledge gate", "varun singla", "sanchit jain"],
+    "information management system": ["information management", "ims", "dbms", "database", "sql", "gate smashers", "knowledge gate", "neso academy", "varun singla", "sanchit jain"],
+    "information management": ["information management", "ims", "dbms", "database", "sql", "gate smashers", "knowledge gate", "neso academy", "varun singla", "sanchit jain"],
+    "ims": ["information management", "ims", "dbms", "database", "sql", "gate smashers", "knowledge gate", "neso academy", "varun singla", "sanchit jain"],
+    "dbms": ["information management", "ims", "dbms", "database", "sql", "gate smashers", "knowledge gate", "neso academy", "varun singla", "sanchit jain"],
+    "database": ["information management", "ims", "dbms", "database", "sql", "gate smashers", "knowledge gate", "neso academy", "varun singla", "sanchit jain"],
     "probability and statistics": ["probability", "statistics", "stats", "p&s", "gajendra purohit", "tending to infinity", "random variables", "distributions"],
     "probability": ["probability", "statistics", "stats", "p&s", "gajendra purohit", "tending to infinity"],
     "statistics": ["probability", "statistics", "stats", "p&s", "gajendra purohit", "tending to infinity"],
@@ -1133,7 +1148,15 @@ def get_recommended_videos(
                 }))
 
         scored.sort(key=lambda x: x[0], reverse=True)
-        results = [item[1] for item in scored[:limit]]
+        seen_channels = set()
+        results = []
+        for item in scored:
+            ch_name = item[1]["channel"]
+            if ch_name not in seen_channels:
+                seen_channels.add(ch_name)
+                results.append(item[1])
+                if len(results) >= limit:
+                    break
 
         # Fallback if no exact match in DB: direct targeted Bennett YouTube link
         if not results:

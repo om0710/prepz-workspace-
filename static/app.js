@@ -2459,6 +2459,7 @@ function initializeDocPilotApp() {
         // 3rd Semester Courses
         "PLxCzCOWd7aiFAN6I8CuViBuCdJgiOkT2Y": "kBdlM6hNDAE", // Gate Smashers Information Management System (DBMS)
         "PLmXKhU9FNesR1rSES7oLdJaNFgmuj0SYV": "BPHAr4QGGVE", // Knowledge Gate Information Management System (DBMS)
+        "PLBlnK6fEyqRiyryTrbKHX1Sh9luYI0dhX": "OMwgGL3lHlI", // NESO Academy DBMS / Information Management
         "PLU6SqdYcYsfJPF-4HphQQ8OceDtqhlSW8": "qNGDD_Rh8ps", // Gajendra Purohit Probability & Statistics 2.0
         "PLU6SqdYcYsfLRq3tu-g_hvkHDcorrtcBK": "V3iEsLPAD68", // Gajendra Purohit Statistics & Probability
         "PLn3Wz38keZOeMt_qcBF6jkv3kKfyBuuTr": "ze-ozGVF1j4", // Tending to Infinity Probability & Statistics
@@ -2482,7 +2483,11 @@ function initializeDocPilotApp() {
         } catch (e) {}
 
         const ch = (channelName || "").toLowerCase();
-        if (ch.includes("neso")) return "NEhH6C7Fzw4";
+        const u = (url || "").toLowerCase();
+        if (ch.includes("neso")) {
+            if (u.includes("dbms") || u.includes("iyrytrbk") || u.includes("sql")) return "OMwgGL3lHlI";
+            return "NEhH6C7Fzw4";
+        }
         if (ch.includes("perfect computer")) return "rttcOFKPphQ";
         if (ch.includes("tikle")) return "dZyKXdvzSz0";
         if (ch.includes("engineers ki pathshala") || ch.includes("umesh dhande")) return "Vd2UJiIPbag";
