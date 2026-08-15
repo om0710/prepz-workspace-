@@ -703,6 +703,66 @@ BENNETT_CHANNELS = [
         "semester": 3
     },
     {
+        "channel_name": "Gajendra Purohit",
+        "instructor": "Dr. Gajendra Purohit",
+        "subject": "Linear Algebra",
+        "topic": "Matrices, Determinants, Rank & Eigenvalues",
+        "playlist_url": "https://youtube.com/playlist?list=PLU6SqdYcYsfI7Ebw_j-Vy8YKHdbHKP9am",
+        "difficulty": "Beginner",
+        "best_for": ["exam prep", "foundation", "eigenvalues"],
+        "avg_duration": 18,
+        "total_videos": 45,
+        "helpfulness_score": 4.9,
+        "total_ratings": 175,
+        "helpful_count": 171,
+        "semester": 2
+    },
+    {
+        "channel_name": "Pradeep Giri Academy",
+        "instructor": "Pradeep Giri Academy",
+        "subject": "Linear Algebra",
+        "topic": "Engineering Mathematics: Matrices & Linear Algebra",
+        "playlist_url": "https://youtube.com/playlist?list=PLT3bOBUU3L9ijgr3HbpphxsgNfBekbPZS",
+        "difficulty": "Beginner",
+        "best_for": ["step by step", "numericals", "exam prep"],
+        "avg_duration": 22,
+        "total_videos": 38,
+        "helpfulness_score": 4.8,
+        "total_ratings": 130,
+        "helpful_count": 126,
+        "semester": 2
+    },
+    {
+        "channel_name": "Gajendra Purohit (Advanced)",
+        "instructor": "Dr. Gajendra Purohit",
+        "subject": "Linear Algebra",
+        "topic": "Vector Spaces, Basis, Dimension & Linear Transformations",
+        "playlist_url": "https://youtube.com/playlist?list=PLU6SqdYcYsfJRZEK4BpuufOlIrQzWm-nP",
+        "difficulty": "Intermediate",
+        "best_for": ["deep concepts", "vector spaces", "transformations"],
+        "avg_duration": 20,
+        "total_videos": 35,
+        "helpfulness_score": 4.9,
+        "total_ratings": 150,
+        "helpful_count": 146,
+        "semester": 2
+    },
+    {
+        "channel_name": "GATE Wallah",
+        "instructor": "Physics Wallah Team",
+        "subject": "Linear Algebra",
+        "topic": "Linear Algebra Complete One-Shot Revision",
+        "playlist_url": "https://youtu.be/TLRiju0jFEI",
+        "difficulty": "Beginner",
+        "best_for": ["one shot", "complete revision", "gate & semester prep"],
+        "avg_duration": 180,
+        "total_videos": 1,
+        "helpfulness_score": 4.8,
+        "total_ratings": 140,
+        "helpful_count": 136,
+        "semester": 2
+    },
+    {
         "channel_name": "Perfect Computer Engineer",
         "instructor": "Perfect Computer Engineer",
         "subject": "Basic Electrical & Electronics Engineering",
@@ -898,7 +958,7 @@ TOPIC_KW = {
     "electronics": ["basic electronics", "basic electrical", "analog electronics", "electrical engineering", "electronics engineering", "electrical and electronics", "electrical & electronics", "electricals", "electrical", "electronics", "electronic", "elctronics", "electonics", "electornics", "electircal", "elec", "bee", "beee", "ece", "semiconductor", "diode", "bjt", "opamp", "transistor", "fet", "mosfet"],
     "calculus": ["calculus", "differential calculus", "integral calculus", "differentiation", "integration", "derivative", "derivatives", "integral", "integrals", "limit", "limits", "continuity", "maxima", "minima", "taylor series", "maclaurin", "multivariable calculus"],
     "differential equations": ["differential equation", "differential equations", "ode", "pde", "exact differential", "bernoulli equation", "linear differential"],
-    "linear algebra": ["eigenvalue", "eigenvalues", "eigenvector", "eigenvectors", "matrix", "matrices", "determinant", "determinants", "rank of matrix", "linear transformation", "vector space"],
+    "linear algebra": ["linear algebra", "linear algerba", "eigenvalue", "eigenvalues", "eigenvector", "eigenvectors", "matrix", "matrices", "determinant", "determinants", "rank of matrix", "linear transformation", "linear transformations", "vector space", "vector spaces", "system of linear equations", "cayley hamilton"],
     "thevenin theorem": ["thevenin", "thevenin's", "thevenins", "norton", "nortons", "kvl", "kcl", "maximum power transfer", "superposition theorem", "superposition", "reciprocity theorem", "network theorem", "network theorems"],
     "electrical circuits": ["circuit", "circuits", "dependent source", "phasor", "impedance", "mesh analysis", "nodal analysis", "rlc circuit", "ac circuit", "kirchhoff"],
     "electrical machines": ["electrical", "motor", "transformer", "transformers", "rotating magnetic field", "rmf", "synchronous motor", "dc motor", "stator", "rotor", "armature", "torque slip"],
@@ -1232,7 +1292,10 @@ TOPIC_TO_FACULTY_MAP = {
     "maths": ["calculus", "differentiation", "integration", "derivative", "differential", "vishwakarma"],
     "mathematics": ["calculus", "differentiation", "integration", "derivative", "differential", "vishwakarma"],
     "differential equations": ["differential equations", "ode", "pde", "vishwakarma"],
-    "linear algebra": ["linear algebra", "matrices", "matrix", "eigenvalue"],
+    "linear algebra": ["linear algebra", "matrices", "matrix", "eigenvalue", "eigenvalues", "eigenvector", "vector space", "linear transformation", "gajendra purohit", "pradeep giri", "gate wallah", "physics wallah"],
+    "linear algerba": ["linear algebra", "matrices", "matrix", "eigenvalue", "eigenvalues", "eigenvector", "vector space", "linear transformation", "gajendra purohit", "pradeep giri", "gate wallah", "physics wallah"],
+    "matrices": ["linear algebra", "matrices", "matrix", "eigenvalue", "eigenvalues", "eigenvector", "vector space", "linear transformation", "gajendra purohit", "pradeep giri", "gate wallah", "physics wallah"],
+    "matrix": ["linear algebra", "matrices", "matrix", "eigenvalue", "eigenvalues", "eigenvector", "vector space", "linear transformation", "gajendra purohit", "pradeep giri", "gate wallah", "physics wallah"],
     "operating systems": ["operating", "os", "deadlock", "semaphore", "process", "gate smashers", "varun singla", "neso academy"],
     "os": ["operating", "os", "deadlock", "semaphore", "process", "gate smashers", "varun singla", "neso academy"],
     "python programming": ["python", "programming", "code with harry", "apna college", "shradha khapra"],
@@ -1305,7 +1368,7 @@ def get_recommended_videos(
             # Direct keyword hits
             for kw in keywords:
                 if kw in text:
-                    if kw in ["gajendra purohit", "pradeep giri", "neso academy", "apna college", "shradha khapra", "umesh dhande", "knowledge gate", "sanchit jain", "engineering funda"]:
+                    if kw in ["gajendra purohit", "pradeep giri", "neso academy", "apna college", "shradha khapra", "umesh dhande", "knowledge gate", "sanchit jain", "engineering funda", "gate wallah"]:
                         match_score += 10
                     else:
                         match_score += 25
@@ -1316,6 +1379,8 @@ def get_recommended_videos(
             
             # Subject domain affinity
             if "calculus" in topic_clean and "calculus" in subj.lower():
+                match_score += 60
+            elif ("linear" in topic_clean or "matrices" in topic_clean or "matrix" in topic_clean or "eigen" in topic_clean) and ("linear" in subj.lower() or "algebra" in subj.lower() or "matrices" in subj.lower()):
                 match_score += 60
             elif "probability" in topic_clean and ("probability" in subj.lower() or "statistics" in subj.lower()):
                 match_score += 60
@@ -1358,12 +1423,12 @@ def get_recommended_videos(
                 }))
 
         scored.sort(key=lambda x: x[0], reverse=True)
-        seen_channels = set()
+        seen_items = set()
         results = []
         for item in scored:
-            ch_name = item[1]["channel"]
-            if ch_name not in seen_channels:
-                seen_channels.add(ch_name)
+            dedup_key = (item[1]["channel"], item[1]["topic"])
+            if dedup_key not in seen_items:
+                seen_items.add(dedup_key)
                 results.append(item[1])
                 if len(results) >= limit:
                     break
@@ -1452,6 +1517,7 @@ def _extract_topic_keywords(query: str) -> str:
         "computer networks": ["network", "tcp", "ip", "http", "dns", "routing", "osi", "ethernet", "subnet", "congestion control"],
         "algorithms": ["algorithm", "complexity", "big o", "dynamic programming", "greedy", "backtracking", "divide and conquer", "dijkstra"],
         "machine learning": ["machine learning", "neural network", "deep learning", "regression", "gradient descent", "backpropagation", "cnn", "rnn"],
+        "linear algebra": ["linear algebra", "linear algerba", "eigenvalue", "eigenvector", "matrix", "matrices", "determinant", "rank of matrix", "linear transformation", "vector space"],
         "digital design": ["digital design", "digital electronics", "digital logic", "dld", "dd", "logic gate", "flip flop", "counter", "multiplexer", "boolean", "karnaugh", "k-map", "adc", "dac"],
         "signals systems": ["fourier", "laplace", "convolution", "filter", "sampling", "nyquist", "z-transform", "fourier transform"],
         "engineering mathematics": ["calculus", "differential equation", "eigenvalue", "eigenvector", "integral", "probability", "laplace transform", "linear algebra"],

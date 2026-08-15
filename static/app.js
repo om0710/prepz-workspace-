@@ -2475,7 +2475,11 @@ function initializeDocPilotApp() {
         "PLxCzCOWd7aiGmXg4NoX6R31AsC5LeCPHe": "O0gtKDu_cJc", // Gate Smashers Digital Design
         "PLgwJf8NK-2e4OD-vicvzWT7wE8BZIQtEe": "ovHm8IHVR3Y", // Engineering Funda Digital Design
         "PLBlnK6fEyqRjMH3mWf6kwqiTbT798eAOm": "M0mx8S05v60", // NESO Academy Digital Design
-        "PLmXKhU9FNesSfX1PVt4VGm-wbIKfemUWK": "pHNbm-4reIc"  // Knowledge Gate Digital Design
+        "PLmXKhU9FNesSfX1PVt4VGm-wbIKfemUWK": "pHNbm-4reIc", // Knowledge Gate Digital Design
+        "PLU6SqdYcYsfI7Ebw_j-Vy8YKHdbHKP9am": "1XlT3Y2oyAU", // Gajendra Purohit Linear Algebra (Matrices & Rank)
+        "PLT3bOBUU3L9ijgr3HbpphxsgNfBekbPZS": "7FJDp2n4wvg", // Pradeep Giri Academy Linear Algebra
+        "PLU6SqdYcYsfJRZEK4BpuufOlIrQzWm-nP": "qqLwi27BJSA", // Gajendra Purohit Linear Algebra (Vector Spaces)
+        "TLRiju0jFEI": "TLRiju0jFEI"                          // GATE Wallah Linear Algebra One-Shot
     };
 
     function resolveYouTubeVideoId(url, channelName) {
@@ -2499,6 +2503,7 @@ function initializeDocPilotApp() {
 
         const ch = (channelName || "").toLowerCase();
         const u = (url || "").toLowerCase();
+        if (ch.includes("gate wallah") || u.includes("tlriju0jfei")) return "TLRiju0jFEI";
         if (ch.includes("neso")) {
             if (u.includes("dbms") || u.includes("iyrytrbk") || u.includes("sql")) return "OMwgGL3lHlI";
             if (u.includes("rhqjpdx") || u.includes("discrete") || u.includes("dms")) return "p2b2Vb-cYCs";
@@ -2525,6 +2530,8 @@ function initializeDocPilotApp() {
         if (ch.includes("engineering funda") || ch.includes("funda")) return "ovHm8IHVR3Y";
         if (ch.includes("algorithm unlocked")) return "uo34ZM030xQ";
         if (ch.includes("gajendra purohit") || ch.includes("purohit")) {
+            if (u.includes("i7ebw") || u.includes("matrices") || u.includes("matrix")) return "1XlT3Y2oyAU";
+            if (u.includes("jrzek4") || u.includes("vector") || u.includes("linear")) return "qqLwi27BJSA";
             if (u.includes("u6sqdycysfij") || u.includes("calculus") || u.includes("differentiat")) return "WX6O9TiFYsA";
             return "qNGDD_Rh8ps";
         }
@@ -2533,6 +2540,7 @@ function initializeDocPilotApp() {
             if (u.includes("jex8hxzv") || u.includes("noila7iv") || u.includes("probab") || u.includes("stat")) return "Y0_260pKtkA";
             if (u.includes("3yqwge") || u.includes("calculus") || u.includes("math")) return "bQ_B9cHBYfQ";
             if (u.includes("vg5cicy") || u.includes("discrete") || u.includes("dms")) return "iZ3g7JdSjbw";
+            if (u.includes("ijgr3hb") || u.includes("linear") || u.includes("matrix")) return "7FJDp2n4wvg";
             return "3d6DsjIBzJ4";
         }
         if (ch.includes("jenny")) return "AT14lCXuMKI";
