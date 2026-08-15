@@ -431,21 +431,6 @@ BENNETT_CHANNELS = [
         "semester": 3
     },
     {
-        "channel_name": "Knowledge Gate",
-        "instructor": "Sanchit Jain",
-        "subject": "Information Management System",
-        "topic": "Relational DBMS, Normalization & ACID",
-        "playlist_url": "https://youtube.com/playlist?list=PLmXKhU9FNesR1rSES7oLdJaNFgmuj0SYV",
-        "difficulty": "Intermediate",
-        "best_for": ["deep learning", "gate prep"],
-        "avg_duration": 20,
-        "total_videos": 95,
-        "helpfulness_score": 4.8,
-        "total_ratings": 110,
-        "helpful_count": 106,
-        "semester": 3
-    },
-    {
         "channel_name": "NESO Academy",
         "instructor": "NESO Academy",
         "subject": "Information Management System",
@@ -594,6 +579,7 @@ def seed_bennett_channels_if_needed():
         # Clean up obsolete rows
         cursor.execute("DELETE FROM youtube_playlist WHERE playlist_url LIKE '%PLBlnK6fEyqRhqJPDXcvYlLfXPh37L89g3%'")
         cursor.execute("DELETE FROM youtube_playlist WHERE channel_name = 'Love You Science'")
+        cursor.execute("DELETE FROM youtube_playlist WHERE channel_name = 'Knowledge Gate' OR playlist_url LIKE '%PLmXKhU9FNesR1rSES7oLdJaNFgmuj0SYV%'")
         
         for ch in BENNETT_CHANNELS:
             existing = cursor.execute(
@@ -1074,11 +1060,11 @@ TOPIC_TO_FACULTY_MAP = {
     "thermodynamics": ["thermodynamics", "entropy", "heat", "mechanical"],
     "fluid mechanics": ["fluid", "bernoulli", "mechanical"],
     "digital electronics": ["digital", "logic gate", "flip flop", "neso academy"],
-    "information management system": ["information management", "ims", "dbms", "database", "sql", "gate smashers", "knowledge gate", "neso academy", "varun singla", "sanchit jain"],
-    "information management": ["information management", "ims", "dbms", "database", "sql", "gate smashers", "knowledge gate", "neso academy", "varun singla", "sanchit jain"],
-    "ims": ["information management", "ims", "dbms", "database", "sql", "gate smashers", "knowledge gate", "neso academy", "varun singla", "sanchit jain"],
-    "dbms": ["information management", "ims", "dbms", "database", "sql", "gate smashers", "knowledge gate", "neso academy", "varun singla", "sanchit jain"],
-    "database": ["information management", "ims", "dbms", "database", "sql", "gate smashers", "knowledge gate", "neso academy", "varun singla", "sanchit jain"],
+    "information management system": ["information management", "ims", "dbms", "database", "sql", "gate smashers", "neso academy", "varun singla"],
+    "information management": ["information management", "ims", "dbms", "database", "sql", "gate smashers", "neso academy", "varun singla"],
+    "ims": ["information management", "ims", "dbms", "database", "sql", "gate smashers", "neso academy", "varun singla"],
+    "dbms": ["information management", "ims", "dbms", "database", "sql", "gate smashers", "neso academy", "varun singla"],
+    "database": ["information management", "ims", "dbms", "database", "sql", "gate smashers", "neso academy", "varun singla"],
     "probability and statistics": ["probability", "statistics", "stats", "p&s", "gajendra purohit", "tending to infinity", "random variables", "distributions"],
     "probability": ["probability", "statistics", "stats", "p&s", "gajendra purohit", "tending to infinity"],
     "statistics": ["probability", "statistics", "stats", "p&s", "gajendra purohit", "tending to infinity"],

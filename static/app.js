@@ -2458,7 +2458,6 @@ function initializeDocPilotApp() {
         
         // 3rd Semester Courses
         "PLxCzCOWd7aiFAN6I8CuViBuCdJgiOkT2Y": "kBdlM6hNDAE", // Gate Smashers Information Management System (DBMS)
-        "PLmXKhU9FNesR1rSES7oLdJaNFgmuj0SYV": "BPHAr4QGGVE", // Knowledge Gate Information Management System (DBMS)
         "PLBlnK6fEyqRiyryTrbKHX1Sh9luYI0dhX": "OMwgGL3lHlI", // NESO Academy DBMS / Information Management
         "PLU6SqdYcYsfJPF-4HphQQ8OceDtqhlSW8": "qNGDD_Rh8ps", // Gajendra Purohit Probability & Statistics 2.0
         "PLU6SqdYcYsfLRq3tu-g_hvkHDcorrtcBK": "V3iEsLPAD68", // Gajendra Purohit Statistics & Probability
@@ -2492,7 +2491,6 @@ function initializeDocPilotApp() {
         if (ch.includes("tikle")) return "dZyKXdvzSz0";
         if (ch.includes("engineers ki pathshala") || ch.includes("umesh dhande")) return "Vd2UJiIPbag";
         if (ch.includes("gate smashers")) return "kBdlM6hNDAE";
-        if (ch.includes("knowledge gate")) return "BPHAr4QGGVE";
         if (ch.includes("gajendra purohit") || ch.includes("purohit")) return "qNGDD_Rh8ps";
         if (ch.includes("tending to infinity")) return "ze-ozGVF1j4";
         if (ch.includes("apna college") || ch.includes("shradha")) return "z9bZufPHFLU";
