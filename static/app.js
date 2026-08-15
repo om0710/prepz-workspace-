@@ -2443,7 +2443,9 @@ function initializeDocPilotApp() {
     // ── Video Recommendation System (Bennett University Verified) ──────────────
     const KNOWN_PLAYLIST_FIRST_VIDEOS = {
         // 1st & 2nd Semester Courses
-        "PLU6SqdYcYsfIJRl8mo2Rv1MpdvmVD0YyI": "3d6DsjIBzJ4", // Gajendra Purohit Calculus
+        "PLU6SqdYcYsfIJRl8mo2Rv1MpdvmVD0YyI": "WX6O9TiFYsA", // Gajendra Purohit Calculus
+        "PLT3bOBUU3L9iw3yQWge_IjhXZlDgRGwyq": "bQ_B9cHBYfQ", // Pradeep Giri Academy Calculus
+        "PLNKD1qB9ppttx4WuHV0TWRy5dWuVSKEtT": "A6Ad7VnSlZE", // Tikle's Academy Calculus
         "PLdM-WZokR4tbCBA4mkvfk2vOH12eRPT2Y": "BOlT6bM0jKU", // Vishwakarma Advanced Calculus
         "PL9RcWoqXmzaLTYUdnzKhF4bYug3GjGcEc": "Vd2UJiIPbag", // Umesh Dhande Network Theorems
         "PLBlnK6fEyqRgLR-hMp7wem-bdVN1iEhsh": "NEhH6C7Fzw4", // NESO Academy Analog Electronics / Circuits
@@ -2489,14 +2491,21 @@ function initializeDocPilotApp() {
             return "NEhH6C7Fzw4";
         }
         if (ch.includes("perfect computer")) return "rttcOFKPphQ";
-        if (ch.includes("tikle")) return "dZyKXdvzSz0";
+        if (ch.includes("tikle")) {
+            if (u.includes("nkd1qb9") || u.includes("differentiat") || u.includes("calculus")) return "A6Ad7VnSlZE";
+            return "dZyKXdvzSz0";
+        }
         if (ch.includes("engineers ki pathshala") || ch.includes("umesh dhande")) return "Vd2UJiIPbag";
         if (ch.includes("gate smashers")) return "kBdlM6hNDAE";
         if (ch.includes("algorithm unlocked")) return "uo34ZM030xQ";
-        if (ch.includes("gajendra purohit") || ch.includes("purohit")) return "qNGDD_Rh8ps";
+        if (ch.includes("gajendra purohit") || ch.includes("purohit")) {
+            if (u.includes("u6sqdycysfij") || u.includes("calculus") || u.includes("differentiat")) return "WX6O9TiFYsA";
+            return "qNGDD_Rh8ps";
+        }
         if (ch.includes("tending to infinity")) return "ze-ozGVF1j4";
         if (ch.includes("pradeep giri")) {
             if (u.includes("jex8hxzv") || u.includes("noila7iv") || u.includes("probab") || u.includes("stat")) return "Y0_260pKtkA";
+            if (u.includes("3yqwge") || u.includes("calculus") || u.includes("math")) return "bQ_B9cHBYfQ";
             return "3d6DsjIBzJ4";
         }
         if (ch.includes("apna college") || ch.includes("shradha")) return "z9bZufPHFLU";
