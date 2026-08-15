@@ -275,21 +275,22 @@ BENNETT_CHANNELS = [
     {
         "channel_name": "Engineers Ki Pathshala",
         "instructor": "Umesh Dhande",
-        "subject": "Introduction to Electrical & Electronics",
-        "topic": "Thevenin Theorem & Network Theorems",
+        "subject": "Basic Electrical & Electronics Engineering",
+        "topic": "Thevenin Theorem, AC Circuits & Network Theorems",
         "playlist_url": "https://youtube.com/playlist?list=PL9RcWoqXmzaLTYUdnzKhF4bYug3GjGcEc",
         "difficulty": "Beginner",
-        "best_for": ["exam prep", "foundation"],
+        "best_for": ["exam prep", "foundation", "theorems"],
         "avg_duration": 25,
         "total_videos": 45,
-        "helpfulness_score": 4.8,
-        "total_ratings": 34,
-        "helpful_count": 32
+        "helpfulness_score": 4.9,
+        "total_ratings": 65,
+        "helpful_count": 63,
+        "semester": 1
     },
     {
         "channel_name": "NESO Academy",
         "instructor": "NESO Academy",
-        "subject": "Introduction to Electrical & Electronics",
+        "subject": "Basic Electrical & Electronics Engineering",
         "topic": "Electrical Engineering Basics & Circuits",
         "playlist_url": "https://www.youtube.com/playlist?list=PLBlnK6fEyqRhqJPDXcvYlLfXPh37L89g3",
         "difficulty": "Intermediate",
@@ -298,7 +299,8 @@ BENNETT_CHANNELS = [
         "total_videos": 38,
         "helpfulness_score": 4.9,
         "total_ratings": 56,
-        "helpful_count": 54
+        "helpful_count": 54,
+        "semester": 1
     },
     {
         "channel_name": "Gajendra Purohit",
@@ -721,7 +723,7 @@ def calculate_similarity(msg1: str, msg2: str) -> float:
 
 # ── Core Academic Topics Dictionary ──────────────────────────────────────────
 TOPIC_KW = {
-    "electronics": ["basic electronics", "analog electronics", "digital electronics", "electronics", "electronic", "semiconductor", "diode", "bjt", "opamp", "transistor", "fet", "mosfet", "ece"],
+    "electronics": ["basic electronics", "basic electrical", "analog electronics", "digital electronics", "electrical engineering", "electronics engineering", "electrical and electronics", "electrical & electronics", "electricals", "electrical", "electronics", "electronic", "bee", "beee", "ece", "semiconductor", "diode", "bjt", "opamp", "transistor", "fet", "mosfet"],
     "calculus": ["calculus", "differential calculus", "integral calculus", "differentiation", "integration", "derivative", "derivatives", "integral", "integrals", "limit", "limits", "continuity", "maxima", "minima", "taylor series", "maclaurin", "multivariable calculus"],
     "differential equations": ["differential equation", "differential equations", "ode", "pde", "exact differential", "bernoulli equation", "linear differential"],
     "linear algebra": ["eigenvalue", "eigenvalues", "eigenvector", "eigenvectors", "matrix", "matrices", "determinant", "determinants", "rank of matrix", "linear transformation", "vector space"],
@@ -1037,17 +1039,18 @@ def analyze_user_intent(
 # ── Video Recommendations & Rating ─────────────────────────────────────────────
 
 TOPIC_TO_FACULTY_MAP = {
-    "electricals": ["electrical", "circuits", "thevenin", "umesh dhande", "engineers ki pathshala", "neso academy"],
-    "electrical": ["electrical", "circuits", "thevenin", "umesh dhande", "engineers ki pathshala", "neso academy"],
-    "electrical engineering": ["electrical", "circuits", "thevenin", "umesh dhande", "engineers ki pathshala", "neso academy"],
-    "bee": ["electrical", "circuits", "thevenin", "umesh dhande", "engineers ki pathshala", "neso academy"],
-    "thevenin theorem": ["thevenin", "network", "circuit", "electrical", "kvl", "kcl", "umesh dhande", "engineers ki pathshala", "neso academy"],
-    "electrical circuits": ["circuit", "circuits", "electrical", "electronics", "neso academy", "umesh dhande"],
+    "electricals": ["electrical", "electronics", "thevenin", "umesh dhande", "engineers ki pathshala", "perfect computer engineer", "tikle's academy", "tikle", "love you science", "neso academy"],
+    "electrical": ["electrical", "electronics", "thevenin", "umesh dhande", "engineers ki pathshala", "perfect computer engineer", "tikle's academy", "tikle", "love you science", "neso academy"],
+    "electrical engineering": ["electrical", "electronics", "thevenin", "umesh dhande", "engineers ki pathshala", "perfect computer engineer", "tikle's academy", "tikle", "love you science", "neso academy"],
+    "bee": ["electrical", "electronics", "thevenin", "umesh dhande", "engineers ki pathshala", "perfect computer engineer", "tikle's academy", "tikle", "love you science", "neso academy"],
+    "beee": ["electrical", "electronics", "thevenin", "umesh dhande", "engineers ki pathshala", "perfect computer engineer", "tikle's academy", "tikle", "love you science", "neso academy"],
+    "thevenin theorem": ["thevenin", "network", "circuit", "electrical", "electronics", "kvl", "kcl", "umesh dhande", "engineers ki pathshala", "tikle's academy", "perfect computer engineer", "neso academy"],
+    "electrical circuits": ["circuit", "circuits", "electrical", "electronics", "umesh dhande", "engineers ki pathshala", "perfect computer engineer", "tikle's academy", "neso academy"],
     "electrical machines": ["electrical", "motor", "transformer", "circuits", "neso academy"],
-    "electronics": ["electronics", "perfect computer engineer", "tikle's academy", "tikle", "love you science", "semiconductor", "diode", "bjt", "transistor", "op-amp", "electronic"],
-    "basic electronics": ["electronics", "perfect computer engineer", "tikle's academy", "tikle", "love you science", "semiconductor", "diode", "bjt", "transistor", "op-amp", "electronic"],
-    "analog electronics": ["electronics", "perfect computer engineer", "tikle's academy", "tikle", "love you science", "semiconductor", "diode", "bjt", "transistor", "op-amp", "electronic"],
-    "ece": ["electronics", "perfect computer engineer", "tikle's academy", "tikle", "love you science", "semiconductor", "diode", "bjt", "transistor", "op-amp", "electronic"],
+    "electronics": ["electrical", "electronics", "thevenin", "umesh dhande", "engineers ki pathshala", "perfect computer engineer", "tikle's academy", "tikle", "love you science", "neso academy"],
+    "basic electronics": ["electrical", "electronics", "thevenin", "umesh dhande", "engineers ki pathshala", "perfect computer engineer", "tikle's academy", "tikle", "love you science", "neso academy"],
+    "analog electronics": ["electrical", "electronics", "thevenin", "umesh dhande", "engineers ki pathshala", "perfect computer engineer", "tikle's academy", "tikle", "love you science", "neso academy"],
+    "ece": ["electrical", "electronics", "thevenin", "umesh dhande", "engineers ki pathshala", "perfect computer engineer", "tikle's academy", "tikle", "love you science", "neso academy"],
     "calculus": ["calculus", "math", "differentiation", "integration", "derivative", "differential", "gajendra purohit", "vishwakarma"],
     "math": ["calculus", "math", "differentiation", "integration", "derivative", "differential", "gajendra purohit", "vishwakarma"],
     "maths": ["calculus", "math", "differentiation", "integration", "derivative", "differential", "gajendra purohit", "vishwakarma"],
@@ -1211,6 +1214,7 @@ def get_next_action_message(recommendation_strength: str, attempt_number: int) -
 def _extract_topic_keywords(query: str) -> str:
     """Keyword-based academic topic extraction."""
     TOPIC_KW = {
+        "electronics": ["basic electronics", "basic electrical", "analog electronics", "digital electronics", "electrical engineering", "electronics engineering", "electrical and electronics", "electrical & electronics", "electricals", "electrical", "electronics", "electronic", "bee", "beee", "ece", "semiconductor", "diode", "bjt", "opamp", "transistor", "fet", "mosfet"],
         "thevenin theorem": ["thevenin", "thevenin's", "norton", "kvl", "kcl", "maximum power transfer", "superposition theorem", "reciprocity"],
         "electrical circuits": ["circuit", "dependent source", "phasor", "impedance", "mesh analysis", "nodal analysis", "rlc circuit", "ac circuit", "kirchhoff"],
         "electrical machines": ["induction motor", "transformer", "rotating magnetic field", "rmf", "synchronous motor", "dc motor", "stator", "rotor", "armature", "torque slip"],
