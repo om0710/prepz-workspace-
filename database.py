@@ -643,6 +643,66 @@ BENNETT_CHANNELS = [
         "semester": 3
     },
     {
+        "channel_name": "Gate Smashers",
+        "instructor": "Varun Singla",
+        "subject": "Digital Design",
+        "topic": "Digital Logic, Number Systems & Combinational Circuits",
+        "playlist_url": "https://youtube.com/playlist?list=PLxCzCOWd7aiGmXg4NoX6R31AsC5LeCPHe",
+        "difficulty": "Beginner",
+        "best_for": ["exam prep", "concepts", "fast revision"],
+        "avg_duration": 15,
+        "total_videos": 70,
+        "helpfulness_score": 4.9,
+        "total_ratings": 180,
+        "helpful_count": 176,
+        "semester": 3
+    },
+    {
+        "channel_name": "Engineering Funda",
+        "instructor": "Engineering Funda",
+        "subject": "Digital Design",
+        "topic": "Digital Electronics, Logic Gates & Sequential Circuits",
+        "playlist_url": "https://youtube.com/playlist?list=PLgwJf8NK-2e4OD-vicvzWT7wE8BZIQtEe",
+        "difficulty": "Beginner",
+        "best_for": ["step by step", "foundation", "exam prep"],
+        "avg_duration": 18,
+        "total_videos": 65,
+        "helpfulness_score": 4.8,
+        "total_ratings": 120,
+        "helpful_count": 116,
+        "semester": 3
+    },
+    {
+        "channel_name": "NESO Academy",
+        "instructor": "NESO Academy",
+        "subject": "Digital Design",
+        "topic": "Digital Electronics & Logic Design Complete Series",
+        "playlist_url": "https://youtube.com/playlist?list=PLBlnK6fEyqRjMH3mWf6kwqiTbT798eAOm",
+        "difficulty": "Beginner",
+        "best_for": ["deep foundation", "diagrams", "exam prep"],
+        "avg_duration": 20,
+        "total_videos": 95,
+        "helpfulness_score": 4.9,
+        "total_ratings": 195,
+        "helpful_count": 191,
+        "semester": 3
+    },
+    {
+        "channel_name": "Knowledge Gate",
+        "instructor": "Sanchit Jain",
+        "subject": "Digital Design",
+        "topic": "Digital Logic Design & K-Maps / Flip Flops",
+        "playlist_url": "https://youtube.com/playlist?list=PLmXKhU9FNesSfX1PVt4VGm-wbIKfemUWK",
+        "difficulty": "Beginner",
+        "best_for": ["exam prep", "gate questions", "numericals"],
+        "avg_duration": 22,
+        "total_videos": 50,
+        "helpfulness_score": 4.8,
+        "total_ratings": 140,
+        "helpful_count": 136,
+        "semester": 3
+    },
+    {
         "channel_name": "Perfect Computer Engineer",
         "instructor": "Perfect Computer Engineer",
         "subject": "Basic Electrical & Electronics Engineering",
@@ -835,7 +895,7 @@ def calculate_similarity(msg1: str, msg2: str) -> float:
 
 # ── Core Academic Topics Dictionary ──────────────────────────────────────────
 TOPIC_KW = {
-    "electronics": ["basic electronics", "basic electrical", "analog electronics", "digital electronics", "electrical engineering", "electronics engineering", "electrical and electronics", "electrical & electronics", "electricals", "electrical", "electronics", "electronic", "elctronics", "electonics", "electornics", "electircal", "elec", "bee", "beee", "ece", "semiconductor", "diode", "bjt", "opamp", "transistor", "fet", "mosfet"],
+    "electronics": ["basic electronics", "basic electrical", "analog electronics", "electrical engineering", "electronics engineering", "electrical and electronics", "electrical & electronics", "electricals", "electrical", "electronics", "electronic", "elctronics", "electonics", "electornics", "electircal", "elec", "bee", "beee", "ece", "semiconductor", "diode", "bjt", "opamp", "transistor", "fet", "mosfet"],
     "calculus": ["calculus", "differential calculus", "integral calculus", "differentiation", "integration", "derivative", "derivatives", "integral", "integrals", "limit", "limits", "continuity", "maxima", "minima", "taylor series", "maclaurin", "multivariable calculus"],
     "differential equations": ["differential equation", "differential equations", "ode", "pde", "exact differential", "bernoulli equation", "linear differential"],
     "linear algebra": ["eigenvalue", "eigenvalues", "eigenvector", "eigenvectors", "matrix", "matrices", "determinant", "determinants", "rank of matrix", "linear transformation", "vector space"],
@@ -855,8 +915,7 @@ TOPIC_KW = {
     "c programming": ["c programming", "pointer", "pointers", "malloc", "struct", "recursion in c", "dynamic memory", "file handling in c"],
     "engineering mechanics": ["mechanics", "statics", "dynamics", "friction", "centroid", "moment of inertia", "truss", "kinematics", "kinetics"],
     "thermodynamics": ["thermodynamics", "entropy", "enthalpy", "carnot", "rankine", "brayton", "first law", "second law", "refrigeration"],
-    "fluid mechanics": ["fluid mechanics", "bernoulli", "navier stokes", "viscosity", "reynolds number", "venturimeter", "fluid flow", "pipe flow"],
-    "digital electronics": ["digital electronics", "logic gate", "logic gates", "flip flop", "flip flops", "counter", "multiplexer", "boolean algebra", "karnaugh map", "k-map", "adc", "dac"],
+    "digital design": ["digital design", "digital electronics", "digital logic design", "digital logic", "digital circuits", "dld", "dd", "logic gate", "logic gates", "flip flop", "flip flops", "counter", "multiplexer", "boolean algebra", "karnaugh map", "k-map", "kmap", "adc", "dac", "combinational circuits", "sequential circuits"],
     "discrete mathematics": ["discrete mathematical structures", "discrete mathematical structure", "discrete mathematics", "discrete math", "discrete maths", "discrete", "dms", "set theory", "relations and functions", "graph theory", "propositional logic", "predicate logic", "recurrence relation", "combinatorics"]
 }
 
@@ -932,12 +991,17 @@ def extract_topic_from_query(query: str, last_topic: str = "") -> str:
     """Extract topic using ultra-fast in-memory pattern matching first, with LLM fallback."""
     q_clean = query.strip().lower()
 
-    # 1. Fast in-memory explicit topic keyword matching (< 0.01ms)
+    # 1. Fast in-memory explicit topic keyword matching (< 0.01ms) - Longest match first
+    all_kws = []
     for topic_name, kws in TOPIC_KW.items():
-        for kw in sorted(kws, key=len, reverse=True):
-            pattern = r'(?<![a-zA-Z0-9])' + _re.escape(kw) + r'(?![a-zA-Z0-9])'
-            if _re.search(pattern, q_clean):
-                return topic_name
+        for kw in kws:
+            all_kws.append((len(kw), kw, topic_name))
+    all_kws.sort(key=lambda x: x[0], reverse=True)
+
+    for _, kw, topic_name in all_kws:
+        pattern = r'(?<![a-zA-Z0-9])' + _re.escape(kw) + r'(?![a-zA-Z0-9])'
+        if _re.search(pattern, q_clean):
+            return topic_name
 
     # 2. Check if this is a follow-up query that should inherit previous topic
     follow_up_tokens = {
@@ -1181,7 +1245,12 @@ TOPIC_TO_FACULTY_MAP = {
     "mechanics": ["mechanics", "statics", "dynamics", "pradeep giri"],
     "thermodynamics": ["thermodynamics", "entropy", "heat", "mechanical"],
     "fluid mechanics": ["fluid", "bernoulli", "mechanical"],
-    "digital electronics": ["digital", "logic gate", "flip flop", "neso academy"],
+    "digital design": ["digital design", "digital electronics", "dld", "dd", "logic gate", "flip flop", "k-map", "gate smashers", "engineering funda", "neso academy", "knowledge gate", "varun singla", "sanchit jain"],
+    "digital electronics": ["digital design", "digital electronics", "dld", "dd", "logic gate", "flip flop", "k-map", "gate smashers", "engineering funda", "neso academy", "knowledge gate", "varun singla", "sanchit jain"],
+    "digital logic": ["digital design", "digital electronics", "dld", "dd", "logic gate", "flip flop", "k-map", "gate smashers", "engineering funda", "neso academy", "knowledge gate", "varun singla", "sanchit jain"],
+    "digital logic design": ["digital design", "digital electronics", "dld", "dd", "logic gate", "flip flop", "k-map", "gate smashers", "engineering funda", "neso academy", "knowledge gate", "varun singla", "sanchit jain"],
+    "dld": ["digital design", "digital electronics", "dld", "dd", "logic gate", "flip flop", "k-map", "gate smashers", "engineering funda", "neso academy", "knowledge gate", "varun singla", "sanchit jain"],
+    "dd": ["digital design", "digital electronics", "dld", "dd", "logic gate", "flip flop", "k-map", "gate smashers", "engineering funda", "neso academy", "knowledge gate", "varun singla", "sanchit jain"],
     "information management system": ["information management", "ims", "dbms", "database", "sql", "gate smashers", "neso academy", "varun singla"],
     "information management": ["information management", "ims", "dbms", "database", "sql", "gate smashers", "neso academy", "varun singla"],
     "ims": ["information management", "ims", "dbms", "database", "sql", "gate smashers", "neso academy", "varun singla"],
@@ -1236,7 +1305,7 @@ def get_recommended_videos(
             # Direct keyword hits
             for kw in keywords:
                 if kw in text:
-                    if kw in ["gajendra purohit", "pradeep giri", "neso academy", "apna college", "shradha khapra", "umesh dhande", "knowledge gate", "sanchit jain"]:
+                    if kw in ["gajendra purohit", "pradeep giri", "neso academy", "apna college", "shradha khapra", "umesh dhande", "knowledge gate", "sanchit jain", "engineering funda"]:
                         match_score += 10
                     else:
                         match_score += 25
@@ -1263,6 +1332,8 @@ def get_recommended_videos(
             elif "mechanics" in topic_clean and "mechanics" in subj.lower():
                 match_score += 60
             elif ("discrete" in topic_clean or "dms" in topic_clean) and ("discrete" in subj.lower() or "dms" in subj.lower()):
+                match_score += 60
+            elif ("digital" in topic_clean or "dld" in topic_clean or topic_clean == "dd") and ("digital" in subj.lower() or "design" in subj.lower()):
                 match_score += 60
 
             # Exact subject match if provided
@@ -1365,7 +1436,7 @@ def get_next_action_message(recommendation_strength: str, attempt_number: int) -
 def _extract_topic_keywords(query: str) -> str:
     """Keyword-based academic topic extraction."""
     TOPIC_KW = {
-        "electronics": ["basic electronics", "basic electrical", "analog electronics", "digital electronics", "electrical engineering", "electronics engineering", "electrical and electronics", "electrical & electronics", "electricals", "electrical", "electronics", "electronic", "elctronics", "electonics", "electornics", "electircal", "elec", "bee", "beee", "ece", "semiconductor", "diode", "bjt", "opamp", "transistor", "fet", "mosfet"],
+        "electronics": ["basic electronics", "basic electrical", "analog electronics", "electrical engineering", "electronics engineering", "electrical and electronics", "electrical & electronics", "electricals", "electrical", "electronics", "electronic", "elctronics", "electonics", "electornics", "electircal", "elec", "bee", "beee", "ece", "semiconductor", "diode", "bjt", "opamp", "transistor", "fet", "mosfet"],
         "thevenin theorem": ["thevenin", "thevenin's", "norton", "kvl", "kcl", "maximum power transfer", "superposition theorem", "reciprocity"],
         "electrical circuits": ["circuit", "dependent source", "phasor", "impedance", "mesh analysis", "nodal analysis", "rlc circuit", "ac circuit", "kirchhoff"],
         "electrical machines": ["induction motor", "transformer", "rotating magnetic field", "rmf", "synchronous motor", "dc motor", "stator", "rotor", "armature", "torque slip"],
@@ -1381,7 +1452,7 @@ def _extract_topic_keywords(query: str) -> str:
         "computer networks": ["network", "tcp", "ip", "http", "dns", "routing", "osi", "ethernet", "subnet", "congestion control"],
         "algorithms": ["algorithm", "complexity", "big o", "dynamic programming", "greedy", "backtracking", "divide and conquer", "dijkstra"],
         "machine learning": ["machine learning", "neural network", "deep learning", "regression", "gradient descent", "backpropagation", "cnn", "rnn"],
-        "digital electronics": ["logic gate", "flip flop", "counter", "multiplexer", "boolean", "karnaugh", "k-map", "adc", "dac"],
+        "digital design": ["digital design", "digital electronics", "digital logic", "dld", "dd", "logic gate", "flip flop", "counter", "multiplexer", "boolean", "karnaugh", "k-map", "adc", "dac"],
         "signals systems": ["fourier", "laplace", "convolution", "filter", "sampling", "nyquist", "z-transform", "fourier transform"],
         "engineering mathematics": ["calculus", "differential equation", "eigenvalue", "eigenvector", "integral", "probability", "laplace transform", "linear algebra"],
         "c programming": ["pointer", "malloc", "struct", "recursion in c", "dynamic memory", "file handling in c"],

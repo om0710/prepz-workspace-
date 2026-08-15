@@ -2471,7 +2471,11 @@ function initializeDocPilotApp() {
         "PLBlnK6fEyqRhqJPDXcvYlLfXPh37L89g3": "p2b2Vb-cYCs", // NESO Academy Discrete Mathematics
         "PLxCzCOWd7aiH2wwES9vPWsEL6ipTaUSl3": "YBb2oYIzXK0", // Gate Smashers Discrete Mathematics
         "PLT3bOBUU3L9j_VG5CICyWK_a4M0-nwwxy": "iZ3g7JdSjbw", // Pradeep Giri Academy Discrete Mathematics
-        "3zOtLEeHygg": "3zOtLEeHygg"                          // Knowledge Gate Discrete Mathematics Full Course
+        "3zOtLEeHygg": "3zOtLEeHygg",                         // Knowledge Gate Discrete Mathematics Full Course
+        "PLxCzCOWd7aiGmXg4NoX6R31AsC5LeCPHe": "O0gtKDu_cJc", // Gate Smashers Digital Design
+        "PLgwJf8NK-2e4OD-vicvzWT7wE8BZIQtEe": "ovHm8IHVR3Y", // Engineering Funda Digital Design
+        "PLBlnK6fEyqRjMH3mWf6kwqiTbT798eAOm": "M0mx8S05v60", // NESO Academy Digital Design
+        "PLmXKhU9FNesSfX1PVt4VGm-wbIKfemUWK": "pHNbm-4reIc"  // Knowledge Gate Digital Design
     };
 
     function resolveYouTubeVideoId(url, channelName) {
@@ -2498,6 +2502,7 @@ function initializeDocPilotApp() {
         if (ch.includes("neso")) {
             if (u.includes("dbms") || u.includes("iyrytrbk") || u.includes("sql")) return "OMwgGL3lHlI";
             if (u.includes("rhqjpdx") || u.includes("discrete") || u.includes("dms")) return "p2b2Vb-cYCs";
+            if (u.includes("rjmh3mw") || u.includes("digital") || u.includes("dld")) return "M0mx8S05v60";
             return "NEhH6C7Fzw4";
         }
         if (ch.includes("perfect computer")) return "rttcOFKPphQ";
@@ -2508,11 +2513,16 @@ function initializeDocPilotApp() {
         if (ch.includes("engineers ki pathshala") || ch.includes("umesh dhande")) return "Vd2UJiIPbag";
         if (ch.includes("gate smashers")) {
             if (u.includes("h2wwes") || u.includes("discrete") || u.includes("dms")) return "YBb2oYIzXK0";
+            if (u.includes("gmxg4no") || u.includes("digital") || u.includes("dld")) return "O0gtKDu_cJc";
             if (u.includes("fan6i8c") || u.includes("dbms") || u.includes("ims")) return "kBdlM6hNDAE";
             if (u.includes("os") || u.includes("gz9don")) return "bkSWJJZNgf8";
             return "kBdlM6hNDAE";
         }
-        if (ch.includes("knowledge gate") || u.includes("3zotle") || u.includes("sanchit")) return "3zOtLEeHygg";
+        if (ch.includes("knowledge gate")) {
+            if (u.includes("sfx1pvt") || u.includes("digital") || u.includes("dld")) return "pHNbm-4reIc";
+            return "3zOtLEeHygg";
+        }
+        if (ch.includes("engineering funda") || ch.includes("funda")) return "ovHm8IHVR3Y";
         if (ch.includes("algorithm unlocked")) return "uo34ZM030xQ";
         if (ch.includes("gajendra purohit") || ch.includes("purohit")) {
             if (u.includes("u6sqdycysfij") || u.includes("calculus") || u.includes("differentiat")) return "WX6O9TiFYsA";
