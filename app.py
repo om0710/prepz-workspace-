@@ -1893,7 +1893,7 @@ INSTRUCTIONS & EXAM PAPER CREATION RULES:
 
 ---
 
-# BUBU PREPZ ACADEMIC EXAMINATION
+# BU PREPZ ACADEMIC EXAMINATION
 - Header: Subject: {subject} | {semester}
 - Exam Info: Time Allowed: 3 Hours | Maximum Marks: 70 Marks | Course Code: {course_code}
 - Instructions to Candidates (4 bullet points)
