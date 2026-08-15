@@ -2481,7 +2481,9 @@ function initializeDocPilotApp() {
         "PLU6SqdYcYsfJRZEK4BpuufOlIrQzWm-nP": "qqLwi27BJSA", // Gajendra Purohit Linear Algebra (Vector Spaces)
         "TLRiju0jFEI": "TLRiju0jFEI",                         // GATE Wallah Linear Algebra One-Shot
         "PLU6SqdYcYsfIuZVt20v-eNZBfFLENrM1F": "bjJZKTrCBNw", // Gajendra Purohit ODE First Order
-        "PLU6SqdYcYsfJmqo86d12EoNNWKtAZqu8q": "McOc6OUC7Pc"  // Gajendra Purohit Higher Order ODE & PDE
+        "PLU6SqdYcYsfJmqo86d12EoNNWKtAZqu8q": "McOc6OUC7Pc", // Gajendra Purohit Higher Order ODE & PDE
+        "PLfqMhTWNBTe3LtFWcvwpqTkUSlB32kJop": "yRpLlJmRo2w", // Shradha Khapra Java Complete Course
+        "PLDzeHZWIZsTqNW1gvXXAicBgku9uPZeOC": "X2NVOSNBbxU"  // Love Babbar Java Placement Course
     };
 
     function resolveYouTubeVideoId(url, channelName) {
@@ -2505,6 +2507,7 @@ function initializeDocPilotApp() {
 
         const ch = (channelName || "").toLowerCase();
         const u = (url || "").toLowerCase();
+        if (ch.includes("babbar") || ch.includes("codehelp") || u.includes("pzeoc") || u.includes("dsehzwizstq")) return "X2NVOSNBbxU";
         if (ch.includes("gate wallah") || u.includes("tlriju0jfei")) return "TLRiju0jFEI";
         if (ch.includes("neso")) {
             if (u.includes("dbms") || u.includes("iyrytrbk") || u.includes("sql")) return "OMwgGL3lHlI";
@@ -2548,7 +2551,10 @@ function initializeDocPilotApp() {
             return "3d6DsjIBzJ4";
         }
         if (ch.includes("jenny")) return "AT14lCXuMKI";
-        if (ch.includes("apna college") || ch.includes("shradha")) return "z9bZufPHFLU";
+        if (ch.includes("apna college") || ch.includes("shradha") || ch.includes("shraddha")) {
+            if (u.includes("3ltfwcvwp") || u.includes("b32kjop") || u.includes("java")) return "yRpLlJmRo2w";
+            return "z9bZufPHFLU";
+        }
         if (ch.includes("college wallah")) return "bL-o2xBENY0";
         if (ch.includes("harry")) return "7wnove7K-ZQ";
         if (ch.includes("abdul bari")) return "0IAPZzGSbME";

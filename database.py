@@ -793,6 +793,36 @@ BENNETT_CHANNELS = [
         "semester": 1
     },
     {
+        "channel_name": "Apna College",
+        "instructor": "Shradha Khapra",
+        "subject": "Java Programming",
+        "topic": "Java Complete Course, Core Java, OOPs & Data Structures",
+        "playlist_url": "https://youtube.com/playlist?list=PLfqMhTWNBTe3LtFWcvwpqTkUSlB32kJop",
+        "difficulty": "Beginner",
+        "best_for": ["foundation", "core java", "placements", "oops"],
+        "avg_duration": 30,
+        "total_videos": 45,
+        "helpfulness_score": 4.9,
+        "total_ratings": 210,
+        "helpful_count": 206,
+        "semester": 2
+    },
+    {
+        "channel_name": "CodeHelp - by Babbar",
+        "instructor": "Love Babbar",
+        "subject": "Java Programming",
+        "topic": "Supreme Java Placement Course & Problem Solving",
+        "playlist_url": "https://youtube.com/playlist?list=PLDzeHZWIZsTqNW1gvXXAicBgku9uPZeOC",
+        "difficulty": "Beginner",
+        "best_for": ["placement prep", "core concepts", "coding practice"],
+        "avg_duration": 35,
+        "total_videos": 40,
+        "helpfulness_score": 4.9,
+        "total_ratings": 190,
+        "helpful_count": 186,
+        "semester": 2
+    },
+    {
         "channel_name": "Perfect Computer Engineer",
         "instructor": "Perfect Computer Engineer",
         "subject": "Basic Electrical & Electronics Engineering",
@@ -1002,6 +1032,7 @@ TOPIC_KW = {
     "computer networks": ["computer network", "computer networks", "networking", "network", "networks", "tcp", "ip", "http", "dns", "routing", "osi model", "ethernet", "subnet", "congestion control"],
     "algorithms": ["algorithm", "algorithms", "complexity", "big o", "dynamic programming", "greedy", "backtracking", "divide and conquer", "dijkstra"],
     "python programming": ["python", "python programming", "numpy", "pandas", "oop in python", "django", "flask"],
+    "java programming": ["java programming", "java language", "core java", "java dsa", "dsa in java", "java with dsa", "java oops", "java", "shraddha khapra", "shradha khapra", "love babbar", "babbar java"],
     "c programming": ["c programming", "pointer", "pointers", "malloc", "struct", "recursion in c", "dynamic memory", "file handling in c"],
     "engineering mechanics": ["mechanics", "statics", "dynamics", "friction", "centroid", "moment of inertia", "truss", "kinematics", "kinetics"],
     "thermodynamics": ["thermodynamics", "entropy", "enthalpy", "carnot", "rankine", "brayton", "first law", "second law", "refrigeration"],
@@ -1333,6 +1364,10 @@ TOPIC_TO_FACULTY_MAP = {
     "os": ["operating", "os", "deadlock", "semaphore", "process", "gate smashers", "varun singla", "neso academy"],
     "python programming": ["python", "programming", "code with harry", "apna college", "shradha khapra"],
     "python": ["python", "programming", "code with harry", "apna college", "shradha khapra"],
+    "java programming": ["java", "core java", "java programming", "oops", "shradha khapra", "shraddha khapra", "apna college", "love babbar", "babbar", "codehelp"],
+    "java": ["java", "core java", "java programming", "oops", "shradha khapra", "shraddha khapra", "apna college", "love babbar", "babbar", "codehelp"],
+    "core java": ["java", "core java", "java programming", "oops", "shradha khapra", "shraddha khapra", "apna college", "love babbar", "babbar", "codehelp"],
+    "java dsa": ["java", "core java", "java programming", "oops", "shradha khapra", "shraddha khapra", "apna college", "love babbar", "babbar", "codehelp"],
     "coding": ["python", "programming", "code with harry", "apna college", "shradha khapra", "abdul bari"],
     "data structures": ["data structure", "dsa", "abdul bari", "tree", "graph", "algorithm", "apna college", "shradha khapra", "jenny's lectures", "jenny", "college wallah"],
     "dsa": ["data structure", "dsa", "abdul bari", "tree", "graph", "algorithm", "apna college", "shradha khapra", "jenny's lectures", "jenny", "college wallah"],
@@ -1401,7 +1436,7 @@ def get_recommended_videos(
             # Direct keyword hits
             for kw in keywords:
                 if kw in text:
-                    if kw in ["gajendra purohit", "pradeep giri", "neso academy", "apna college", "shradha khapra", "umesh dhande", "knowledge gate", "sanchit jain", "engineering funda", "gate wallah"]:
+                    if kw in ["gajendra purohit", "pradeep giri", "neso academy", "apna college", "shradha khapra", "umesh dhande", "knowledge gate", "sanchit jain", "engineering funda", "gate wallah", "love babbar", "babbar"]:
                         match_score += 10
                     else:
                         match_score += 25
@@ -1426,6 +1461,8 @@ def get_recommended_videos(
             elif "operating system" in topic_clean and "operating" in subj.lower():
                 match_score += 60
             elif "python" in topic_clean and "python" in subj.lower():
+                match_score += 60
+            elif "java" in topic_clean and ("java" in subj.lower() or "java" in top.lower()):
                 match_score += 60
             elif "c++" in topic_clean and "c++" in subj.lower():
                 match_score += 60
@@ -1557,6 +1594,7 @@ def _extract_topic_keywords(query: str) -> str:
         "signals systems": ["fourier", "laplace", "convolution", "filter", "sampling", "nyquist", "z-transform", "fourier transform"],
         "engineering mathematics": ["calculus", "differential equation", "eigenvalue", "eigenvector", "integral", "probability", "laplace transform", "linear algebra"],
         "c programming": ["pointer", "malloc", "struct", "recursion in c", "dynamic memory", "file handling in c"],
+        "java programming": ["java programming", "core java", "java dsa", "java", "oop in java"],
         "object oriented": ["oop", "object oriented", "inheritance", "polymorphism", "encapsulation", "abstraction", "virtual function"],
         "computer architecture": ["processor", "cpu", "cache", "pipeline", "instruction set", "alu", "cache mapping", "pipelining hazards"],
         "software engineering": ["sdlc", "agile", "design pattern", "uml", "software testing", "waterfall model"],
