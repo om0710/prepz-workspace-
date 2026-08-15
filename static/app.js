@@ -2467,7 +2467,11 @@ function initializeDocPilotApp() {
         "PLT3bOBUU3L9jex8hXzVAszMS8NOILa7IV": "Y0_260pKtkA", // Pradeep Giri Academy Probability & Statistics
         "PLfqMhTWNBTe137I_EPQd34TsgV6IO55pt": "z9bZufPHFLU", // Apna College Shradha Khapra C++ DSA
         "PLxgZQoSe9cg0df_GxVjz3DD_Gck5tMXAd": "bL-o2xBENY0", // College Wallah C++ and DSA Foundation
-        "PLdo5W4Nhv31bbKJzrsKfMpo_grxuLl8LU": "AT14lCXuMKI"  // Jenny's Lectures CS IT DSA Course
+        "PLdo5W4Nhv31bbKJzrsKfMpo_grxuLl8LU": "AT14lCXuMKI", // Jenny's Lectures CS IT DSA Course
+        "PLBlnK6fEyqRhqJPDXcvYlLfXPh37L89g3": "p2b2Vb-cYCs", // NESO Academy Discrete Mathematics
+        "PLxCzCOWd7aiH2wwES9vPWsEL6ipTaUSl3": "YBb2oYIzXK0", // Gate Smashers Discrete Mathematics
+        "PLT3bOBUU3L9j_VG5CICyWK_a4M0-nwwxy": "iZ3g7JdSjbw", // Pradeep Giri Academy Discrete Mathematics
+        "3zOtLEeHygg": "3zOtLEeHygg"                          // Knowledge Gate Discrete Mathematics Full Course
     };
 
     function resolveYouTubeVideoId(url, channelName) {
@@ -2482,6 +2486,10 @@ function initializeDocPilotApp() {
                 if (vid && vid.length === 11) {
                     return vid;
                 }
+                if (url.includes("youtu.be/")) {
+                    const match = url.match(/youtu\.be\/([a-zA-Z0-9_-]{11})/);
+                    if (match && match[1]) return match[1];
+                }
             }
         } catch (e) {}
 
@@ -2489,6 +2497,7 @@ function initializeDocPilotApp() {
         const u = (url || "").toLowerCase();
         if (ch.includes("neso")) {
             if (u.includes("dbms") || u.includes("iyrytrbk") || u.includes("sql")) return "OMwgGL3lHlI";
+            if (u.includes("rhqjpdx") || u.includes("discrete") || u.includes("dms")) return "p2b2Vb-cYCs";
             return "NEhH6C7Fzw4";
         }
         if (ch.includes("perfect computer")) return "rttcOFKPphQ";
@@ -2497,7 +2506,13 @@ function initializeDocPilotApp() {
             return "dZyKXdvzSz0";
         }
         if (ch.includes("engineers ki pathshala") || ch.includes("umesh dhande")) return "Vd2UJiIPbag";
-        if (ch.includes("gate smashers")) return "kBdlM6hNDAE";
+        if (ch.includes("gate smashers")) {
+            if (u.includes("h2wwes") || u.includes("discrete") || u.includes("dms")) return "YBb2oYIzXK0";
+            if (u.includes("fan6i8c") || u.includes("dbms") || u.includes("ims")) return "kBdlM6hNDAE";
+            if (u.includes("os") || u.includes("gz9don")) return "bkSWJJZNgf8";
+            return "kBdlM6hNDAE";
+        }
+        if (ch.includes("knowledge gate") || u.includes("3zotle") || u.includes("sanchit")) return "3zOtLEeHygg";
         if (ch.includes("algorithm unlocked")) return "uo34ZM030xQ";
         if (ch.includes("gajendra purohit") || ch.includes("purohit")) {
             if (u.includes("u6sqdycysfij") || u.includes("calculus") || u.includes("differentiat")) return "WX6O9TiFYsA";
@@ -2507,6 +2522,7 @@ function initializeDocPilotApp() {
         if (ch.includes("pradeep giri")) {
             if (u.includes("jex8hxzv") || u.includes("noila7iv") || u.includes("probab") || u.includes("stat")) return "Y0_260pKtkA";
             if (u.includes("3yqwge") || u.includes("calculus") || u.includes("math")) return "bQ_B9cHBYfQ";
+            if (u.includes("vg5cicy") || u.includes("discrete") || u.includes("dms")) return "iZ3g7JdSjbw";
             return "3d6DsjIBzJ4";
         }
         if (ch.includes("jenny")) return "AT14lCXuMKI";

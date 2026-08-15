@@ -583,6 +583,66 @@ BENNETT_CHANNELS = [
         "semester": 3
     },
     {
+        "channel_name": "NESO Academy",
+        "instructor": "NESO Academy",
+        "subject": "Discrete Mathematical Structures",
+        "topic": "Set Theory, Relations, Functions & Propositional Logic",
+        "playlist_url": "https://youtube.com/playlist?list=PLBlnK6fEyqRhqJPDXcvYlLfXPh37L89g3",
+        "difficulty": "Beginner",
+        "best_for": ["foundation", "exam prep", "clear concepts"],
+        "avg_duration": 18,
+        "total_videos": 65,
+        "helpfulness_score": 4.9,
+        "total_ratings": 150,
+        "helpful_count": 147,
+        "semester": 3
+    },
+    {
+        "channel_name": "Gate Smashers",
+        "instructor": "Varun Singla",
+        "subject": "Discrete Mathematical Structures",
+        "topic": "Discrete Mathematics Complete Course & Graph Theory",
+        "playlist_url": "https://youtube.com/playlist?list=PLxCzCOWd7aiH2wwES9vPWsEL6ipTaUSl3",
+        "difficulty": "Beginner",
+        "best_for": ["exam prep", "fast revision", "concepts"],
+        "avg_duration": 15,
+        "total_videos": 80,
+        "helpfulness_score": 4.9,
+        "total_ratings": 190,
+        "helpful_count": 186,
+        "semester": 3
+    },
+    {
+        "channel_name": "Knowledge Gate",
+        "instructor": "Sanchit Jain",
+        "subject": "Discrete Mathematical Structures",
+        "topic": "Discrete Mathematics Full Course in One Video",
+        "playlist_url": "https://youtu.be/3zOtLEeHygg",
+        "difficulty": "Beginner",
+        "best_for": ["one shot", "complete revision", "exam prep"],
+        "avg_duration": 120,
+        "total_videos": 1,
+        "helpfulness_score": 4.8,
+        "total_ratings": 130,
+        "helpful_count": 126,
+        "semester": 3
+    },
+    {
+        "channel_name": "Pradeep Giri Academy",
+        "instructor": "Pradeep Giri Academy",
+        "subject": "Discrete Mathematical Structures",
+        "topic": "Engineering Mathematics: Discrete Mathematics Complete Playlist",
+        "playlist_url": "https://youtube.com/playlist?list=PLT3bOBUU3L9j_VG5CICyWK_a4M0-nwwxy",
+        "difficulty": "Beginner",
+        "best_for": ["step by step", "exam prep", "engineering math"],
+        "avg_duration": 25,
+        "total_videos": 40,
+        "helpfulness_score": 4.8,
+        "total_ratings": 110,
+        "helpful_count": 106,
+        "semester": 3
+    },
+    {
         "channel_name": "Perfect Computer Engineer",
         "instructor": "Perfect Computer Engineer",
         "subject": "Basic Electrical & Electronics Engineering",
@@ -639,9 +699,8 @@ def seed_bennett_channels_if_needed():
             )
         """)
         # Clean up obsolete rows
-        cursor.execute("DELETE FROM youtube_playlist WHERE playlist_url LIKE '%PLBlnK6fEyqRhqJPDXcvYlLfXPh37L89g3%'")
         cursor.execute("DELETE FROM youtube_playlist WHERE channel_name = 'Love You Science'")
-        cursor.execute("DELETE FROM youtube_playlist WHERE channel_name = 'Knowledge Gate' OR playlist_url LIKE '%PLmXKhU9FNesR1rSES7oLdJaNFgmuj0SYV%'")
+        cursor.execute("DELETE FROM youtube_playlist WHERE playlist_url LIKE '%PLmXKhU9FNesR1rSES7oLdJaNFgmuj0SYV%'")
         cursor.execute("DELETE FROM youtube_playlist WHERE playlist_url LIKE '%PLU6SqdYcYsfLRq3tu-g_hvkHDcorrtcBK%'")
         
         for ch in BENNETT_CHANNELS:
@@ -798,7 +857,8 @@ TOPIC_KW = {
     "engineering mechanics": ["mechanics", "statics", "dynamics", "friction", "centroid", "moment of inertia", "truss", "kinematics", "kinetics"],
     "thermodynamics": ["thermodynamics", "entropy", "enthalpy", "carnot", "rankine", "brayton", "first law", "second law", "refrigeration"],
     "fluid mechanics": ["fluid mechanics", "bernoulli", "navier stokes", "viscosity", "reynolds number", "venturimeter", "fluid flow", "pipe flow"],
-    "digital electronics": ["digital electronics", "logic gate", "logic gates", "flip flop", "flip flops", "counter", "multiplexer", "boolean algebra", "karnaugh map", "k-map", "adc", "dac"]
+    "digital electronics": ["digital electronics", "logic gate", "logic gates", "flip flop", "flip flops", "counter", "multiplexer", "boolean algebra", "karnaugh map", "k-map", "adc", "dac"],
+    "discrete mathematics": ["discrete mathematical structures", "discrete mathematical structure", "discrete mathematics", "discrete math", "discrete maths", "discrete", "dms", "set theory", "relations and functions", "graph theory", "propositional logic", "predicate logic", "recurrence relation", "combinatorics"]
 }
 
 def classify_intent_with_llm(query: str, last_topic: str = "", conversation_history: list = None) -> dict:
@@ -1138,7 +1198,12 @@ TOPIC_TO_FACULTY_MAP = {
     "cpp dsa": ["c++", "cpp", "dsa", "shradha khapra", "apna college", "college wallah", "jenny's lectures", "jenny", "abdul bari", "data structures"],
     "dsa cpp": ["c++", "cpp", "dsa", "shradha khapra", "apna college", "college wallah", "jenny's lectures", "jenny", "abdul bari", "data structures"],
     "cpp": ["c++", "cpp", "dsa", "shradha khapra", "apna college", "college wallah", "jenny's lectures", "jenny", "abdul bari", "data structures"],
-    "c++": ["c++", "cpp", "dsa", "shradha khapra", "apna college", "college wallah", "jenny's lectures", "jenny", "abdul bari", "data structures"]
+    "c++": ["c++", "cpp", "dsa", "shradha khapra", "apna college", "college wallah", "jenny's lectures", "jenny", "abdul bari", "data structures"],
+    "discrete mathematics": ["discrete", "dms", "discrete mathematical structures", "set theory", "relations", "graph theory", "logic", "neso academy", "gate smashers", "knowledge gate", "pradeep giri", "varun singla", "sanchit jain"],
+    "discrete mathematical structures": ["discrete", "dms", "discrete mathematical structures", "set theory", "relations", "graph theory", "logic", "neso academy", "gate smashers", "knowledge gate", "pradeep giri", "varun singla", "sanchit jain"],
+    "discrete math": ["discrete", "dms", "discrete mathematical structures", "set theory", "relations", "graph theory", "logic", "neso academy", "gate smashers", "knowledge gate", "pradeep giri", "varun singla", "sanchit jain"],
+    "dms": ["discrete", "dms", "discrete mathematical structures", "set theory", "relations", "graph theory", "logic", "neso academy", "gate smashers", "knowledge gate", "pradeep giri", "varun singla", "sanchit jain"],
+    "discrete": ["discrete", "dms", "discrete mathematical structures", "set theory", "relations", "graph theory", "logic", "neso academy", "gate smashers", "knowledge gate", "pradeep giri", "varun singla", "sanchit jain"]
 }
 
 def get_recommended_videos(
@@ -1172,7 +1237,7 @@ def get_recommended_videos(
             # Direct keyword hits
             for kw in keywords:
                 if kw in text:
-                    if kw in ["gajendra purohit", "pradeep giri", "neso academy", "apna college", "shradha khapra", "umesh dhande"]:
+                    if kw in ["gajendra purohit", "pradeep giri", "neso academy", "apna college", "shradha khapra", "umesh dhande", "knowledge gate", "sanchit jain"]:
                         match_score += 10
                     else:
                         match_score += 25
@@ -1197,6 +1262,8 @@ def get_recommended_videos(
             elif "c++" in topic_clean and "c++" in subj.lower():
                 match_score += 60
             elif "mechanics" in topic_clean and "mechanics" in subj.lower():
+                match_score += 60
+            elif ("discrete" in topic_clean or "dms" in topic_clean) and ("discrete" in subj.lower() or "dms" in subj.lower()):
                 match_score += 60
 
             # Exact subject match if provided
@@ -1322,7 +1389,8 @@ def _extract_topic_keywords(query: str) -> str:
         "c programming": ["pointer", "malloc", "struct", "recursion in c", "dynamic memory", "file handling in c"],
         "object oriented": ["oop", "object oriented", "inheritance", "polymorphism", "encapsulation", "abstraction", "virtual function"],
         "computer architecture": ["processor", "cpu", "cache", "pipeline", "instruction set", "alu", "cache mapping", "pipelining hazards"],
-        "software engineering": ["sdlc", "agile", "design pattern", "uml", "software testing", "waterfall model"]
+        "software engineering": ["sdlc", "agile", "design pattern", "uml", "software testing", "waterfall model"],
+        "discrete mathematics": ["discrete mathematical structures", "discrete mathematical structure", "discrete mathematics", "discrete math", "discrete maths", "discrete", "dms", "set theory", "relations and functions", "graph theory", "propositional logic", "predicate logic", "recurrence relation", "combinatorics"]
     }
     q = query.lower()
     for topic, kws in TOPIC_KW.items():
