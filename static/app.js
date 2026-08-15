@@ -2479,7 +2479,9 @@ function initializeDocPilotApp() {
         "PLU6SqdYcYsfI7Ebw_j-Vy8YKHdbHKP9am": "1XlT3Y2oyAU", // Gajendra Purohit Linear Algebra (Matrices & Rank)
         "PLT3bOBUU3L9ijgr3HbpphxsgNfBekbPZS": "7FJDp2n4wvg", // Pradeep Giri Academy Linear Algebra
         "PLU6SqdYcYsfJRZEK4BpuufOlIrQzWm-nP": "qqLwi27BJSA", // Gajendra Purohit Linear Algebra (Vector Spaces)
-        "TLRiju0jFEI": "TLRiju0jFEI"                          // GATE Wallah Linear Algebra One-Shot
+        "TLRiju0jFEI": "TLRiju0jFEI",                         // GATE Wallah Linear Algebra One-Shot
+        "PLU6SqdYcYsfIuZVt20v-eNZBfFLENrM1F": "bjJZKTrCBNw", // Gajendra Purohit ODE First Order
+        "PLU6SqdYcYsfJmqo86d12EoNNWKtAZqu8q": "McOc6OUC7Pc"  // Gajendra Purohit Higher Order ODE & PDE
     };
 
     function resolveYouTubeVideoId(url, channelName) {
@@ -2530,6 +2532,8 @@ function initializeDocPilotApp() {
         if (ch.includes("engineering funda") || ch.includes("funda")) return "ovHm8IHVR3Y";
         if (ch.includes("algorithm unlocked")) return "uo34ZM030xQ";
         if (ch.includes("gajendra purohit") || ch.includes("purohit")) {
+            if (u.includes("iuzvt20") || u.includes("ode") || u.includes("flenrm1f")) return "bjJZKTrCBNw";
+            if (u.includes("jmqo86") || u.includes("higher") || u.includes("azqu8q")) return "McOc6OUC7Pc";
             if (u.includes("i7ebw") || u.includes("matrices") || u.includes("matrix")) return "1XlT3Y2oyAU";
             if (u.includes("jrzek4") || u.includes("vector") || u.includes("linear")) return "qqLwi27BJSA";
             if (u.includes("u6sqdycysfij") || u.includes("calculus") || u.includes("differentiat")) return "WX6O9TiFYsA";

@@ -763,6 +763,36 @@ BENNETT_CHANNELS = [
         "semester": 2
     },
     {
+        "channel_name": "Gajendra Purohit",
+        "instructor": "Dr. Gajendra Purohit",
+        "subject": "Differential Equations",
+        "topic": "Ordinary Differential Equations (ODE) - First Order & First Degree",
+        "playlist_url": "https://youtube.com/playlist?list=PLU6SqdYcYsfIuZVt20v-eNZBfFLENrM1F",
+        "difficulty": "Beginner",
+        "best_for": ["exam prep", "foundation", "step by step"],
+        "avg_duration": 18,
+        "total_videos": 35,
+        "helpfulness_score": 4.9,
+        "total_ratings": 160,
+        "helpful_count": 156,
+        "semester": 1
+    },
+    {
+        "channel_name": "Gajendra Purohit (Higher Order)",
+        "instructor": "Dr. Gajendra Purohit",
+        "subject": "Differential Equations",
+        "topic": "Higher Order Linear Differential Equations & PDE",
+        "playlist_url": "https://youtube.com/playlist?list=PLU6SqdYcYsfJmqo86d12EoNNWKtAZqu8q",
+        "difficulty": "Intermediate",
+        "best_for": ["higher order ode", "pde", "exam prep"],
+        "avg_duration": 20,
+        "total_videos": 40,
+        "helpfulness_score": 4.9,
+        "total_ratings": 145,
+        "helpful_count": 141,
+        "semester": 1
+    },
+    {
         "channel_name": "Perfect Computer Engineer",
         "instructor": "Perfect Computer Engineer",
         "subject": "Basic Electrical & Electronics Engineering",
@@ -957,7 +987,7 @@ def calculate_similarity(msg1: str, msg2: str) -> float:
 TOPIC_KW = {
     "electronics": ["basic electronics", "basic electrical", "analog electronics", "electrical engineering", "electronics engineering", "electrical and electronics", "electrical & electronics", "electricals", "electrical", "electronics", "electronic", "elctronics", "electonics", "electornics", "electircal", "elec", "bee", "beee", "ece", "semiconductor", "diode", "bjt", "opamp", "transistor", "fet", "mosfet"],
     "calculus": ["calculus", "differential calculus", "integral calculus", "differentiation", "integration", "derivative", "derivatives", "integral", "integrals", "limit", "limits", "continuity", "maxima", "minima", "taylor series", "maclaurin", "multivariable calculus"],
-    "differential equations": ["differential equation", "differential equations", "ode", "pde", "exact differential", "bernoulli equation", "linear differential"],
+    "differential equations": ["differential equations", "differential equation", "differntial equations", "differntial equation", "ode", "pde", "exact differential", "bernoulli equation", "linear differential", "higher order differential", "cauchy euler", "legendre polynomial", "frobenius"],
     "linear algebra": ["linear algebra", "linear algerba", "eigenvalue", "eigenvalues", "eigenvector", "eigenvectors", "matrix", "matrices", "determinant", "determinants", "rank of matrix", "linear transformation", "linear transformations", "vector space", "vector spaces", "system of linear equations", "cayley hamilton"],
     "thevenin theorem": ["thevenin", "thevenin's", "thevenins", "norton", "nortons", "kvl", "kcl", "maximum power transfer", "superposition theorem", "superposition", "reciprocity theorem", "network theorem", "network theorems"],
     "electrical circuits": ["circuit", "circuits", "dependent source", "phasor", "impedance", "mesh analysis", "nodal analysis", "rlc circuit", "ac circuit", "kirchhoff"],
@@ -1291,7 +1321,10 @@ TOPIC_TO_FACULTY_MAP = {
     "math": ["calculus", "differentiation", "integration", "derivative", "differential", "vishwakarma"],
     "maths": ["calculus", "differentiation", "integration", "derivative", "differential", "vishwakarma"],
     "mathematics": ["calculus", "differentiation", "integration", "derivative", "differential", "vishwakarma"],
-    "differential equations": ["differential equations", "ode", "pde", "vishwakarma"],
+    "differential equations": ["differential equation", "differential equations", "differntial equations", "differntial equation", "ode", "pde", "exact differential", "bernoulli equation", "linear differential", "higher order differential"],
+    "differntial equations": ["differential equation", "differential equations", "differntial equations", "differntial equation", "ode", "pde", "exact differential", "bernoulli equation", "linear differential", "higher order differential"],
+    "ode": ["differential equation", "differential equations", "differntial equations", "differntial equation", "ode", "pde", "exact differential", "bernoulli equation", "linear differential", "higher order differential"],
+    "pde": ["differential equation", "differential equations", "differntial equations", "differntial equation", "ode", "pde", "exact differential", "bernoulli equation", "linear differential", "higher order differential"],
     "linear algebra": ["linear algebra", "matrices", "matrix", "eigenvalue", "eigenvalues", "eigenvector", "vector space", "linear transformation", "gajendra purohit", "pradeep giri", "gate wallah", "physics wallah"],
     "linear algerba": ["linear algebra", "matrices", "matrix", "eigenvalue", "eigenvalues", "eigenvector", "vector space", "linear transformation", "gajendra purohit", "pradeep giri", "gate wallah", "physics wallah"],
     "matrices": ["linear algebra", "matrices", "matrix", "eigenvalue", "eigenvalues", "eigenvector", "vector space", "linear transformation", "gajendra purohit", "pradeep giri", "gate wallah", "physics wallah"],
@@ -1379,6 +1412,8 @@ def get_recommended_videos(
             
             # Subject domain affinity
             if "calculus" in topic_clean and "calculus" in subj.lower():
+                match_score += 60
+            elif ("differential" in topic_clean or "differntial" in topic_clean or "ode" in topic_clean or "pde" in topic_clean) and ("differential" in subj.lower() or "equations" in subj.lower()):
                 match_score += 60
             elif ("linear" in topic_clean or "matrices" in topic_clean or "matrix" in topic_clean or "eigen" in topic_clean) and ("linear" in subj.lower() or "algebra" in subj.lower() or "matrices" in subj.lower()):
                 match_score += 60
