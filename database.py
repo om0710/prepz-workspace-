@@ -291,8 +291,8 @@ BENNETT_CHANNELS = [
         "channel_name": "NESO Academy",
         "instructor": "NESO Academy",
         "subject": "Basic Electrical & Electronics Engineering",
-        "topic": "Electrical Engineering Basics & Circuits",
-        "playlist_url": "https://www.youtube.com/playlist?list=PLBlnK6fEyqRhqJPDXcvYlLfXPh37L89g3",
+        "topic": "Analog Electronics, Diodes & Semiconductor Circuits",
+        "playlist_url": "https://youtube.com/playlist?list=PLBlnK6fEyqRgLR-hMp7wem-bdVN1iEhsh",
         "difficulty": "Intermediate",
         "best_for": ["deep learning", "exam prep"],
         "avg_duration": 20,
@@ -523,7 +523,7 @@ BENNETT_CHANNELS = [
     {
         "channel_name": "Perfect Computer Engineer",
         "instructor": "Perfect Computer Engineer",
-        "subject": "Basic Electronics Engineering",
+        "subject": "Basic Electrical & Electronics Engineering",
         "topic": "Basic Electronics & Semiconductor Devices",
         "playlist_url": "https://youtube.com/playlist?list=PLPIwNooIb9vhiZRRq1fEWXvSLz7VMeqSh",
         "difficulty": "Beginner",
@@ -538,7 +538,7 @@ BENNETT_CHANNELS = [
     {
         "channel_name": "Tikle's Academy",
         "instructor": "Tikle's Academy",
-        "subject": "Basic Electronics Engineering",
+        "subject": "Basic Electrical & Electronics Engineering",
         "topic": "BJT, Op-Amps, Transistors & Diodes",
         "playlist_url": "https://youtube.com/playlist?list=PLDN15nk5uLiCSOqr7-rUz6-GtdTAjlvul",
         "difficulty": "Intermediate",
@@ -549,26 +549,11 @@ BENNETT_CHANNELS = [
         "total_ratings": 120,
         "helpful_count": 116,
         "semester": 1
-    },
-    {
-        "channel_name": "Love You Science",
-        "instructor": "Love You Science",
-        "subject": "Basic Electronics Engineering",
-        "topic": "Analog & Digital Electronics Concepts",
-        "playlist_url": "https://youtube.com/playlist?list=PLUuxbQ0j_xJDs0boYXfxAmAkYF-w0hl6P",
-        "difficulty": "Beginner",
-        "best_for": ["clear concepts", "visual explanations"],
-        "avg_duration": 20,
-        "total_videos": 48,
-        "helpfulness_score": 4.8,
-        "total_ratings": 85,
-        "helpful_count": 82,
-        "semester": 1
     }
 ]
 
 def seed_bennett_channels_if_needed():
-    """Populate database with Bennett University recommended channels, ensuring all 3rd sem courses exist."""
+    """Populate database with Bennett University recommended channels, ensuring exact 4 electrical/electronics courses exist."""
     def _do():
         cursor = conn.cursor()
         cursor.execute("""
@@ -591,6 +576,10 @@ def seed_bennett_channels_if_needed():
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
         """)
+        # Clean up obsolete rows
+        cursor.execute("DELETE FROM youtube_playlist WHERE playlist_url LIKE '%PLBlnK6fEyqRhqJPDXcvYlLfXPh37L89g3%'")
+        cursor.execute("DELETE FROM youtube_playlist WHERE channel_name = 'Love You Science'")
+        
         for ch in BENNETT_CHANNELS:
             existing = cursor.execute(
                 "SELECT id FROM youtube_playlist WHERE playlist_url = ? OR (channel_name = ? AND topic = ?)",
@@ -605,7 +594,7 @@ def seed_bennett_channels_if_needed():
                     ) VALUES (?, ?, ?, ?, ?, ?, 'Bennett University', ?, ?, ?, ?, ?, ?, ?)
                 """, (
                     ch["channel_name"], ch["instructor"], ch["subject"], ch["topic"], ch["playlist_url"],
-                    ch["difficulty"], ch.get("semester", 3), ch.get("helpfulness_score", 4.8), ch.get("total_ratings", 50),
+                    ch["difficulty"], ch.get("semester", 1), ch.get("helpfulness_score", 4.8), ch.get("total_ratings", 50),
                     ch.get("helpful_count", 48), ch.get("total_videos", 40), ch.get("avg_duration", 20),
                     _json.dumps(ch.get("best_for", ["exam prep", "foundation"]))
                 ))
@@ -1039,18 +1028,18 @@ def analyze_user_intent(
 # ── Video Recommendations & Rating ─────────────────────────────────────────────
 
 TOPIC_TO_FACULTY_MAP = {
-    "electricals": ["electrical", "electronics", "thevenin", "umesh dhande", "engineers ki pathshala", "perfect computer engineer", "tikle's academy", "tikle", "love you science", "neso academy"],
-    "electrical": ["electrical", "electronics", "thevenin", "umesh dhande", "engineers ki pathshala", "perfect computer engineer", "tikle's academy", "tikle", "love you science", "neso academy"],
-    "electrical engineering": ["electrical", "electronics", "thevenin", "umesh dhande", "engineers ki pathshala", "perfect computer engineer", "tikle's academy", "tikle", "love you science", "neso academy"],
-    "bee": ["electrical", "electronics", "thevenin", "umesh dhande", "engineers ki pathshala", "perfect computer engineer", "tikle's academy", "tikle", "love you science", "neso academy"],
-    "beee": ["electrical", "electronics", "thevenin", "umesh dhande", "engineers ki pathshala", "perfect computer engineer", "tikle's academy", "tikle", "love you science", "neso academy"],
+    "electricals": ["electrical", "electronics", "thevenin", "umesh dhande", "engineers ki pathshala", "perfect computer engineer", "tikle's academy", "tikle", "neso academy"],
+    "electrical": ["electrical", "electronics", "thevenin", "umesh dhande", "engineers ki pathshala", "perfect computer engineer", "tikle's academy", "tikle", "neso academy"],
+    "electrical engineering": ["electrical", "electronics", "thevenin", "umesh dhande", "engineers ki pathshala", "perfect computer engineer", "tikle's academy", "tikle", "neso academy"],
+    "bee": ["electrical", "electronics", "thevenin", "umesh dhande", "engineers ki pathshala", "perfect computer engineer", "tikle's academy", "tikle", "neso academy"],
+    "beee": ["electrical", "electronics", "thevenin", "umesh dhande", "engineers ki pathshala", "perfect computer engineer", "tikle's academy", "tikle", "neso academy"],
     "thevenin theorem": ["thevenin", "network", "circuit", "electrical", "electronics", "kvl", "kcl", "umesh dhande", "engineers ki pathshala", "tikle's academy", "perfect computer engineer", "neso academy"],
     "electrical circuits": ["circuit", "circuits", "electrical", "electronics", "umesh dhande", "engineers ki pathshala", "perfect computer engineer", "tikle's academy", "neso academy"],
     "electrical machines": ["electrical", "motor", "transformer", "circuits", "neso academy"],
-    "electronics": ["electrical", "electronics", "thevenin", "umesh dhande", "engineers ki pathshala", "perfect computer engineer", "tikle's academy", "tikle", "love you science", "neso academy"],
-    "basic electronics": ["electrical", "electronics", "thevenin", "umesh dhande", "engineers ki pathshala", "perfect computer engineer", "tikle's academy", "tikle", "love you science", "neso academy"],
-    "analog electronics": ["electrical", "electronics", "thevenin", "umesh dhande", "engineers ki pathshala", "perfect computer engineer", "tikle's academy", "tikle", "love you science", "neso academy"],
-    "ece": ["electrical", "electronics", "thevenin", "umesh dhande", "engineers ki pathshala", "perfect computer engineer", "tikle's academy", "tikle", "love you science", "neso academy"],
+    "electronics": ["electrical", "electronics", "thevenin", "umesh dhande", "engineers ki pathshala", "perfect computer engineer", "tikle's academy", "tikle", "neso academy"],
+    "basic electronics": ["electrical", "electronics", "thevenin", "umesh dhande", "engineers ki pathshala", "perfect computer engineer", "tikle's academy", "tikle", "neso academy"],
+    "analog electronics": ["electrical", "electronics", "thevenin", "umesh dhande", "engineers ki pathshala", "perfect computer engineer", "tikle's academy", "tikle", "neso academy"],
+    "ece": ["electrical", "electronics", "thevenin", "umesh dhande", "engineers ki pathshala", "perfect computer engineer", "tikle's academy", "tikle", "neso academy"],
     "calculus": ["calculus", "math", "differentiation", "integration", "derivative", "differential", "gajendra purohit", "vishwakarma"],
     "math": ["calculus", "math", "differentiation", "integration", "derivative", "differential", "gajendra purohit", "vishwakarma"],
     "maths": ["calculus", "math", "differentiation", "integration", "derivative", "differential", "gajendra purohit", "vishwakarma"],

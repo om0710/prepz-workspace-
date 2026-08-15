@@ -2446,18 +2446,15 @@ function initializeDocPilotApp() {
         "PLU6SqdYcYsfIJRl8mo2Rv1MpdvmVD0YyI": "3d6DsjIBzJ4", // Gajendra Purohit Calculus
         "PLdM-WZokR4tbCBA4mkvfk2vOH12eRPT2Y": "BOlT6bM0jKU", // Vishwakarma Advanced Calculus
         "PL9RcWoqXmzaLTYUdnzKhF4bYug3GjGcEc": "Vd2UJiIPbag", // Umesh Dhande Network Theorems
-        "PLBlnK6fEyqRhqJPDXcvYlLfXPh37L89g3": "p2b2Vb-cYCs", // NESO Academy Electrical Basics
+        "PLBlnK6fEyqRgLR-hMp7wem-bdVN1iEhsh": "NEhH6C7Fzw4", // NESO Academy Analog Electronics / Circuits
+        "PLPIwNooIb9vhiZRRq1fEWXvSLz7VMeqSh": "rttcOFKPphQ", // Perfect Computer Engineer Electronics
+        "PLDN15nk5uLiCSOqr7-rUz6-GtdTAjlvul": "dZyKXdvzSz0", // Tikle's Academy Electronics
         "PLGjplNEQ1it8-0CmoljS5yeV-GlKSUEt0": "ERCMXc8x7mc", // Apna College Python
         "PLu0W_9lII9agwh1XjRt242xIpHhPT2llg": "7wnove7K-ZQ", // Code With Harry Python
         "PLDN4rrl48XKpZkf03iYFl-O29szjTrs_O": "0IAPZzGSbME", // Abdul Bari DSA
         "PLxCzCOWd7aiGz9donHRrE9I3Mwn6XdP8p": "bkSWJJZNgf8", // Gate Smashers OS
         "PLBlnK6fEyqRitWLDxMrzVQK8813oqG797": "vBURTt97EkA", // NESO Academy OS
         "PLT3bOBUU3L9hADhGPsZjSddwAC3BvJDnl": "3d6DsjIBzJ4", // Pradeep Giri Mechanics
-        
-        // Electronics Engineering
-        "PLPIwNooIb9vhiZRRq1fEWXvSLz7VMeqSh": "rttcOFKPphQ", // Perfect Computer Engineer Electronics
-        "PLDN15nk5uLiCSOqr7-rUz6-GtdTAjlvul": "dZyKXdvzSz0", // Tikle's Academy Electronics
-        "PLUuxbQ0j_xJDs0boYXfxAmAkYF-w0hl6P": "3wVlmnpClJs", // Love You Science Electronics
         
         // 3rd Semester Courses
         "PLxCzCOWd7aiFAN6I8CuViBuCdJgiOkT2Y": "kBdlM6hNDAE", // Gate Smashers Information Management System (DBMS)
