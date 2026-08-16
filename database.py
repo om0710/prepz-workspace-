@@ -2146,22 +2146,31 @@ def update_user_activity(email: str):
 
     return get_user_by_email(email)
 
-def add_contribution_points(email: str, points: int):
+def add_contribution_points(email: str, points: int, name: Optional[str] = None):
     if not email or points <= 0 or email.lower().strip() == "anonymous@college.edu":
         return
     email = email.strip().lower()
-    
-    user = get_user_by_email(email)
-    if not user:
-        return
 
     def _do():
         with get_db() as c:
-            c.execute("""
-                UPDATE users 
-                SET contribution_score = COALESCE(contribution_score, 0) + ?
-                WHERE lower(email) = ?
-            """, (points, email))
+            cursor = c.cursor()
+            cursor.execute("SELECT id, name, contribution_score FROM users WHERE lower(email) = ?", (email,))
+            row = cursor.fetchone()
+            today = datetime.now().strftime("%Y-%m-%d")
+            if row:
+                cursor.execute("""
+                    UPDATE users 
+                    SET contribution_score = COALESCE(contribution_score, 0) + ?,
+                        last_active_date = ?
+                    WHERE lower(email) = ?
+                """, (points, today, email))
+            else:
+                user_name = (name or email.split("@")[0].replace(".", " ")).strip().title()
+                avatar = f"https://api.dicebear.com/7.x/bottts/svg?seed={email}"
+                cursor.execute("""
+                    INSERT INTO users (name, email, provider, avatar_url, contribution_score, current_streak, last_active_date, is_verified)
+                    VALUES (?, ?, 'email', ?, ?, 1, ?, 1)
+                """, (user_name, email, avatar, points, today))
             c.commit()
     db_retry(_do)
 

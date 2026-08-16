@@ -480,6 +480,7 @@ class ApiChatRequest(BaseModel):
     user_id: Optional[int] = 1
     university_id: Optional[int] = 1
     session_id: Optional[str] = None
+    user_email: Optional[str] = None
 
 class RatePlaylistRequest(BaseModel):
     user_id: Optional[int] = 1
@@ -830,6 +831,11 @@ async def exam_chat_api(request: ApiChatRequest):
         }
         if concept_weakness_data:
             res_payload["concept_weakness"] = concept_weakness_data
+
+        if request.user_email and request.user_email != "anonymous@college.edu":
+            add_contribution_points(request.user_email, 2)
+            update_user_activity(request.user_email)
+
         return res_payload
     except Exception as e:
         print(f"[API CHAT ERROR] {e}")
@@ -982,6 +988,12 @@ async def submit_practice_answer_api(session_id: int, req: PracticeAnswerRequest
         "is_correct": res.get("is_correct", False),
         "time_taken": time_taken
     })
+
+    if email and email != "anonymous@college.edu":
+        pts = 5 if res.get("is_correct") else 3
+        add_contribution_points(email, pts)
+        update_user_activity(email)
+
     return res
 
 @app.post("/api/practice/{session_id}/complete")
@@ -1014,6 +1026,11 @@ async def complete_practice_session_api(session_id: int, request: Request, user_
         "accuracy_percentage": res.get("accuracy_percentage", 0.0),
         "mastery_level": res.get("mastery_level", "intermediate")
     })
+
+    if email and email != "anonymous@college.edu":
+        add_contribution_points(email, 10)
+        update_user_activity(email)
+
     return res
 
 from database import (
@@ -2254,6 +2271,7 @@ class PredictPaperRequest(BaseModel):
     subject: str
     semester: str
     exam_type: Optional[str] = "Mid-Sem"
+    user_email: Optional[str] = None
 
 @app.post("/api/predict-paper")
 async def predict_paper(req: PredictPaperRequest):
@@ -2409,6 +2427,10 @@ Format the entire output in clean, professional Markdown with clear section head
     try:
         response = await run_in_threadpool(llm.invoke, prompt)
         paper_content = response.content if hasattr(response, 'content') else str(response)
+
+        if req.user_email and req.user_email != "anonymous@college.edu":
+            add_contribution_points(req.user_email, 5)
+            update_user_activity(req.user_email)
 
         return {
             "success": True,

@@ -1284,6 +1284,10 @@ function initializeDocPilotApp() {
     };
 
     function resetViewModes() {
+        if (window._leaderboardInterval) {
+            clearInterval(window._leaderboardInterval);
+            window._leaderboardInterval = null;
+        }
         const contentWrapper = document.querySelector(".content-wrapper");
         if (contentWrapper) {
             contentWrapper.classList.remove("landing-mode", "chat-mode", "library-mode", "browse-mode", "predictor-mode", "leaderboard-mode");
@@ -1449,6 +1453,8 @@ function initializeDocPilotApp() {
         if (navLeaderboard) navLeaderboard.classList.add("active");
 
         fetchLeaderboard();
+        if (window._leaderboardInterval) clearInterval(window._leaderboardInterval);
+        window._leaderboardInterval = setInterval(fetchLeaderboard, 12000);
     }
 
     // Expose view-switching functions to global window for inline onclick handlers and direct card clicks
@@ -1592,6 +1598,8 @@ function initializeDocPilotApp() {
         }
     }
 
+    window.fetchLeaderboard = fetchLeaderboard;
+
     async function fetchUserStats() {
         if (!currentUser || !currentUser.email) return;
 
@@ -1620,6 +1628,8 @@ function initializeDocPilotApp() {
             console.error("Error fetching user stats:", e);
         }
     }
+
+    window.fetchUserStats = fetchUserStats;
 
     const allSubjectsList = [
         "Computational Thinking & Programming",
@@ -2506,6 +2516,8 @@ function initializeDocPilotApp() {
                     const recToRender = pendingVideoRec;
                     setTimeout(() => renderVideoRecommendation(recToRender, assistantBubble), 100);
                 }
+                fetchUserStats();
+                if (window.fetchLeaderboard) window.fetchLeaderboard();
             }
 
         } catch (err) {
@@ -4958,6 +4970,8 @@ async function finishPracticeSession() {
                 badge.style.border = "1px solid #f59e0b";
             }
         }
+        fetchUserStats();
+        if (window.fetchLeaderboard) window.fetchLeaderboard();
     } catch (err) {
         console.error("Error completing practice session:", err);
     }
