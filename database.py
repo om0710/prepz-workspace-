@@ -4,6 +4,7 @@ import re as _re
 import json as _json
 import secrets as _secrets
 import time
+from typing import Optional, List, Dict, Any
 from datetime import datetime as _dt, datetime
 try:
     from dotenv import load_dotenv
@@ -104,6 +105,31 @@ def init_user_db():
         cursor.execute("ALTER TABLE users ADD COLUMN is_verified INTEGER DEFAULT 1")
     except Exception:
         pass
+    try:
+        cursor.execute("ALTER TABLE users ADD COLUMN google_id TEXT")
+    except Exception:
+        pass
+    try:
+        cursor.execute("ALTER TABLE users ADD COLUMN auth_method TEXT DEFAULT 'google'")
+    except Exception:
+        pass
+    try:
+        cursor.execute("ALTER TABLE users ADD COLUMN last_login TIMESTAMP")
+    except Exception:
+        pass
+
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS email_logs (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER,
+            recipient_email TEXT NOT NULL,
+            email_type TEXT DEFAULT 'welcome',
+            subject TEXT,
+            sent_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            status TEXT DEFAULT 'success',
+            error_message TEXT
+        )
+    """)
 
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS reported_files (
@@ -3469,3 +3495,39 @@ def verify_user_ownership(user_id: int, resource_id: int, resource_type: str, us
             return d_uid == user_id
             
     return True
+
+def record_email_log(recipient_email: str, subject: str, email_type: str = "welcome", status: str = "success", error_message: str = None, user_id: int = None) -> int:
+    """Record email dispatch status to email_logs table."""
+    def _do():
+        with get_db() as c:
+            cur = c.cursor()
+            cur.execute("""
+                INSERT INTO email_logs (user_id, recipient_email, email_type, subject, status, error_message)
+                VALUES (?, ?, ?, ?, ?, ?)
+            """, (user_id, recipient_email.strip().lower(), email_type, subject, status, error_message))
+            c.commit()
+            return cur.lastrowid
+    return db_retry(_do)
+
+def get_email_logs(recipient_email: Optional[str] = None) -> list:
+    """Retrieve audit history of emails sent."""
+    with get_db() as c:
+        cur = c.cursor()
+        if recipient_email:
+            cur.execute("SELECT id, user_id, recipient_email, email_type, subject, sent_at, status, error_message FROM email_logs WHERE lower(recipient_email) = lower(?) ORDER BY id DESC", (recipient_email.strip(),))
+        else:
+            cur.execute("SELECT id, user_id, recipient_email, email_type, subject, sent_at, status, error_message FROM email_logs ORDER BY id DESC LIMIT 100")
+        rows = cur.fetchall()
+        return [
+            {
+                "id": r[0],
+                "user_id": r[1],
+                "recipient_email": r[2],
+                "email_type": r[3],
+                "subject": r[4],
+                "sent_at": r[5],
+                "status": r[6],
+                "error_message": r[7]
+            }
+            for r in rows
+        ]

@@ -43,7 +43,10 @@ from backend_rag import workflow, active_streams
 from rag import add_pdf_to_vectordb
 from langchain_core.messages import HumanMessage, AIMessage
 
-app = FastAPI(title="LangGraph Chatbot Client API")
+app = FastAPI(title="BU Prepz AI Workspace", description="Academic Intelligence & Exam Preparation Platform")
+
+from auth.routes import router as auth_router
+app.include_router(auth_router)
 
 # Configure CORS
 app.add_middleware(
@@ -80,6 +83,11 @@ async def add_cors_headers(request, call_next):
         "frame-ancestors *;"
     )
     return response
+
+@app.get("/health")
+async def health_check():
+    """Health check endpoint."""
+    return {"status": "ok", "app": "BU Prepz AI Workspace", "timestamp": datetime.utcnow().isoformat()}
 
 # ── Firebase Auth Proxy ────────────────────────────────────────────────────────
 # HF Spaces CSP only allows frame-src 'self'. Firebase auth iframe normally
