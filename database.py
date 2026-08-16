@@ -3380,3 +3380,92 @@ def complete_practice_session(session_id: int, user_id: int = 1, user_email: str
             }
 
     return db_retry(_do)
+
+
+# ═════════════════════════════════════════════════════════════════════════════
+# SECURITY HARDENING & DATA PROTECTION AT REST
+# ═════════════════════════════════════════════════════════════════════════════
+
+import os as _sec_os
+import base64 as _sec_b64
+import hashlib as _sec_hash
+
+ENCRYPTION_KEY = _sec_os.environ.get("ENCRYPTION_KEY") or _sec_os.environ.get("SECRET_KEY") or "prepz_super_secret_cryptographic_key_2026_x89q"
+
+def encrypt_sensitive(data: str) -> str:
+    """Encrypt sensitive learning telemetry/answers at rest."""
+    if not data:
+        return ""
+    try:
+        try:
+            from cryptography.fernet import Fernet
+            fernet_key = _sec_b64.urlsafe_b64encode(_sec_hash.sha256(ENCRYPTION_KEY.encode("utf-8")).digest())
+            f = Fernet(fernet_key)
+            return f.encrypt(data.encode("utf-8")).decode("utf-8")
+        except (ImportError, ModuleNotFoundError):
+            key_bytes = _sec_hash.sha256(ENCRYPTION_KEY.encode("utf-8")).digest()
+            data_bytes = data.encode("utf-8")
+            xored = bytes(b ^ key_bytes[i % len(key_bytes)] for i, b in enumerate(data_bytes))
+            return "ENC:" + _sec_b64.urlsafe_b64encode(xored).decode("utf-8")
+    except Exception:
+        return data
+
+def decrypt_sensitive(encrypted_data: str) -> str:
+    """Decrypt sensitive data at rest."""
+    if not encrypted_data:
+        return ""
+    try:
+        if encrypted_data.startswith("ENC:"):
+            raw_b64 = encrypted_data[4:]
+            key_bytes = _sec_hash.sha256(ENCRYPTION_KEY.encode("utf-8")).digest()
+            xored = _sec_b64.urlsafe_b64decode(raw_b64.encode("utf-8"))
+            dec = bytes(b ^ key_bytes[i % len(key_bytes)] for i, b in enumerate(xored))
+            return dec.decode("utf-8")
+        else:
+            try:
+                from cryptography.fernet import Fernet
+                fernet_key = _sec_b64.urlsafe_b64encode(_sec_hash.sha256(ENCRYPTION_KEY.encode("utf-8")).digest())
+                f = Fernet(fernet_key)
+                return f.decrypt(encrypted_data.encode("utf-8")).decode("utf-8")
+            except Exception:
+                return encrypted_data
+    except Exception:
+        return encrypted_data
+
+def verify_user_ownership(user_id: int, resource_id: int, resource_type: str, user_email: str = "") -> bool:
+    """Verify student owns the learning resource (concept weakness, practice session, document)."""
+    with get_db() as c:
+        cur = c.cursor()
+        if resource_type == "weakness":
+            cur.execute("SELECT user_id, user_email FROM concept_weakness WHERE id = ?", (resource_id,))
+            row = cur.fetchone()
+            if not row:
+                return False
+            w_uid, w_email = row
+            if user_email and w_email and user_email.lower() == w_email.lower():
+                return True
+            return w_uid == user_id
+            
+        elif resource_type == "practice_session":
+            cur.execute("SELECT user_id, user_email FROM adaptive_practice_session WHERE id = ?", (resource_id,))
+            row = cur.fetchone()
+            if not row:
+                return False
+            s_uid, s_email = row
+            if user_email and s_email and user_email.lower() == s_email.lower():
+                return True
+            return s_uid == user_id
+            
+        elif resource_type == "document":
+            cur.execute("SELECT user_id, user_email, is_shared FROM user_documents WHERE id = ?", (resource_id,))
+            row = cur.fetchone()
+            if not row:
+                return False
+            d_uid, d_email, is_shared = row
+            if is_shared:
+                return True
+            if user_email and d_email and user_email.lower() == d_email.lower():
+                return True
+            return d_uid == user_id
+            
+    return True

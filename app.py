@@ -10,9 +10,31 @@ from fastapi import FastAPI, UploadFile, File, HTTPException, Request
 from fastapi.responses import StreamingResponse, FileResponse, Response, RedirectResponse
 import base64
 import httpx
+import logging
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel
+from pydantic import BaseModel, Field, validator
+
+# Setup Security Audit Logger
+security_logger = logging.getLogger("security")
+
+def log_security_event(event_type: str, user_target: str, details: dict):
+    """Log security and privacy audit events."""
+    try:
+        security_logger.warning(f"[SECURITY_AUDIT][{event_type}] Target: {user_target} | Details: {json.dumps(details)}")
+    except Exception:
+        print(f"[SECURITY_AUDIT][{event_type}] Target: {user_target} | Details: {details}")
+
+def detect_cheating_attempt(session_id: int, user_email: str, time_taken: int) -> bool:
+    """Detect automated scripting or unnatural cheating patterns during adaptive practice."""
+    if time_taken < 2:
+        log_security_event("FAST_ANSWER_ANOMALY", user_email or "anonymous", {
+            "session_id": session_id,
+            "time_taken": time_taken,
+            "alert": "Response submitted in under 2 seconds"
+        })
+        return True
+    return False
 
 # Import LangGraph workflow and config
 from backend_rag import workflow, active_streams
@@ -203,6 +225,22 @@ async def rate_limit_middleware(request: Request, call_next):
                 media_type="application/json"
             )
             
+    elif path.startswith("/api/practice/generate"):
+        if not check_ip_rate_limit(client_ip, "practice_gen", max_requests=25, window_seconds=60):
+            return StreamingResponse(
+                iter([json.dumps({"detail": "Rate limit exceeded. Maximum 25 adaptive practice generations per minute allowed."}).encode()]),
+                status_code=429,
+                media_type="application/json"
+            )
+
+    elif path.startswith("/api/practice/") and "/answer" in path and request.method == "POST":
+        if not check_ip_rate_limit(client_ip, "practice_ans", max_requests=60, window_seconds=60):
+            return StreamingResponse(
+                iter([json.dumps({"detail": "Rate limit exceeded. Maximum 60 answer submissions per minute allowed."}).encode()]),
+                status_code=429,
+                media_type="application/json"
+            )
+
     elif path.startswith("/api/") and not check_ip_rate_limit(client_ip, "api_general", max_requests=120, window_seconds=60):
         return StreamingResponse(
             iter([json.dumps({"detail": "Too many requests. API rate limit exceeded (120 requests/min)."}).encode()]),
@@ -230,16 +268,18 @@ async def add_security_headers(request: Request, call_next):
     response.headers["Expires"] = "0"
     response.headers["X-Content-Type-Options"] = "nosniff"
     response.headers["X-XSS-Protection"] = "1; mode=block"
+    response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
+    response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
     response.headers["Content-Security-Policy"] = (
-        "default-src 'self' data: blob: 'unsafe-inline' 'unsafe-eval'; "
-        "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net https://apis.google.com https://www.gstatic.com https://cdnjs.cloudflare.com; "
-        "frame-src 'self' https://www.youtube.com https://www.youtube-nocookie.com https://youtube.com https://*.youtube.com https://prepz-workspace.firebaseapp.com https://accounts.google.com https://www.gstatic.com; "
+        "default-src 'self' data: blob: 'unsafe-inline' 'unsafe-eval' https://*.hf.space https://huggingface.co; "
+        "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net https://apis.google.com https://accounts.google.com https://www.gstatic.com https://cdnjs.cloudflare.com; "
+        "frame-src 'self' https://www.youtube.com https://www.youtube-nocookie.com https://youtube.com https://*.youtube.com https://prepz-workspace.firebaseapp.com https://accounts.google.com https://www.gstatic.com https://*.hf.space https://huggingface.co; "
         "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; "
         "img-src 'self' data: blob: https:; "
         "media-src 'self' https: blob: data:; "
-        "font-src 'self' https://fonts.gstatic.com; "
-        "connect-src 'self' https://www.googleapis.com https://accounts.google.com https://api.dicebear.com https://*.firebaseio.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com; "
-        "frame-ancestors *;"
+        "font-src 'self' https://fonts.gstatic.com data:; "
+        "connect-src 'self' https: wss:; "
+        "frame-ancestors 'self' https://huggingface.co https://*.hf.space *;"
     )
     return response
 
@@ -437,12 +477,54 @@ class RatePlaylistRequest(BaseModel):
     was_helpful: bool
     watched_percentage: Optional[int] = 30
 
+class ConceptPracticeRequest(BaseModel):
+    concept: str = Field(..., min_length=1, max_length=200)
+    difficulty: Optional[str] = "easy"
+    user_id: Optional[int] = 1
+    user_email: Optional[str] = None
+    
+    @validator("concept")
+    def validate_concept_safety(cls, v):
+        if not v or not v.strip():
+            raise ValueError("Concept name cannot be empty")
+        v_clean = v.strip()
+        dangerous_patterns = [";", "--", "/*", "*/", "DROP TABLE", "DELETE FROM", "INSERT INTO", "UPDATE "]
+        for pattern in dangerous_patterns:
+            if pattern.lower() in v_clean.lower():
+                raise ValueError("Invalid concept name characters detected")
+        return html.escape(v_clean)
+    
+    @validator("difficulty")
+    def validate_difficulty_enum(cls, v):
+        allowed = {"easy", "medium", "hard"}
+        v_clean = (v or "easy").strip().lower()
+        if v_clean not in allowed:
+            raise ValueError(f"Difficulty must be one of: {sorted(list(allowed))}")
+        return v_clean
+
 class PracticeAnswerRequest(BaseModel):
     question_id: int
-    user_answer: str
+    user_answer: str = Field(..., min_length=1, max_length=5000)
     time_taken: Optional[int] = 15
     user_id: Optional[int] = 1
     user_email: Optional[str] = None
+
+    @validator("time_taken")
+    def validate_time_taken(cls, v):
+        if v is None:
+            return 15
+        if v < 0 or v > 3600:
+            raise ValueError("Time taken must be between 0 and 3600 seconds")
+        return v
+
+    @validator("user_answer")
+    def sanitize_user_answer(cls, v):
+        if not v or not str(v).strip():
+            raise ValueError("Answer cannot be empty")
+        v_str = str(v)
+        # Strip script tags and HTML escape
+        v_clean = re.sub(r'<script[^>]*>.*?</script>', '', v_str, flags=re.IGNORECASE)
+        return html.escape(v_clean.strip())
 
 @app.post("/chat")
 async def chat_stream(request: ChatRequest):
@@ -783,65 +865,145 @@ async def seed_channels_endpoint(admin_token: Optional[str] = None):
 async def get_weakness_profile_api(request: Request, user_id: int = 1, user_email: Optional[str] = None):
     """Return student's full concept weakness profile with critical gaps and priorities."""
     email = user_email
-    if not email:
+    user_payload = get_current_user_payload(request)
+    if user_payload:
+        email = user_payload.get("email") or email
+        user_id = user_payload.get("id") or user_id
+    elif not email:
         user_token = request.headers.get("X-Access-Token") or request.cookies.get("auth_token")
         if user_token:
             verified = verify_signed_token(user_token)
             if verified:
-                email = verified.get("email")
+                email = verified.get("email") or email
+                user_id = verified.get("id") or user_id
+
     profile = create_weakness_profile(user_id=user_id, user_email=email or "")
+    log_security_event("WEAKNESS_PROFILE_ACCESSED", email or f"user_{user_id}", {
+        "user_id": user_id,
+        "total_weaknesses": profile.get("total_weaknesses", 0)
+    })
     return profile
 
 @app.get("/api/weaknesses/graph")
 async def get_weakness_graph_api(subject: str = ""):
     """Return subject concept dependency graph."""
-    deps = get_concept_dependency_graph(subject=subject)
+    subject_clean = html.escape((subject or "").strip())
+    deps = get_concept_dependency_graph(subject=subject_clean)
     return {"success": True, "dependencies": deps}
 
 @app.get("/api/practice/generate")
 async def generate_practice_api(request: Request, concept: str, difficulty: str = "easy", user_id: int = 1, user_email: Optional[str] = None):
     """Generate or retrieve an adaptive practice session for a concept."""
+    if not concept or not concept.strip():
+        raise HTTPException(status_code=400, detail="Concept parameter is required.")
+    
+    # Input validation and anti-injection check
+    dangerous_patterns = [";", "--", "/*", "*/", "DROP TABLE", "DELETE FROM", "INSERT INTO", "UPDATE "]
+    for pattern in dangerous_patterns:
+        if pattern.lower() in concept.lower():
+            raise HTTPException(status_code=400, detail="Invalid characters in concept name.")
+
+    diff_clean = difficulty.strip().lower()
+    if diff_clean not in ("easy", "medium", "hard"):
+        diff_clean = "easy"
+
     email = user_email
-    if not email:
+    user_payload = get_current_user_payload(request)
+    if user_payload:
+        email = user_payload.get("email") or email
+        user_id = user_payload.get("id") or user_id
+    elif not email:
         user_token = request.headers.get("X-Access-Token") or request.cookies.get("auth_token")
         if user_token:
             verified = verify_signed_token(user_token)
             if verified:
-                email = verified.get("email")
-    session_data = generate_adaptive_practice(concept=concept, user_id=user_id, user_email=email or "", difficulty=difficulty)
+                email = verified.get("email") or email
+                user_id = verified.get("id") or user_id
+
+    session_data = generate_adaptive_practice(concept=concept.strip(), user_id=user_id, user_email=email or "", difficulty=diff_clean)
+    log_security_event("PRACTICE_SESSION_GENERATED", email or f"user_{user_id}", {
+        "concept": concept,
+        "difficulty": diff_clean,
+        "session_id": session_data.get("session_id")
+    })
     return session_data
 
 @app.post("/api/practice/{session_id}/answer")
 async def submit_practice_answer_api(session_id: int, req: PracticeAnswerRequest, request: Request):
-    """Submit user answer for adaptive evaluation and difficulty progression."""
+    """Submit user answer for adaptive evaluation and difficulty progression with ownership check."""
     email = req.user_email
-    if not email:
+    user_id = req.user_id or 1
+    user_payload = get_current_user_payload(request)
+    if user_payload:
+        email = user_payload.get("email") or email
+        user_id = user_payload.get("id") or user_id
+    elif not email:
         user_token = request.headers.get("X-Access-Token") or request.cookies.get("auth_token")
         if user_token:
             verified = verify_signed_token(user_token)
             if verified:
-                email = verified.get("email")
+                email = verified.get("email") or email
+                user_id = verified.get("id") or user_id
+
+    # Ownership Verification
+    if not verify_user_ownership(user_id=user_id, resource_id=session_id, resource_type="practice_session", user_email=email or ""):
+        log_security_event("UNAUTHORIZED_PRACTICE_ACCESS_ATTEMPT", email or f"user_{user_id}", {
+            "session_id": session_id,
+            "action": "submit_answer"
+        })
+        raise HTTPException(status_code=403, detail="Access denied. You can only submit answers to your own practice sessions.")
+
+    # Cheating and Anomaly Detection
+    time_taken = req.time_taken or 15
+    detect_cheating_attempt(session_id=session_id, user_email=email or "", time_taken=time_taken)
+
     res = submit_practice_answer(
         session_id=session_id,
         question_id=req.question_id,
         user_answer=req.user_answer,
-        time_taken=req.time_taken or 15,
-        user_id=req.user_id or 1,
+        time_taken=time_taken,
+        user_id=user_id,
         user_email=email or ""
     )
+
+    log_security_event("PRACTICE_ANSWER_EVALUATED", email or f"user_{user_id}", {
+        "session_id": session_id,
+        "question_id": req.question_id,
+        "is_correct": res.get("is_correct", False),
+        "time_taken": time_taken
+    })
     return res
 
 @app.post("/api/practice/{session_id}/complete")
 async def complete_practice_session_api(session_id: int, request: Request, user_id: int = 1, user_email: Optional[str] = None):
-    """Finalize practice session and return mastery progress report."""
+    """Finalize practice session and return mastery progress report with ownership verification."""
     email = user_email
-    if not email:
+    user_payload = get_current_user_payload(request)
+    if user_payload:
+        email = user_payload.get("email") or email
+        user_id = user_payload.get("id") or user_id
+    elif not email:
         user_token = request.headers.get("X-Access-Token") or request.cookies.get("auth_token")
         if user_token:
             verified = verify_signed_token(user_token)
             if verified:
-                email = verified.get("email")
+                email = verified.get("email") or email
+                user_id = verified.get("id") or user_id
+
+    # Ownership Verification
+    if not verify_user_ownership(user_id=user_id, resource_id=session_id, resource_type="practice_session", user_email=email or ""):
+        log_security_event("UNAUTHORIZED_PRACTICE_COMPLETE_ATTEMPT", email or f"user_{user_id}", {
+            "session_id": session_id,
+            "action": "complete_session"
+        })
+        raise HTTPException(status_code=403, detail="Access denied. You can only complete your own practice sessions.")
+
     res = complete_practice_session(session_id=session_id, user_id=user_id, user_email=email or "")
+    log_security_event("PRACTICE_SESSION_COMPLETED", email or f"user_{user_id}", {
+        "session_id": session_id,
+        "accuracy_percentage": res.get("accuracy_percentage", 0.0),
+        "mastery_level": res.get("mastery_level", "intermediate")
+    })
     return res
 
 from database import (
@@ -862,7 +1024,7 @@ from database import (
     update_conversation_context_record,
     get_concept_dependency_graph, detect_concept_weakness, record_concept_weakness,
     create_weakness_profile, generate_adaptive_practice, submit_practice_answer,
-    complete_practice_session
+    complete_practice_session, verify_user_ownership, encrypt_sensitive, decrypt_sensitive
 )
 from fastapi import Form
 from typing import Optional
