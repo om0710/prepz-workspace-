@@ -1743,9 +1743,9 @@ function initializeDocPilotApp() {
                 </div>
 
                 <div class="doc-card-actions">
-                    <a href="/download/${encodeURIComponent(filename)}?disposition=attachment" download="${filename}" class="btn-download-file" title="Download File">
+                    <button type="button" class="btn-download-file btn-download-doc" data-filename="${filename}" onclick="downloadDocumentFile('${escapeHtmlLocal(filename).replace(/'/g, "\\'")}')" title="Download File">
                         <span>⬇ Download</span>
-                    </a>
+                    </button>
                     <a href="/view/${encodeURIComponent(filename)}" target="_blank" class="btn-open-browse-pdf" title="View Document">
                         <span>View</span>
                     </a>
@@ -3397,9 +3397,9 @@ function initializeDocPilotApp() {
                     </div>
 
                     <div class="doc-card-actions">
-                        <a href="/download/${encodeURIComponent(filename)}?disposition=attachment" download="${filename}" class="btn-download-file" title="Download File">
+                        <button type="button" class="btn-download-file btn-download-doc" data-filename="${filename}" onclick="downloadDocumentFile('${escapeHtmlLocal(filename).replace(/'/g, "\\'")}')" title="Download File">
                             <span>Download</span>
-                        </a>
+                        </button>
                         <a href="/view/${encodeURIComponent(filename)}" target="_blank" class="btn-open-browse-pdf" title="View Document">
                             <span>View</span>
                         </a>
@@ -3409,7 +3409,7 @@ function initializeDocPilotApp() {
                         <button type="button" class="btn-browse-pin btn-pin-browse ${isPinnedInSidebar ? 'active-pinned' : ''}" data-filename="${filename}" title="${isPinnedInSidebar ? 'Unpin from Sidebar Pinned Folders' : 'Pin to Sidebar'}">
                             <span>${isPinnedInSidebar ? 'Pinned' : 'Pin'}</span>
                         </button>
-                        <button type="button" class="btn-delete-my-library btn-delete-file-doc" data-filename="${filename}" title="Delete File from Storage & DB">
+                        <button type="button" class="btn-delete-my-library btn-delete-file-doc" data-filename="${filename}" onclick="deleteUploadedDocument('${escapeHtmlLocal(filename).replace(/'/g, "\\'")}')" title="Delete File from Storage & DB">
                             <span>Delete</span>
                         </button>
                     </div>
@@ -3427,16 +3427,6 @@ function initializeDocPilotApp() {
                     btnPinLib.addEventListener("click", (e) => {
                         e.stopPropagation();
                         toggleSidebarPinFile(filename);
-                    });
-                }
-
-                const btnDelete = card.querySelector(".btn-delete-my-library");
-                if (btnDelete) {
-                    btnDelete.addEventListener("click", (e) => {
-                        e.stopPropagation();
-                        if (confirm(`Are you sure you want to delete "${filename}"?\n\nThis will permanently remove the file from your library.`)) {
-                            deleteUploadedFile(filename);
-                        }
                     });
                 }
 
@@ -3593,25 +3583,100 @@ function initializeDocPilotApp() {
         }
     });
 
-    async function deleteUploadedFile(filename) {
+    // ═════════════════════════════════════════════════════════════════════════
+    // UNIVERSAL DOCUMENT DOWNLOAD & DELETE (BLOB-BASED & CROSS-ORIGIN SAFE)
+    // ═════════════════════════════════════════════════════════════════════════
+
+    window.triggerBlobDownload = function(blob, filename) {
         try {
-            const userEmail = currentUser ? (currentUser.email || "") : "";
-            const userName = currentUser ? (currentUser.name || "") : "";
+            const blobUrl = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.style.display = 'none';
+            a.href = blobUrl;
+            a.download = filename;
+            document.body.appendChild(a);
+            a.click();
+            setTimeout(() => {
+                if (document.body.contains(a)) {
+                    document.body.removeChild(a);
+                }
+                window.URL.revokeObjectURL(blobUrl);
+            }, 2000);
+        } catch (err) {
+            console.error("[TRIGGER BLOB DOWNLOAD ERROR]", err);
+            window.open(`/download/${encodeURIComponent(filename)}?disposition=attachment`, '_blank');
+        }
+    };
+
+    window.downloadDocumentFile = async function(filename) {
+        if (!filename) return;
+        try {
+            const downloadUrl = `/download/${encodeURIComponent(filename)}?disposition=attachment`;
+            const res = await fetch(downloadUrl);
+            if (!res.ok) {
+                // Fallback to /files/
+                const altRes = await fetch(`/files/${encodeURIComponent(filename)}`);
+                if (altRes.ok) {
+                    const blob = await altRes.blob();
+                    window.triggerBlobDownload(blob, filename);
+                    return;
+                }
+                // Direct new tab open fallback
+                window.open(downloadUrl, '_blank');
+                return;
+            }
+            const blob = await res.blob();
+            window.triggerBlobDownload(blob, filename);
+        } catch (err) {
+            console.warn("[DOWNLOAD BLOB FALLBACK]", err);
+            window.open(`/download/${encodeURIComponent(filename)}?disposition=attachment`, '_blank');
+        }
+    };
+
+    window.deleteUploadedDocument = async function(filename) {
+        if (!filename) return;
+        const confirmed = confirm(`Are you sure you want to delete "${filename}"?\n\nThis will permanently remove the file from your library, database, and storage.`);
+        if (!confirmed) return;
+
+        try {
+            const user = window.currentUser || JSON.parse(localStorage.getItem("docpilot-user") || "{}");
+            const userEmail = user.email || "";
+            const userName = user.name || "";
             const queryParams = new URLSearchParams({ user_email: userEmail, user_name: userName });
+            
             const res = await fetch(`/files/${encodeURIComponent(filename)}?${queryParams.toString()}`, {
                 method: "DELETE"
             });
+            
             if (res.ok) {
-                fetchIndexedFiles();
+                // Unpin from sidebar if pinned
+                try {
+                    if (typeof unpinSidebarFileDirect === "function") {
+                        unpinSidebarFileDirect(filename);
+                    }
+                } catch(pe) {}
+
+                // Refresh all file list views
+                if (typeof fetchIndexedFiles === "function") {
+                    fetchIndexedFiles();
+                }
+                if (typeof renderFilesUI === "function") {
+                    renderFilesUI();
+                }
+                if (typeof renderBrowseTable === "function") {
+                    renderBrowseTable();
+                }
             } else {
                 const data = await res.json();
-                alert(`Error deleting file: ${data.detail || "Request failed."}`);
+                alert(`Could not delete file: ${data.detail || "Server error"}`);
             }
         } catch(err) {
             console.error("Error deleting file:", err);
             alert("Network error deleting file.");
         }
-    }
+    };
+
+    window.deleteUploadedFile = window.deleteUploadedDocument;
 
     function initSidebarToggle() {
         const btnCollapseSidebar = document.querySelector(".sidebar-collapse-btn");

@@ -1642,24 +1642,37 @@ def get_file(filename: str):
 
 @app.get("/download/{filename}")
 @app.get("/api/download/{filename}")
-def download_file_route(filename: str, disposition: Optional[str] = "inline"):
+def download_file_route(filename: str, disposition: Optional[str] = "attachment"):
     try:
-        filename, file_path = get_sanitized_upload_file_path(filename)
+        from urllib.parse import unquote, quote
+        clean_filename = os.path.basename(unquote(filename or "")).strip()
+        raw_name = os.path.basename(filename or "").strip()
+        
+        file_path = os.path.join("uploads", clean_filename)
         if not os.path.exists(file_path):
-            # Try absolute path fallback
-            abs_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "uploads", filename)
-            if os.path.exists(abs_path):
-                file_path = abs_path
-            else:
-                print(f"[DOWNLOAD] File not found: {file_path}")
-                raise HTTPException(status_code=404, detail=f"File '{filename}' not found.")
+            file_path = os.path.join("uploads", raw_name)
+        
+        if not os.path.exists(file_path):
+            # Check absolute path fallback
+            abs_uploads = os.path.join(os.path.dirname(os.path.abspath(__file__)), "uploads")
+            if os.path.exists(abs_uploads):
+                target_lower = clean_filename.lower()
+                for fname in os.listdir(abs_uploads):
+                    if fname.lower() == target_lower or unquote(fname).lower() == target_lower:
+                        file_path = os.path.join(abs_uploads, fname)
+                        clean_filename = fname
+                        break
+        
+        if not os.path.exists(file_path):
+            print(f"[DOWNLOAD] File not found: {file_path}")
+            raise HTTPException(status_code=404, detail=f"File '{filename}' not found on server.")
 
         # Award contribution points (non-blocking)
         try:
-            meta = get_upload_by_filename(filename)
+            meta = get_upload_by_filename(clean_filename) or get_upload_by_filename(raw_name)
             if meta and meta.get("user_email"):
                 uploader_email = meta["user_email"]
-                if uploader_email and uploader_email != "anonymous@college.edu":
+                if uploader_email and uploader_email not in ("anonymous@college.edu", "student@college.edu"):
                     add_contribution_points(uploader_email, 2)
         except Exception as cp_err:
             print(f"[DOWNLOAD] Contribution points error (ignored): {cp_err}")
@@ -1668,8 +1681,12 @@ def download_file_route(filename: str, disposition: Optional[str] = "inline"):
         print(f"[DOWNLOAD] Serving: {file_path} as {disp}")
         return FileResponse(
             file_path,
-            media_type=get_media_type(filename),
-            headers={"Content-Disposition": f'{disp}; filename="{quote(filename)}"'}
+            media_type="application/pdf" if clean_filename.lower().endswith(".pdf") else get_media_type(clean_filename),
+            headers={
+                "Content-Disposition": f'{disp}; filename="{quote(clean_filename)}"',
+                "Access-Control-Allow-Origin": "*",
+                "Access-Control-Expose-Headers": "Content-Disposition"
+            }
         )
     except HTTPException:
         raise
@@ -1713,36 +1730,59 @@ def list_files(user_email: Optional[str] = None):
 @app.delete("/files/{filename}")
 def delete_file(filename: str, user_email: Optional[str] = None, user_name: Optional[str] = None):
     try:
-        filename = os.path.basename(filename)
-        import os
-        from rag import delete_pdf_from_vectordb
-        from backend_rag import reset_bm25_cache
+        from urllib.parse import unquote
+        clean_filename = os.path.basename(unquote(filename or "")).strip()
+        raw_name = os.path.basename(filename or "").strip()
         
         # Ownership verification
-        existing_meta = get_upload_by_filename(filename)
+        existing_meta = get_upload_by_filename(clean_filename) or get_upload_by_filename(raw_name)
         if existing_meta:
             uploader_email = (existing_meta.get("user_email") or "").lower().strip()
             uploader_name = (existing_meta.get("user_name") or "").lower().strip()
             req_email = (user_email or "").lower().strip()
             req_name = (user_name or "").lower().strip()
 
-            if req_email and uploader_email and req_email != uploader_email:
-                raise HTTPException(status_code=403, detail="Permission denied. You can only delete files that you uploaded.")
-            if req_name and uploader_name and req_name != uploader_name and not req_email:
-                raise HTTPException(status_code=403, detail="Permission denied. You can only delete files that you uploaded.")
+            # Allow if requester matches email or name or if uploaded anonymously
+            if req_email and uploader_email and uploader_email not in ("anonymous@college.edu", "student@college.edu", ""):
+                if req_email != uploader_email and (not req_name or req_name != uploader_name):
+                    raise HTTPException(status_code=403, detail="Permission denied. You can only delete files that you uploaded.")
 
-        file_path = os.path.join("uploads", filename)
-        if os.path.exists(file_path):
-            os.remove(file_path)
+        # Delete from disk
+        for cand in set([clean_filename, raw_name, filename, unquote(filename)]):
+            p = os.path.join("uploads", cand)
+            if os.path.exists(p):
+                try:
+                    os.remove(p)
+                except Exception as fe:
+                    print(f"[DELETE FILE DISK ERROR] {fe}")
+            abs_p = os.path.join(os.path.dirname(os.path.abspath(__file__)), "uploads", cand)
+            if os.path.exists(abs_p):
+                try:
+                    os.remove(abs_p)
+                except Exception as afe:
+                    print(f"[DELETE FILE ABS DISK ERROR] {afe}")
             
-        delete_pdf_from_vectordb(file_path)
-        reset_bm25_cache()
-        delete_upload_record(filename)
+        try:
+            from rag import delete_pdf_from_vectordb
+            delete_pdf_from_vectordb(os.path.join("uploads", clean_filename))
+            delete_pdf_from_vectordb(os.path.join("uploads", raw_name))
+        except Exception as ve:
+            print(f"[DELETE VECTOR ERROR (IGNORED)] {ve}")
+
+        try:
+            from backend_rag import reset_bm25_cache
+            reset_bm25_cache()
+        except Exception as be:
+            print(f"[RESET BM25 ERROR (IGNORED)] {be}")
+
+        delete_upload_record(clean_filename)
+        delete_upload_record(raw_name)
         
-        return {"status": "success", "message": f"{filename} deleted."}
+        return {"status": "success", "message": f"{clean_filename} deleted."}
     except HTTPException:
         raise
     except Exception as e:
+        print(f"[DELETE ROUTE ERROR] {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 class ToggleFilePrivacyRequest(BaseModel):

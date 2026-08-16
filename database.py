@@ -2192,16 +2192,22 @@ def get_file_uploads_metadata():
         return result
 
 def delete_upload_record(filename: str):
+    from urllib.parse import unquote
+    clean = unquote(filename or "").strip()
+    raw = (filename or "").strip()
     def _do():
         with get_db() as c:
-            c.execute("DELETE FROM user_uploads WHERE filename = ?", (filename,))
+            c.execute("DELETE FROM user_uploads WHERE lower(filename) = lower(?) OR lower(filename) = lower(?)", (clean, raw))
             c.commit()
     db_retry(_do)
 
 def get_upload_by_filename(filename: str):
+    from urllib.parse import unquote
+    clean = unquote(filename or "").strip()
+    raw = (filename or "").strip()
     with get_db() as c:
         cursor = c.cursor()
-        cursor.execute("SELECT filename, user_email, user_name, uploaded_at, size_bytes, subject, semester, file_type, exam_type, is_private FROM user_uploads WHERE lower(filename) = lower(?)", (filename,))
+        cursor.execute("SELECT filename, user_email, user_name, uploaded_at, size_bytes, subject, semester, file_type, exam_type, is_private FROM user_uploads WHERE lower(filename) = lower(?) OR lower(filename) = lower(?)", (clean, raw))
         row = cursor.fetchone()
         if row:
             return {
