@@ -4103,26 +4103,33 @@ button, a[role="button"], input[type="button"], input[type="submit"] {
 }
 
 .btn-close-modal {
-    width: 32px;
-    height: 32px;
-    min-height: 32px;
-    min-width: 32px;
-    background: rgba(255, 107, 0, 0.08);
-    border: 1px solid rgba(255, 107, 0, 0.2);
-    border-radius: var(--radius-sm);
-    color: #d4d4d8;
-    font-size: 20px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    transition: all var(--transition-fast);
-    cursor: pointer;
+    width: 38px !important;
+    height: 38px !important;
+    min-height: 38px !important;
+    min-width: 38px !important;
+    background: rgba(255, 255, 255, 0.08) !important;
+    border: 1px solid rgba(255, 255, 255, 0.15) !important;
+    border-radius: 50% !important;
+    color: #f1f5f9 !important;
+    font-size: 22px !important;
+    line-height: 1 !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    transition: all var(--transition-fast) !important;
+    cursor: pointer !important;
+    z-index: 1000 !important;
+    touch-action: manipulation !important;
+    padding: 0 !important;
+    flex-shrink: 0 !important;
 }
 
-.btn-close-modal:hover {
-    background: rgba(239, 68, 68, 0.15);
-    color: #ef4444;
-    border-color: rgba(239, 68, 68, 0.35);
+.btn-close-modal:hover,
+.btn-close-modal:active {
+    background: rgba(239, 68, 68, 0.25) !important;
+    color: #ffffff !important;
+    border-color: rgba(239, 68, 68, 0.5) !important;
+    transform: scale(1.08) !important;
 }
 
 .modal-form {

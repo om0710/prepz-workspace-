@@ -22,7 +22,7 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <!-- GIS loaded synchronously so it's ready before any user click -->
     <script src="https://accounts.google.com/gsi/client"></script>
-    <link rel="stylesheet" href="style.css?v=20260817_modal_fix_v3">
+    <link rel="stylesheet" href="style.css?v=20260817_modal_dismiss_v4">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
     <script>
@@ -62,6 +62,62 @@
                 }
             }
         }
+
+        window.closePracticeModal = function() {
+            var m = document.getElementById("adaptive-practice-modal");
+            if (m) {
+                m.classList.add("hidden");
+                m.style.setProperty("display", "none", "important");
+            }
+        };
+        window.closeWeaknessModal = function() {
+            var m = document.getElementById("weakness-profile-modal");
+            if (m) {
+                m.classList.add("hidden");
+                m.style.setProperty("display", "none", "important");
+            }
+        };
+        window.closeOtpModal = function() {
+            var m = document.getElementById("otp-verification-modal");
+            if (m) {
+                m.classList.add("hidden");
+                m.style.setProperty("display", "none", "important");
+            }
+        };
+        window.closeForgotPasswordModal = function() {
+            var m = document.getElementById("forgot-password-modal");
+            if (m) {
+                m.classList.add("hidden");
+                m.style.setProperty("display", "none", "important");
+            }
+        };
+        window.closeResetPasswordModal = function() {
+            var m = document.getElementById("reset-password-modal");
+            if (m) {
+                m.classList.add("hidden");
+                m.style.setProperty("display", "none", "important");
+            }
+        };
+        window.closeDocumentEditorModal = function() {
+            var m = document.getElementById("modal-document-editor");
+            if (m) {
+                m.classList.add("hidden");
+                m.style.setProperty("display", "none", "important");
+            }
+        };
+
+        document.addEventListener("click", function(e) {
+            if (e.target && (e.target.classList.contains("btn-close-modal") || e.target.closest(".btn-close-modal"))) {
+                var modal = e.target.closest(".modal-overlay");
+                if (modal) {
+                    modal.classList.add("hidden");
+                    modal.style.setProperty("display", "none", "important");
+                }
+            } else if (e.target && e.target.classList.contains("modal-overlay")) {
+                e.target.classList.add("hidden");
+                e.target.style.setProperty("display", "none", "important");
+            }
+        });
     </script>
 </head>
 <body>
@@ -245,7 +301,7 @@
     <!-- First-Time User Onboarding Modal -->
     <div id="onboarding-modal" class="modal-overlay hidden" style="display: none;">
         <div class="onboarding-card">
-            <button type="button" id="btn-skip-onboarding" class="onboarding-skip-btn">Skip</button>
+            <button type="button" id="btn-skip-onboarding" class="onboarding-skip-btn" onclick="var m=document.getElementById('onboarding-modal'); if(m){ m.classList.add('hidden'); m.style.setProperty('display', 'none', 'important'); }">Skip</button>
             
             <div class="onboarding-dots">
                 <span class="onboarding-dot active" data-step="1"></span>
@@ -873,7 +929,7 @@
         <div class="modal-card">
             <div class="modal-header">
                 <h3>Upload Student Document</h3>
-                <button type="button" id="btn-close-upload-modal" class="btn-close-modal" aria-label="Close Modal" onclick="document.getElementById('upload-modal').classList.add('hidden')">&times;</button>
+                <button type="button" id="btn-close-upload-modal" class="btn-close-modal" aria-label="Close Modal" onclick="var m=document.getElementById('upload-modal'); if(m){ m.classList.add('hidden'); m.style.setProperty('display', 'none', 'important'); }">&times;</button>
             </div>
             <form id="form-upload-document" class="modal-form" novalidate>
                 <div class="form-group">
@@ -959,7 +1015,7 @@
         <div class="modal-card">
             <div class="modal-header">
                 <h3>Report Document</h3>
-                <button type="button" id="btn-close-report-modal" class="btn-close-modal" aria-label="Close Modal">&times;</button>
+                <button type="button" id="btn-close-report-modal" class="btn-close-modal" aria-label="Close Modal" onclick="var m=document.getElementById('report-modal'); if(m){ m.classList.add('hidden'); m.style.setProperty('display', 'none', 'important'); }">&times;</button>
             </div>
             <form id="form-report-document" class="modal-form" novalidate>
                 <input type="hidden" id="report-filename-input">
@@ -994,7 +1050,7 @@
         <div class="modal-card">
             <div class="modal-header">
                 <h3>Verify Email OTP</h3>
-                <button type="button" onclick="closeOtpModal()" class="btn-close-modal" aria-label="Close Modal">&times;</button>
+                <button type="button" onclick="var m=document.getElementById('otp-verification-modal'); if(m){ m.classList.add('hidden'); m.style.setProperty('display', 'none', 'important'); } if(window.closeOtpModal) window.closeOtpModal();" class="btn-close-modal" aria-label="Close Modal">&times;</button>
             </div>
             <p style="font-size: 13.5px; color: #a1a1aa; line-height: 1.5;">We sent a 6-digit OTP verification code to <strong id="otp-target-email-display" style="color: #ffffff;"></strong>.</p>
             <div id="otp-error-msg" class="auth-error hidden" style="margin-top: 8px;"></div>
@@ -1013,7 +1069,7 @@
         <div class="modal-card">
             <div class="modal-header">
                 <h3>Forgot Password</h3>
-                <button type="button" onclick="closeForgotPasswordModal()" class="btn-close-modal" aria-label="Close Modal">&times;</button>
+                <button type="button" onclick="var m=document.getElementById('forgot-password-modal'); if(m){ m.classList.add('hidden'); m.style.setProperty('display', 'none', 'important'); } if(window.closeForgotPasswordModal) window.closeForgotPasswordModal();" class="btn-close-modal" aria-label="Close Modal">&times;</button>
             </div>
             <p style="font-size: 13.5px; color: #a1a1aa; line-height: 1.5;">Enter your registered college email address to receive a 6-digit password reset OTP.</p>
             <div id="forgot-error-msg" class="auth-error hidden" style="margin-top: 8px;"></div>
@@ -1039,7 +1095,7 @@
         <div class="modal-card">
             <div class="modal-header">
                 <h3>Reset Password</h3>
-                <button type="button" onclick="closeResetPasswordModal()" class="btn-close-modal" aria-label="Close Modal">&times;</button>
+                <button type="button" onclick="var m=document.getElementById('reset-password-modal'); if(m){ m.classList.add('hidden'); m.style.setProperty('display', 'none', 'important'); } if(window.closeResetPasswordModal) window.closeResetPasswordModal();" class="btn-close-modal" aria-label="Close Modal">&times;</button>
             </div>
             <p style="font-size: 13.5px; color: #a1a1aa; line-height: 1.5;">Enter the 6-digit OTP code sent to your email and your new password.</p>
             <div id="reset-error-msg" class="auth-error hidden" style="margin-top: 8px;"></div>
@@ -1067,7 +1123,7 @@
         <div class="modal-card" style="max-width: 540px;">
             <div class="modal-header">
                 <h3 id="doc-editor-modal-title">Create Document</h3>
-                <button type="button" onclick="closeDocumentEditorModal()" class="btn-close-modal" aria-label="Close Modal">&times;</button>
+                <button type="button" onclick="var m=document.getElementById('modal-document-editor'); if(m){ m.classList.add('hidden'); m.style.setProperty('display', 'none', 'important'); } if(window.closeDocumentEditorModal) window.closeDocumentEditorModal();" class="btn-close-modal" aria-label="Close Modal">&times;</button>
             </div>
             <p style="font-size: 13.5px; color: #a1a1aa; line-height: 1.5;">Create or edit notes in your personal library. Control whether it stays private or shared with others.</p>
             <div id="doc-editor-error-msg" class="auth-error hidden" style="margin-top: 8px;"></div>
@@ -1107,7 +1163,7 @@
                         <p style="margin: 2px 0 0 0; font-size: 12.5px; color: #a1a1aa;">Academic Edge: detect foundational gaps blocking your exams and master prerequisites.</p>
                     </div>
                 </div>
-                <button type="button" onclick="closeWeaknessModal()" class="btn-close-modal" aria-label="Close Modal">&times;</button>
+                <button type="button" onclick="var m=document.getElementById('weakness-profile-modal'); if(m){ m.classList.add('hidden'); m.style.setProperty('display', 'none', 'important'); } if(window.closeWeaknessModal) window.closeWeaknessModal();" class="btn-close-modal" aria-label="Close Modal">&times;</button>
             </div>
 
             <div id="weakness-loading-spinner" style="padding: 40px; text-align: center; color: #818cf8;">
@@ -1193,7 +1249,7 @@
                     </div>
                     <p id="practice-progress-text" style="margin: 3px 0 0 0; font-size: 12px; color: #a1a1aa;">Question 1 of 3 | Adaptive Engine Active</p>
                 </div>
-                <button type="button" onclick="closePracticeModal()" class="btn-close-modal" aria-label="Close Practice">&times;</button>
+                <button type="button" onclick="var m=document.getElementById('adaptive-practice-modal'); if(m){ m.classList.add('hidden'); m.style.setProperty('display', 'none', 'important'); } if(window.closePracticeModal) window.closePracticeModal();" class="btn-close-modal" aria-label="Close Practice">&times;</button>
             </div>
 
             <!-- Active Question Container -->
@@ -1290,6 +1346,6 @@
     </div>
 
     <!-- Main JavaScript Link -->
-    <script src="app.js?v=20260817_modal_fix_v3"></script>
+    <script src="app.js?v=20260817_modal_dismiss_v4"></script>
 </body>
 </html>

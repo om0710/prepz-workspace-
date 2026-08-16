@@ -4725,7 +4725,7 @@ window.closePracticeModal = function() {
     const modal = document.getElementById("adaptive-practice-modal");
     if (modal) {
         modal.classList.add("hidden");
-        modal.style.display = "none";
+        modal.style.setProperty("display", "none", "important");
     }
     currentPracticeSession = null;
 };
