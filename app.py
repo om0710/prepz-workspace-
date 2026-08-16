@@ -4,6 +4,8 @@ import uuid
 import shutil
 import re
 import html
+import threading
+from datetime import datetime
 from urllib.parse import unquote, quote
 from typing import Optional
 from fastapi import FastAPI, UploadFile, File, HTTPException, Request
@@ -1069,6 +1071,132 @@ def send_otp_email(to_email: str, otp_code: str, subject: str, body_text: str):
         print(f"[DEV NOTICE] SMTP credentials not set. OTP for {to_email} is: {otp_code}")
     return False
 
+def send_google_login_notification(to_email: str, student_name: str = ""):
+    """
+    Send an official welcome / login security notification email to the student's Gmail address upon Google Sign-In.
+    Dispatched asynchronously in a background daemon thread so it never blocks login latency.
+    """
+    def _send_worker():
+        clean_email = (to_email or "").strip().lower()
+        if not is_valid_email(clean_email):
+            return False
+
+        display_name = student_name.strip() if student_name else clean_email.split("@")[0].title()
+        subject = "🎓 Welcome to BU Prepz AI — Google Sign-In Successful"
+        login_time = datetime.now().strftime("%d %b %Y, %I:%M %p")
+
+        html_body = f"""
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <meta charset="utf-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <title>Welcome to BU Prepz AI</title>
+        </head>
+        <body style="margin: 0; padding: 0; background-color: #0f172a; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color: #f8fafc;">
+            <table width="100%" border="0" cellspacing="0" cellpadding="0" style="background-color: #0f172a; padding: 30px 15px;">
+                <tr>
+                    <td align="center">
+                        <table width="100%" border="0" cellspacing="0" cellpadding="0" style="max-width: 580px; background: #1e293b; border-radius: 16px; border: 1px solid rgba(255, 255, 255, 0.1); overflow: hidden; box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.5);">
+                            <!-- Header Banner -->
+                            <tr>
+                                <td style="padding: 32px 32px 22px; background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%); text-align: center;">
+                                    <div style="font-size: 38px; margin-bottom: 8px;">🎓</div>
+                                    <h1 style="margin: 0; color: #ffffff; font-size: 24px; font-weight: 800; letter-spacing: -0.5px;">BU Prepz AI</h1>
+                                    <p style="margin: 6px 0 0; color: #e0e7ff; font-size: 13.5px;">Bennett University Exam Preparation & Academic Intelligence Workspace</p>
+                                </td>
+                            </tr>
+
+                            <!-- Body Content -->
+                            <tr>
+                                <td style="padding: 32px;">
+                                    <h2 style="margin: 0 0 16px; color: #ffffff; font-size: 19px; font-weight: 700;">Hello, {display_name}! 👋</h2>
+                                    <p style="margin: 0 0 18px; color: #cbd5e1; font-size: 14.5px; line-height: 1.6;">
+                                        You have successfully signed in to <strong>BU Prepz AI</strong> using your Google account (<strong>{clean_email}</strong>) on <em>{login_time}</em>.
+                                    </p>
+
+                                    <!-- Quick Feature Highlights -->
+                                    <div style="background: rgba(15, 23, 42, 0.6); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 12px; padding: 18px 20px; margin-bottom: 24px;">
+                                        <div style="color: #818cf8; font-weight: 700; font-size: 13px; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 12px;">Your Academic Edge:</div>
+                                        
+                                        <div style="margin-bottom: 10px; display: flex; align-items: flex-start;">
+                                            <span style="margin-right: 10px;">⚡</span>
+                                            <span style="color: #e2e8f0; font-size: 13.5px; line-height: 1.4;"><strong>AI Doubt Solver:</strong> Ask complex engineering questions and get step-by-step syllabus-aligned solutions.</span>
+                                        </div>
+                                        <div style="margin-bottom: 10px; display: flex; align-items: flex-start;">
+                                            <span style="margin-right: 10px;">🎯</span>
+                                            <span style="color: #e2e8f0; font-size: 13.5px; line-height: 1.4;"><strong>Concept Weakness Profiler:</strong> Diagnose foundational blocker gaps and practice adaptive exam questions.</span>
+                                        </div>
+                                        <div style="margin-bottom: 10px; display: flex; align-items: flex-start;">
+                                            <span style="margin-right: 10px;">📚</span>
+                                            <span style="color: #e2e8f0; font-size: 13.5px; line-height: 1.4;"><strong>Course Repository:</strong> Access notes, PYQs, tutorials, and faculty-curated video playlists.</span>
+                                        </div>
+                                        <div style="display: flex; align-items: flex-start;">
+                                            <span style="margin-right: 10px;">📈</span>
+                                            <span style="color: #e2e8f0; font-size: 13.5px; line-height: 1.4;"><strong>Exam Paper Predictor:</strong> Analyze recurring mid-term & end-term question patterns.</span>
+                                        </div>
+                                    </div>
+
+                                    <!-- Launch Button -->
+                                    <table width="100%" border="0" cellspacing="0" cellpadding="0" style="margin-bottom: 24px;">
+                                        <tr>
+                                            <td align="center">
+                                                <a href="https://om123bansal-prepz-app.hf.space" style="display: inline-block; background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%); color: #ffffff; font-weight: 700; font-size: 14.5px; text-decoration: none; padding: 12px 28px; border-radius: 10px; box-shadow: 0 4px 14px rgba(99, 102, 241, 0.4);">
+                                                    Open BU Prepz Workspace &rarr;
+                                                </a>
+                                            </td>
+                                        </tr>
+                                    </table>
+
+                                    <div style="border-top: 1px solid rgba(255, 255, 255, 0.08); padding-top: 16px; color: #94a3b8; font-size: 12px; line-height: 1.5;">
+                                        <p style="margin: 0 0 6px;">🔒 <strong>Security Notice:</strong> If you did not initiate this sign-in, please review your Google account security settings immediately.</p>
+                                    </div>
+                                </td>
+                            </tr>
+
+                            <!-- Footer -->
+                            <tr>
+                                <td style="padding: 20px 32px; background: #0f172a; text-align: center; border-top: 1px solid rgba(255, 255, 255, 0.05); color: #64748b; font-size: 11.5px;">
+                                    &copy; {datetime.now().year} BU Prepz AI &bull; Bennett University Engineering Intelligence &bull; All rights reserved.
+                                </td>
+                            </tr>
+                        </table>
+                    </td>
+                </tr>
+            </table>
+        </body>
+        </html>
+        """
+
+        smtp_host = os.environ.get("SMTP_HOST")
+        smtp_port = int(os.environ.get("SMTP_PORT", 587))
+        smtp_user = os.environ.get("SMTP_USER")
+        smtp_pass = os.environ.get("SMTP_PASSWORD")
+        from_email = os.environ.get("SMTP_FROM", smtp_user or "noreply@prepz.app")
+
+        if smtp_host and smtp_user and smtp_pass:
+            try:
+                msg = MIMEMultipart()
+                msg["From"] = f"BU Prepz AI <{from_email}>"
+                msg["To"] = clean_email
+                msg["Subject"] = subject
+                msg.attach(MIMEText(html_body, "html"))
+
+                server = smtplib.SMTP(smtp_host, smtp_port, timeout=10)
+                server.starttls()
+                server.login(smtp_user, smtp_pass)
+                server.send_message(msg)
+                server.quit()
+                print(f"[GOOGLE LOGIN EMAIL SENT] Welcome email successfully sent to {clean_email}")
+                return True
+            except Exception as e:
+                print(f"[GOOGLE LOGIN EMAIL ERROR] Failed sending to {clean_email}: {e}")
+        else:
+            print(f"[GOOGLE LOGIN EMAIL NOTICE] (SMTP not configured) Google Sign-in confirmation logged for: {clean_email}")
+        return False
+
+    threading.Thread(target=_send_worker, daemon=True).start()
+
 def verify_captcha_challenge(answer: Optional[str], expected: Optional[str]):
     if expected is not None and answer is not None:
         if str(answer).strip() != str(expected).strip():
@@ -1166,6 +1294,7 @@ async def google_auth_callback(request: Request, code: str = None, error: str = 
     if not user:
         user = create_user(name=name, email=email, password=None, provider="google", avatar_url=avatar_url, is_verified=True)
     user = update_user_activity(email) or user
+    send_google_login_notification(to_email=email, student_name=name)
     user_payload = {"id": user["id"], "name": user["name"], "email": user["email"], "provider": "google", "avatar_url": user["avatar_url"]}
     encoded = base64.b64encode(json.dumps(user_payload).encode()).decode()
     return RedirectResponse(f"/?auth_data={encoded}")
@@ -1209,6 +1338,7 @@ async def google_token_auth(request: Request):
     if not user:
         user = create_user(name=name, email=email, password=None, provider="google", avatar_url=avatar_url, is_verified=True)
     user = update_user_activity(email) or user
+    send_google_login_notification(to_email=email, student_name=name)
     return {"user": {"id": user["id"], "name": user["name"], "email": user["email"], "provider": "google", "avatar_url": user["avatar_url"]}}
 
 @app.post("/api/firebase-sync")
@@ -1231,6 +1361,8 @@ def firebase_sync(req: FirebaseSyncRequest):
         print(f"[FIREBASE SERVER] Existing user synchronized: id={user['id']}, email='{email}'")
 
     user = update_user_activity(email) or user
+    if provider in ("google", "google.com", "firebase"):
+        send_google_login_notification(to_email=email, student_name=name)
     return {
         "status": "success",
         "user": {
