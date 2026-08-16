@@ -22,7 +22,7 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <!-- GIS loaded synchronously so it's ready before any user click -->
     <script src="https://accounts.google.com/gsi/client"></script>
-    <link rel="stylesheet" href="style.css?v=20260817_live_tracking_v5">
+    <link rel="stylesheet" href="style.css?v=20260817_upload_fix_v6">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
     <script>
@@ -615,7 +615,7 @@
                                 <h2>My Documents</h2>
                                 <p>Your personal collection of uploaded engineering notes, PYQs, and assignments.</p>
                             </div>
-                            <button type="button" id="btn-library-upload-trigger" class="btn-main-upload">+ Upload Document (.pdf, .docx, .doc)</button>
+                            <button type="button" id="btn-library-upload-trigger" class="btn-main-upload" onclick="if(window.openUploadModal){ window.openUploadModal('library'); } else { var m=document.getElementById('upload-modal'); if(m){ m.classList.remove('hidden'); m.style.display='flex'; } }">+ Upload Document (.pdf, .docx, .doc)</button>
                         </div>
 
                         <!-- Personal User Stats Card (Study Streak & Contribution Score) -->
@@ -710,7 +710,7 @@
                                 <h2>Course Repository</h2>
                                 <p>Select your semester and subject to access verified engineering notes, PYQs, and study materials.</p>
                             </div>
-                            <button type="button" id="btn-browse-upload-trigger" class="btn-main-upload">+ Upload Document (.pdf, .docx, .doc)</button>
+                            <button type="button" id="btn-browse-upload-trigger" class="btn-main-upload" onclick="if(window.openUploadModal){ window.openUploadModal('browse'); } else { var m=document.getElementById('upload-modal'); if(m){ m.classList.remove('hidden'); m.style.display='flex'; } }">+ Upload Document (.pdf, .docx, .doc)</button>
                         </div>
 
                         <!-- Filter Controls Card -->
@@ -925,7 +925,7 @@
         </div>
 
     <!-- Upload Document Modal -->
-    <div id="upload-modal" class="modal-overlay hidden" style="display: none;">
+    <div id="upload-modal" class="modal-overlay hidden">
         <div class="modal-card">
             <div class="modal-header">
                 <h3>Upload Student Document</h3>
@@ -1011,7 +1011,7 @@
     </div>
 
     <!-- Report Document Modal -->
-    <div id="report-modal" class="modal-overlay hidden" style="display: none;">
+    <div id="report-modal" class="modal-overlay hidden">
         <div class="modal-card">
             <div class="modal-header">
                 <h3>Report Document</h3>
@@ -1046,7 +1046,7 @@
     </div>
 
     <!-- OTP Verification Modal -->
-    <div id="otp-verification-modal" class="modal-overlay hidden" style="display: none;">
+    <div id="otp-verification-modal" class="modal-overlay hidden">
         <div class="modal-card">
             <div class="modal-header">
                 <h3>Verify Email OTP</h3>
@@ -1065,7 +1065,7 @@
     </div>
 
     <!-- Forgot Password Request Modal -->
-    <div id="forgot-password-modal" class="modal-overlay hidden" style="display: none;">
+    <div id="forgot-password-modal" class="modal-overlay hidden">
         <div class="modal-card">
             <div class="modal-header">
                 <h3>Forgot Password</h3>
@@ -1091,7 +1091,7 @@
     </div>
 
     <!-- Reset Password Form Modal -->
-    <div id="reset-password-modal" class="modal-overlay hidden" style="display: none;">
+    <div id="reset-password-modal" class="modal-overlay hidden">
         <div class="modal-card">
             <div class="modal-header">
                 <h3>Reset Password</h3>
@@ -1119,7 +1119,7 @@
     </div>
 
     <!-- Document Create / Edit Modal -->
-    <div id="modal-document-editor" class="modal-overlay hidden" style="display: none;">
+    <div id="modal-document-editor" class="modal-overlay hidden">
         <div class="modal-card" style="max-width: 540px;">
             <div class="modal-header">
                 <h3 id="doc-editor-modal-title">Create Document</h3>
@@ -1153,7 +1153,7 @@
     </div>
 
     <!-- Concept Weakness Profiler Modal (Academic Edge) -->
-    <div id="weakness-profile-modal" class="modal-overlay hidden" style="display: none;">
+    <div id="weakness-profile-modal" class="modal-overlay hidden">
         <div class="modal-card weakness-profile-dialog" style="max-width: 880px; width: 92vw; max-height: 88vh; overflow-y: auto;">
             <div class="modal-header" style="border-bottom: 1px solid rgba(255,255,255,0.08); padding-bottom: 14px;">
                 <div style="display: flex; align-items: center; gap: 10px;">
@@ -1239,7 +1239,7 @@
     </div>
 
     <!-- Adaptive Practice Session Modal -->
-    <div id="adaptive-practice-modal" class="modal-overlay hidden" style="display: none;">
+    <div id="adaptive-practice-modal" class="modal-overlay hidden">
         <div class="modal-card adaptive-practice-dialog" style="max-width: 640px; width: 92vw;">
             <div class="modal-header" style="border-bottom: 1px solid rgba(255,255,255,0.08); padding-bottom: 12px;">
                 <div>
@@ -1346,6 +1346,6 @@
     </div>
 
     <!-- Main JavaScript Link -->
-    <script src="app.js?v=20260817_live_tracking_v5"></script>
+    <script src="app.js?v=20260817_upload_fix_v6"></script>
 </body>
 </html>

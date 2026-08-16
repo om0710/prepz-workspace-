@@ -2890,12 +2890,19 @@ function initializeDocPilotApp() {
 
     function openUploadModal(targetScope = "browse") {
         currentUploadTarget = targetScope;
-        if (uploadModal) uploadModal.classList.remove("hidden");
+        const modal = document.getElementById("upload-modal") || uploadModal;
+        if (modal) {
+            modal.classList.remove("hidden");
+            modal.style.display = "flex";
+        }
     }
+    window.openUploadModal = openUploadModal;
 
     function closeUploadModal() {
-        if (uploadModal) {
-            uploadModal.classList.add("hidden");
+        const modal = document.getElementById("upload-modal") || uploadModal;
+        if (modal) {
+            modal.classList.add("hidden");
+            modal.style.display = "none";
             if (formUploadDocument) formUploadDocument.reset();
             if (fileChosenLabel) {
                 fileChosenLabel.textContent = "Click or drag PDF or Word (.docx, .doc) file here";
@@ -2915,6 +2922,7 @@ function initializeDocPilotApp() {
             }
         }
     }
+    window.closeUploadModal = closeUploadModal;
 
     function showModalError(msg) {
         if (modalUploadStatus) {
@@ -3531,13 +3539,21 @@ function initializeDocPilotApp() {
             modalReportStatus.textContent = "";
         }
 
-        if (reportModal) reportModal.classList.remove("hidden");
+        if (reportModal) {
+            reportModal.classList.remove("hidden");
+            reportModal.style.display = "flex";
+        }
     }
+    window.openReportModal = openReportModal;
 
     function closeReportModal() {
         const reportModal = document.getElementById("report-modal");
-        if (reportModal) reportModal.classList.add("hidden");
+        if (reportModal) {
+            reportModal.classList.add("hidden");
+            reportModal.style.display = "none";
+        }
     }
+    window.closeReportModal = closeReportModal;
 
     function initReportModal() {
         const reportModal = document.getElementById("report-modal");

@@ -4061,15 +4061,18 @@ button, a[role="button"], input[type="button"], input[type="submit"] {
     animation: fadeIn var(--transition-fast);
 }
 
-.modal-overlay.hidden,
-.modal-overlay[style*="display: none"] {
+.modal-overlay.hidden {
     display: none !important;
     visibility: hidden !important;
     pointer-events: none !important;
+    opacity: 0 !important;
 }
 
-.modal-overlay:not(.hidden):not([style*="display: none"]) {
+.modal-overlay:not(.hidden) {
     display: flex !important;
+    visibility: visible !important;
+    pointer-events: auto !important;
+    opacity: 1 !important;
 }
 
 .modal-card {
@@ -4675,7 +4678,6 @@ button, a[role="button"], input[type="button"], input[type="submit"] {
     }
 
     .modal-overlay.hidden,
-    .modal-overlay[style*="display: none"],
     .hidden {
         display: none !important;
         visibility: hidden !important;
