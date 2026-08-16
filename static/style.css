@@ -4054,12 +4054,22 @@ button, a[role="button"], input[type="button"], input[type="submit"] {
     background: rgba(0, 0, 0, 0.85);
     backdrop-filter: blur(8px);
     -webkit-backdrop-filter: blur(8px);
-    display: flex;
     align-items: center;
     justify-content: center;
     z-index: 10000;
     padding: var(--space-md);
     animation: fadeIn var(--transition-fast);
+}
+
+.modal-overlay.hidden,
+.modal-overlay[style*="display: none"] {
+    display: none !important;
+    visibility: hidden !important;
+    pointer-events: none !important;
+}
+
+.modal-overlay:not(.hidden):not([style*="display: none"]) {
+    display: flex !important;
 }
 
 .modal-card {
@@ -4649,12 +4659,28 @@ button, a[role="button"], input[type="button"], input[type="submit"] {
         position: fixed !important;
         inset: 0 !important;
         padding: 10px !important;
-        display: flex !important;
         align-items: center !important;
         justify-content: center !important;
         z-index: 100000 !important;
-        background: rgba(0, 0, 0, 0.8) !important;
+        background: rgba(0, 0, 0, 0.85) !important;
         backdrop-filter: blur(6px) !important;
+        -webkit-backdrop-filter: blur(6px) !important;
+    }
+
+    .modal-overlay.hidden,
+    .modal-overlay[style*="display: none"],
+    .hidden {
+        display: none !important;
+        visibility: hidden !important;
+        pointer-events: none !important;
+        opacity: 0 !important;
+    }
+
+    .modal-overlay:not(.hidden) {
+        display: flex !important;
+        visibility: visible !important;
+        pointer-events: auto !important;
+        opacity: 1 !important;
     }
 
     .modal-card,
