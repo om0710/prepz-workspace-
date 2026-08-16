@@ -4152,38 +4152,65 @@ button, a[role="button"], input[type="button"], input[type="submit"] {
 }
 
 /* --------------------------------------------------------------------------
-   15. FULL RESPONSIVE DESIGN (MOBILE & TABLET)
+   15. FULL RESPONSIVE DESIGN (MOBILE, TABLET & SMALL DEVICES)
    -------------------------------------------------------------------------- */
 @media (max-width: 1024px) {
     .landing-features-grid {
-        grid-template-columns: repeat(2, 1fr);
+        grid-template-columns: repeat(2, 1fr) !important;
+        gap: 14px !important;
     }
 
     .browse-filter-card {
-        grid-template-columns: 1fr 1fr;
+        grid-template-columns: 1fr 1fr !important;
+        gap: 12px !important;
     }
 
     .predictor-form-row {
-        grid-template-columns: 1fr 1fr;
+        grid-template-columns: 1fr 1fr !important;
+        gap: 12px !important;
     }
 }
 
 @media (max-width: 768px) {
+    /* Prevent any horizontal screen overflowing */
+    html, body {
+        width: 100% !important;
+        max-width: 100vw !important;
+        overflow-x: hidden !important;
+        -webkit-text-size-adjust: 100% !important;
+        touch-action: manipulation;
+    }
+
+    .app-wrapper {
+        width: 100vw !important;
+        max-width: 100vw !important;
+        overflow-x: hidden !important;
+        position: relative !important;
+    }
+
+    .main-panel {
+        width: 100vw !important;
+        max-width: 100vw !important;
+        min-width: 0 !important;
+        overflow-x: hidden !important;
+    }
+
     /* Mobile Sidebar Drawer */
     .app-sidebar {
         position: fixed !important;
         top: 0 !important;
         left: 0 !important;
         bottom: 0 !important;
-        width: 270px !important;
-        max-width: 82vw !important;
+        width: 280px !important;
+        max-width: 85vw !important;
         height: 100vh !important;
         height: 100dvh !important;
         z-index: 10000 !important;
         transform: translateX(0) !important;
         transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1) !important;
-        box-shadow: 10px 0 30px rgba(0, 0, 0, 0.8) !important;
+        box-shadow: 10px 0 35px rgba(0, 0, 0, 0.85) !important;
         visibility: visible !important;
+        display: flex !important;
     }
 
     .app-sidebar.sidebar-collapsed {
@@ -4199,33 +4226,186 @@ button, a[role="button"], input[type="button"], input[type="submit"] {
         left: 0 !important;
         right: 0 !important;
         bottom: 0 !important;
-        background: rgba(0, 0, 0, 0.65) !important;
-        backdrop-filter: blur(4px) !important;
-        -webkit-backdrop-filter: blur(4px) !important;
+        background: rgba(0, 0, 0, 0.75) !important;
+        backdrop-filter: blur(5px) !important;
+        -webkit-backdrop-filter: blur(5px) !important;
         z-index: 9999 !important;
+    }
+
+    /* Header Bar on Mobile */
+    .main-header {
+        height: 52px !important;
+        min-height: 52px !important;
+        padding: 0 12px !important;
+        width: 100% !important;
+        max-width: 100vw !important;
+        box-sizing: border-box !important;
+    }
+
+    .sidebar-expand-btn {
+        display: inline-flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        width: 36px !important;
+        height: 36px !important;
+        min-width: 36px !important;
+        min-height: 36px !important;
+        background: rgba(255, 107, 0, 0.12) !important;
+        border: 1px solid rgba(255, 107, 0, 0.3) !important;
+        color: #ff6b00 !important;
+        border-radius: 8px !important;
+        cursor: pointer !important;
+    }
+
+    .sidebar-expand-btn.hidden {
+        display: none !important;
+    }
+
+    #header-view-name {
+        max-width: 135px !important;
+        white-space: nowrap !important;
+        overflow: hidden !important;
+        text-overflow: ellipsis !important;
+        font-size: 13.5px !important;
+        font-weight: 700 !important;
+    }
+
+    #btn-fullscreen-toggle span {
+        display: none !important;
+    }
+
+    #btn-fullscreen-toggle {
+        padding: 6px 8px !important;
+        min-width: 34px !important;
+        min-height: 34px !important;
     }
 
     /* Main Container Padding */
     .main-container, .content-wrapper {
-        padding: 14px 10px 40px 10px !important;
+        padding: 12px 10px 48px 10px !important;
         width: 100% !important;
         max-width: 100vw !important;
+        box-sizing: border-box !important;
+    }
+
+    .landing-hero {
+        padding: 16px 6px !important;
     }
 
     .landing-title {
-        font-size: 24px !important;
+        font-size: 22px !important;
+        line-height: 1.25 !important;
+        letter-spacing: -0.02em !important;
     }
 
+    .landing-subtitle {
+        font-size: 13px !important;
+        line-height: 1.45 !important;
+        margin-bottom: 16px !important;
+    }
+
+    .landing-metrics-ribbon {
+        gap: 6px !important;
+        margin-bottom: 20px !important;
+    }
+
+    .metric-pill {
+        padding: 5px 10px !important;
+        font-size: 11.5px !important;
+    }
+
+    /* Landing Feature Cards */
     .landing-features-grid {
         grid-template-columns: 1fr !important;
+        gap: 10px !important;
+        width: 100% !important;
+    }
+
+    .landing-feature-card {
+        padding: 16px 14px !important;
+        border-radius: 14px !important;
+        width: 100% !important;
+        box-sizing: border-box !important;
+    }
+
+    /* Subject Chips Horizontal Scroll Bar */
+    .landing-chip-row {
+        display: flex !important;
+        flex-wrap: nowrap !important;
+        overflow-x: auto !important;
+        -webkit-overflow-scrolling: touch !important;
+        width: 100% !important;
+        max-width: 100% !important;
+        gap: 8px !important;
+        padding-bottom: 6px !important;
+        scrollbar-width: none !important;
+    }
+
+    .landing-chip-row::-webkit-scrollbar {
+        display: none !important;
+    }
+
+    .subject-chip-btn {
+        flex-shrink: 0 !important;
+        white-space: nowrap !important;
+        font-size: 12px !important;
+        padding: 6px 14px !important;
+    }
+
+    /* Chat Messages & Chat Input on Mobile */
+    .chat-messages-container {
+        width: 100% !important;
+        max-width: 100% !important;
+        box-sizing: border-box !important;
+    }
+
+    .chat-messages {
+        padding: 10px 4px 20px 4px !important;
         gap: 12px !important;
     }
 
-    .suggestion-grid-nexa {
-        grid-template-columns: 1fr !important;
+    .message-row {
+        width: 100% !important;
+        box-sizing: border-box !important;
     }
 
-    /* My Library on Mobile */
+    .msg-text-content {
+        max-width: 95% !important;
+        font-size: 14px !important;
+        padding: 12px 14px !important;
+        box-sizing: border-box !important;
+        overflow-wrap: break-word !important;
+        word-break: break-word !important;
+    }
+
+    .code-block-wrapper {
+        width: 100% !important;
+        max-width: 100% !important;
+        box-sizing: border-box !important;
+        overflow-x: auto !important;
+        -webkit-overflow-scrolling: touch !important;
+        font-size: 12px !important;
+    }
+
+    .input-panel-wrapper {
+        padding: 8px 10px calc(8px + env(safe-area-inset-bottom, 0px)) 10px !important;
+        width: 100% !important;
+        box-sizing: border-box !important;
+    }
+
+    .chat-input-box {
+        padding: 12px 14px !important;
+        border-radius: 16px !important;
+        width: 100% !important;
+        box-sizing: border-box !important;
+    }
+
+    .chat-input-box textarea {
+        font-size: 16px !important; /* iOS zoom prevention */
+        min-height: 42px !important;
+    }
+
+    /* My Documents / Library on Mobile */
     .library-header-box {
         flex-direction: column !important;
         align-items: stretch !important;
@@ -4258,72 +4438,205 @@ button, a[role="button"], input[type="button"], input[type="submit"] {
     .library-filter-bar {
         flex-direction: column !important;
         align-items: stretch !important;
+        gap: 8px !important;
     }
 
     .filter-search-box, .filter-select {
         width: 100% !important;
         min-width: 0 !important;
+        box-sizing: border-box !important;
     }
 
-    /* Browse & Predictor on Mobile */
-    .browse-filter-card {
+    .library-grid {
         grid-template-columns: 1fr !important;
-    }
-
-    .browse-select {
+        gap: 12px !important;
         width: 100% !important;
     }
 
+    .library-card {
+        width: 100% !important;
+        box-sizing: border-box !important;
+    }
+
+    .library-card-actions {
+        display: flex !important;
+        flex-wrap: wrap !important;
+        gap: 6px !important;
+        width: 100% !important;
+    }
+
+    .library-card-actions button, 
+    .library-card-actions a {
+        flex: 1 1 calc(50% - 6px) !important;
+        min-height: 36px !important;
+        font-size: 11.5px !important;
+        justify-content: center !important;
+        text-align: center !important;
+    }
+
+    /* Course Repository & Tables */
+    .browse-filter-card {
+        grid-template-columns: 1fr !important;
+        gap: 8px !important;
+    }
+
+    .browse-select, .browse-search-box {
+        width: 100% !important;
+        box-sizing: border-box !important;
+    }
+
+    .browse-table-wrapper {
+        width: 100% !important;
+        max-width: 100% !important;
+        overflow-x: auto !important;
+        -webkit-overflow-scrolling: touch !important;
+        border-radius: 12px !important;
+    }
+
+    .browse-table {
+        min-width: 600px !important;
+        width: 100% !important;
+    }
+
+    .browse-grid-view {
+        grid-template-columns: 1fr !important;
+        gap: 12px !important;
+    }
+
+    /* Predictor on Mobile */
     .predictor-form-row {
         grid-template-columns: 1fr !important;
+        gap: 10px !important;
     }
 
     .btn-predictor-generate {
         width: 100% !important;
         justify-content: center !important;
     }
+
+    .predictor-metrics-grid {
+        grid-template-columns: 1fr !important;
+        gap: 10px !important;
+    }
+
+    /* Leaderboard on Mobile */
+    .leaderboard-podium {
+        flex-direction: column !important;
+        align-items: stretch !important;
+        gap: 12px !important;
+        width: 100% !important;
+    }
+
+    .podium-card {
+        width: 100% !important;
+        max-width: 100% !important;
+        box-sizing: border-box !important;
+    }
+
+    .leaderboard-table-wrapper {
+        overflow-x: auto !important;
+        -webkit-overflow-scrolling: touch !important;
+        width: 100% !important;
+    }
+
+    /* All Modals on Mobile */
+    .modal-overlay {
+        position: fixed !important;
+        inset: 0 !important;
+        padding: 10px !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        z-index: 100000 !important;
+        background: rgba(0, 0, 0, 0.8) !important;
+        backdrop-filter: blur(6px) !important;
+    }
+
+    .modal-card,
+    .weakness-profile-dialog,
+    .adaptive-practice-dialog,
+    .paper-predictor-dialog,
+    .onboarding-card {
+        width: 95vw !important;
+        max-width: 95vw !important;
+        max-height: 88vh !important;
+        max-height: 88dvh !important;
+        overflow-y: auto !important;
+        -webkit-overflow-scrolling: touch !important;
+        padding: 18px 14px !important;
+        border-radius: 14px !important;
+        margin: auto !important;
+        box-sizing: border-box !important;
+    }
+
+    .weakness-kpi-ribbon {
+        grid-template-columns: repeat(2, 1fr) !important;
+        gap: 8px !important;
+    }
+
+    .weakness-card {
+        flex-direction: column !important;
+        align-items: stretch !important;
+        gap: 10px !important;
+    }
+
+    .btn-start-practice {
+        width: 100% !important;
+        justify-content: center !important;
+    }
+
+    .practice-summary-stats-box {
+        grid-template-columns: repeat(3, 1fr) !important;
+        gap: 6px !important;
+        padding: 10px !important;
+    }
+
+    .summary-stat-item .stat-val {
+        font-size: 17px !important;
+    }
 }
 
 @media (max-width: 640px) {
     .auth-split-container {
-        flex-direction: column;
-        min-height: auto;
+        flex-direction: column !important;
+        min-height: 100vh !important;
+        min-height: 100dvh !important;
+        padding: 14px 10px !important;
+        justify-content: center !important;
+        align-items: center !important;
+        box-sizing: border-box !important;
     }
 
     .auth-split-right {
-        display: none;
-    }
-
-    .auth-split-left {
-        padding: 28px 20px;
-    }
-
-    .main-header {
-        padding: 0 12px !important;
-        height: 50px !important;
-    }
-
-    #header-view-name {
-        max-width: 140px !important;
-        white-space: nowrap !important;
-        overflow: hidden !important;
-        text-overflow: ellipsis !important;
-    }
-
-    #btn-fullscreen-toggle span {
         display: none !important;
     }
 
-    #btn-fullscreen-toggle {
-        padding: 6px 8px !important;
-        min-width: 36px !important;
+    .auth-split-left {
+        width: 100% !important;
+        max-width: 420px !important;
+        padding: 24px 16px !important;
+        box-sizing: border-box !important;
+        border-radius: 16px !important;
+    }
+
+    .social-auth-buttons {
+        width: 100% !important;
+    }
+
+    #btn-google-login {
+        width: 100% !important;
+        justify-content: center !important;
+        box-sizing: border-box !important;
     }
 
     #home-profile-card,
-    .developer-profile-card {
+    .developer-profile-card,
+    .adspace-dev-card {
         flex-direction: column !important;
         text-align: center !important;
-        padding: 16px !important;
+        padding: 16px 14px !important;
+        width: 100% !important;
+        box-sizing: border-box !important;
     }
 
     .profile-info,
@@ -4335,11 +4648,6 @@ button, a[role="button"], input[type="button"], input[type="submit"] {
     .social-links,
     .dev-social-links {
         justify-content: center !important;
-    }
-
-    .modal-card {
-        padding: 20px 16px !important;
-        border-radius: var(--radius-lg) !important;
     }
 }
 
