@@ -2225,32 +2225,43 @@ def get_upload_by_filename(filename: str):
         return None
 
 def record_report(filename: str, reporter_email: str = "anonymous@college.edu", reporter_name: str = "Anonymous Student", reason: str = "Inappropriate", notes: str = ""):
+    from urllib.parse import unquote
+    clean = unquote(filename or "").strip()
+    raw = (filename or "").strip()
     def _do():
         with get_db() as c:
             c.execute("""
                 INSERT INTO reported_files (filename, reporter_email, reporter_name, reason, notes)
                 VALUES (?, ?, ?, ?, ?)
-            """, (filename, reporter_email, reporter_name, reason, notes))
+            """, (clean, reporter_email, reporter_name, reason, notes))
+
+            # Auto-Quarantine Spam Defense: If a document receives 3 or more reports, automatically set it to private
+            cur = c.cursor()
+            cur.execute("SELECT COUNT(*) FROM reported_files WHERE lower(filename) = lower(?) OR lower(filename) = lower(?)", (clean, raw))
+            report_count = cur.fetchone()[0]
+            if report_count >= 3:
+                c.execute("UPDATE user_uploads SET is_private = 1 WHERE lower(filename) = lower(?) OR lower(filename) = lower(?)", (clean, raw))
             c.commit()
     db_retry(_do)
 
 def get_reported_files():
-    cursor = conn.cursor()
-    cursor.execute("SELECT id, filename, reporter_email, reporter_name, reason, notes, reported_at, status FROM reported_files ORDER BY id DESC")
-    rows = cursor.fetchall()
-    return [
-        {
-            "id": r[0],
-            "filename": r[1],
-            "reporter_email": r[2],
-            "reporter_name": r[3],
-            "reason": r[4],
-            "notes": r[5],
-            "reported_at": r[6],
-            "status": r[7]
-        }
-        for r in rows
-    ]
+    with get_db() as c:
+        cursor = c.cursor()
+        cursor.execute("SELECT id, filename, reporter_email, reporter_name, reason, notes, reported_at, status FROM reported_files ORDER BY id DESC")
+        rows = cursor.fetchall()
+        return [
+            {
+                "id": r[0],
+                "filename": r[1],
+                "reporter_email": r[2],
+                "reporter_name": r[3],
+                "reason": r[4],
+                "notes": r[5],
+                "reported_at": r[6],
+                "status": r[7]
+            }
+            for r in rows
+        ]
 
 # ----------------------------------------------------
 # Document Management (Private & Shared Library)
