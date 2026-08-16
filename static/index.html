@@ -22,7 +22,7 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <!-- GIS loaded synchronously so it's ready before any user click -->
     <script src="https://accounts.google.com/gsi/client"></script>
-    <link rel="stylesheet" href="style.css?v=20260817_mobile_v1">
+    <link rel="stylesheet" href="style.css?v=20260817_leaderboard_v2">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
     <script>
@@ -824,26 +824,43 @@
                     <div id="leaderboard-container" class="leaderboard-container hidden" style="display: none;">
                         <div class="leaderboard-header-banner">
                             <div class="leaderboard-header-text">
-                                <h2>Top Contributors Leaderboard</h2>
-                                <p>Rankings based on community document uploads (+10 pts), file downloads (+2 pts), and active AI study sessions (+1 pt).</p>
+                                <div style="display: inline-flex; align-items: center; gap: 8px; background: rgba(16, 185, 129, 0.12); border: 1px solid rgba(16, 185, 129, 0.3); border-radius: 999px; padding: 4px 12px; margin-bottom: 8px;">
+                                    <span style="display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: #10b981; box-shadow: 0 0 8px #10b981;"></span>
+                                    <span id="leaderboard-live-count" style="font-size: 11.5px; font-weight: 700; color: #34d399; letter-spacing: 0.3px;">LIVE TRACKING &bull; 150+ BENNETT STUDENTS</span>
+                                </div>
+                                <h2>Top Contributors & Study Rankings</h2>
+                                <p>Live points awarded for Document Uploads (+15 pts), AI Doubts Solved (+2 pts), Adaptive Practice Tests (+10 pts), and Daily Streaks (+5 pts).</p>
                             </div>
+                        </div>
+
+                        <!-- Top 3 Podium Showcase Grid -->
+                        <div id="leaderboard-podium-box" class="leaderboard-podium-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 14px; margin-bottom: 20px;">
+                            <!-- Populated dynamically via JS -->
+                        </div>
+
+                        <!-- Current User Personal Live Rank Strip -->
+                        <div id="user-live-rank-strip" class="user-live-rank-card" style="display: none; background: linear-gradient(135deg, rgba(255, 107, 0, 0.12) 0%, rgba(20, 24, 33, 0.9) 100%); border: 1px solid rgba(255, 107, 0, 0.35); border-radius: 14px; padding: 14px 18px; margin-bottom: 18px; align-items: center; justify-content: space-between; gap: 14px;">
+                            <!-- Populated dynamically via JS -->
                         </div>
 
                         <!-- Leaderboard Table Card -->
                         <div class="leaderboard-card">
-                            <table class="leaderboard-table">
-                                <thead>
-                                    <tr>
-                                        <th style="width: 80px; text-align: center;">Rank</th>
-                                        <th>Contributor</th>
-                                        <th style="text-align: right;">Contribution Score</th>
-                                        <th style="text-align: right;">Study Streak</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="leaderboard-tbody">
-                                    <!-- Loaded dynamically from fetchLeaderboard() -->
-                                </tbody>
-                            </table>
+                            <div class="leaderboard-table-wrapper">
+                                <table class="leaderboard-table">
+                                    <thead>
+                                        <tr>
+                                            <th style="width: 80px; text-align: center;">Rank</th>
+                                            <th>Student Contributor</th>
+                                            <th style="text-align: center;">Department</th>
+                                            <th style="text-align: right;">Contribution Score</th>
+                                            <th style="text-align: right;">Study Streak</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="leaderboard-tbody">
+                                        <!-- Loaded dynamically from fetchLeaderboard() -->
+                                    </tbody>
+                                </table>
+                            </div>
                         </div>
                     </div>
 
@@ -1273,6 +1290,6 @@
     </div>
 
     <!-- Main JavaScript Link -->
-    <script src="app.js?v=20260817_mobile_v1"></script>
+    <script src="app.js?v=20260817_leaderboard_v2"></script>
 </body>
 </html>

@@ -1481,19 +1481,76 @@ function initializeDocPilotApp() {
 
     async function fetchLeaderboard() {
         const tbody = document.getElementById("leaderboard-tbody");
+        const podiumBox = document.getElementById("leaderboard-podium-box");
+        const userRankStrip = document.getElementById("user-live-rank-strip");
+        const liveCountLabel = document.getElementById("leaderboard-live-count");
         if (!tbody) return;
 
         try {
-            const res = await fetch("/api/leaderboard");
+            const userEmail = (currentUser && currentUser.email) ? currentUser.email : "";
+            const res = await fetch("/api/leaderboard" + (userEmail ? `?email=${encodeURIComponent(userEmail)}` : ""));
             const data = await res.json();
-            tbody.innerHTML = "";
 
+            if (liveCountLabel && data.total_active_students) {
+                liveCountLabel.textContent = `LIVE TRACKING • ${data.total_active_students}+ BENNETT STUDENTS`;
+            }
+
+            // 1. Render Top 3 Podium Cards
+            if (podiumBox) {
+                const podium = data.top_podium || [];
+                if (podium.length >= 3) {
+                    const crownIcons = ["👑 1st", "🥈 2nd", "🥉 3rd"];
+                    const podiumClasses = ["podium-gold", "podium-silver", "podium-bronze"];
+                    
+                    podiumBox.innerHTML = podium.map((p, idx) => `
+                        <div class="podium-card-item ${podiumClasses[idx] || ''}">
+                            <div class="podium-avatar-wrapper">
+                                <div class="podium-avatar-img" style="background-image: url('${p.avatar_url}');"></div>
+                                <span class="podium-crown-badge">${crownIcons[idx] || '#' + (idx + 1)}</span>
+                            </div>
+                            <div class="podium-name">${p.name || 'Bennett Student'}</div>
+                            <span class="podium-dept-badge">${p.department || 'CSE'}</span>
+                            <div class="podium-score">${p.contribution_score} pts</div>
+                            <div class="podium-streak">🔥 ${p.current_streak} Day Streak</div>
+                        </div>
+                    `).join("");
+                    podiumBox.style.display = "grid";
+                } else {
+                    podiumBox.style.display = "none";
+                }
+            }
+
+            // 2. Render Current User Live Rank Card Strip
+            if (userRankStrip) {
+                if (data.user_rank) {
+                    const ur = data.user_rank;
+                    userRankStrip.innerHTML = `
+                        <div style="display: flex; align-items: center; gap: 12px;">
+                            <div style="width: 44px; height: 44px; border-radius: 50%; background-image: url('${ur.avatar_url}'); background-size: cover; border: 2px solid #ff6b00;"></div>
+                            <div>
+                                <div style="font-size: 14.5px; font-weight: 700; color: #ffffff;">${ur.name} <span style="font-size: 11px; padding: 2px 6px; background: rgba(255,107,0,0.2); border-radius: 4px; color: #ff6b00; margin-left: 4px;">YOU</span></div>
+                                <div style="font-size: 12px; color: #94a3b8;">Department: <strong>${ur.department || 'CSE'}</strong> &bull; Streak: <strong>🔥 ${ur.current_streak} Days</strong></div>
+                            </div>
+                        </div>
+                        <div style="text-align: right;">
+                            <div style="font-size: 18px; font-weight: 800; color: #ff6b00;">Rank #${ur.rank}</div>
+                            <div style="font-size: 13px; font-weight: 700; color: #fbbf24;">${ur.contribution_score} Points</div>
+                        </div>
+                    `;
+                    userRankStrip.style.display = "flex";
+                } else {
+                    userRankStrip.style.display = "none";
+                }
+            }
+
+            // 3. Render Leaderboard Table Roster
+            tbody.innerHTML = "";
             const leaderboard = data.leaderboard || [];
             if (leaderboard.length === 0) {
                 tbody.innerHTML = `
                     <tr>
-                        <td colspan="4" style="padding: 30px; text-align: center; color: #a1a1aa;">
-                            No activity logged yet. Upload notes, ask AI questions, or download files to earn points!
+                        <td colspan="5" style="padding: 30px; text-align: center; color: #a1a1aa;">
+                            No active rankings logged yet. Upload notes, solve doubts, or take practice tests to earn points!
                         </td>
                     </tr>
                 `;
@@ -1501,25 +1558,32 @@ function initializeDocPilotApp() {
             }
 
             leaderboard.forEach((item, index) => {
-                const rank = index + 1;
+                const rank = item.rank || (index + 1);
                 let rankBadgeClass = "rank-badge";
                 let rankIcon = `#${rank}`;
 
-                if (rank === 1) { rankBadgeClass += " rank-1"; rankIcon = "#1"; }
-                else if (rank === 2) { rankBadgeClass += " rank-2"; rankIcon = "#2"; }
-                else if (rank === 3) { rankBadgeClass += " rank-3"; rankIcon = "#3"; }
+                if (rank === 1) { rankBadgeClass += " rank-1"; rankIcon = "🥇 #1"; }
+                else if (rank === 2) { rankBadgeClass += " rank-2"; rankIcon = "🥈 #2"; }
+                else if (rank === 3) { rankBadgeClass += " rank-3"; rankIcon = "🥉 #3"; }
 
+                const isMe = item.is_current_user;
                 const tr = document.createElement("tr");
+                if (isMe) tr.className = "current-user-highlight";
+
                 tr.innerHTML = `
                     <td style="text-align: center;"><span class="${rankBadgeClass}">${rankIcon}</span></td>
                     <td>
-                        <div class="leaderboard-user-cell">
-                            <div class="leaderboard-avatar" style="background-image: url('${item.avatar_url}');"></div>
-                            <span style="font-weight: 600; color: #ffffff;">${item.name || 'Anonymous Student'}</span>
+                        <div class="leaderboard-user-cell" style="display: flex; align-items: center; gap: 10px;">
+                            <div class="leaderboard-avatar" style="width: 32px; height: 32px; border-radius: 50%; background-image: url('${item.avatar_url}'); background-size: cover; border: 1px solid rgba(255,255,255,0.15);"></div>
+                            <div>
+                                <span style="font-weight: 600; color: #ffffff;">${item.name || 'Bennett Student'}</span>
+                                ${isMe ? '<span style="font-size: 10.5px; padding: 1px 5px; background: rgba(255,107,0,0.25); border-radius: 4px; color: #ff6b00; margin-left: 4px; font-weight: 700;">YOU</span>' : ''}
+                            </div>
                         </div>
                     </td>
-                    <td style="text-align: right; font-weight: 700; color: #eab308;">${item.contribution_score} pts</td>
-                    <td style="text-align: right; font-weight: 600; color: #f97316;">${item.current_streak} Day${item.current_streak === 1 ? '' : 's'}</td>
+                    <td style="text-align: center;"><span class="leaderboard-dept-pill">${item.department || 'CSE'}</span></td>
+                    <td style="text-align: right; font-weight: 700; color: #fbbf24;">${item.contribution_score} pts</td>
+                    <td style="text-align: right; font-weight: 600; color: #f97316;">🔥 ${item.current_streak} Day${item.current_streak === 1 ? '' : 's'}</td>
                 `;
                 tbody.appendChild(tr);
             });

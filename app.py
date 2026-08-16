@@ -1635,11 +1635,14 @@ def complete_onboarding(req: CompleteOnboardingRequest):
     return {"status": "success", "message": "Onboarding marked as completed."}
 
 @app.get("/api/leaderboard")
-def get_leaderboard():
-    leaderboard = get_top_contributors(10)
+def get_leaderboard(email: Optional[str] = None):
+    data = get_top_contributors(limit=25, current_user_email=email)
     return {
         "status": "success",
-        "leaderboard": leaderboard
+        "leaderboard": data["leaderboard"],
+        "top_podium": data.get("top_podium", []),
+        "user_rank": data.get("user_rank"),
+        "total_active_students": data.get("total_active_students", len(data["leaderboard"]))
     }
 
 MAX_FILE_SIZE_BYTES = 20 * 1024 * 1024  # 20MB limit
