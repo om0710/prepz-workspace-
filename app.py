@@ -2,6 +2,9 @@ import os
 import json
 import uuid
 import shutil
+import re
+import html
+from urllib.parse import unquote, quote
 from typing import Optional
 from fastapi import FastAPI, UploadFile, File, HTTPException, Request
 from fastapi.responses import StreamingResponse, FileResponse, Response, RedirectResponse
@@ -1730,7 +1733,6 @@ def list_files(user_email: Optional[str] = None):
 @app.delete("/files/{filename}")
 def delete_file(filename: str, user_email: Optional[str] = None, user_name: Optional[str] = None):
     try:
-        from urllib.parse import unquote
         clean_filename = os.path.basename(unquote(filename or "")).strip()
         raw_name = os.path.basename(filename or "").strip()
         
