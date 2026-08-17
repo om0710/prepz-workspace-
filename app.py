@@ -1673,12 +1673,24 @@ def complete_onboarding(req: CompleteOnboardingRequest):
 @app.get("/api/leaderboard")
 def get_leaderboard(email: Optional[str] = None):
     data = get_top_contributors(limit=25, current_user_email=email)
+    banned_names = {"aryan sharma", "priya patel", "rohan mehta", "sneha gupta", "aditya verma", "ananya roy", "harsh vardhan", "ritik singh", "tanvi saxena"}
+    clean_lb = [
+        u for u in data.get("leaderboard", []) 
+        if (u.get("name") or "").lower().strip() not in banned_names 
+        and not (u.get("email") or "").lower().endswith(".s@bennett.edu.in")
+        and not (u.get("email") or "").lower().endswith(".v@bennett.edu.in")
+        and u.get("email", "").lower() not in {"aryan.sharma@bennett.edu.in", "priya.patel@bennett.edu.in", "rohan.mehta@bennett.edu.in"}
+    ]
+    # Re-calculate ranks for clean real user list
+    for idx, item in enumerate(clean_lb):
+        item["rank"] = idx + 1
+    clean_podium = clean_lb[:3]
     return {
         "status": "success",
-        "leaderboard": data["leaderboard"],
-        "top_podium": data.get("top_podium", []),
+        "leaderboard": clean_lb,
+        "top_podium": clean_podium,
         "user_rank": data.get("user_rank"),
-        "total_active_students": data.get("total_active_students", len(data["leaderboard"]))
+        "total_active_students": len(clean_lb)
     }
 
 MAX_FILE_SIZE_BYTES = 20 * 1024 * 1024  # 20MB limit
