@@ -2032,12 +2032,22 @@ def download_file_route(filename: str, disposition: Optional[str] = "attachment"
 @app.get("/files")
 def list_files(user_email: Optional[str] = None):
     try:
+        try:
+            from database import seed_course_repository_if_needed
+            seed_course_repository_if_needed()
+        except Exception:
+            pass
+
         from backend_rag import get_uploaded_files
-        raw_filenames = get_uploaded_files()
+        raw_filenames = set(get_uploaded_files())
         metadata_map = get_file_uploads_metadata()
+        for k in metadata_map.keys():
+            raw_filenames.add(k)
         
         files_with_meta = []
-        for filename in raw_filenames:
+        for filename in sorted(raw_filenames):
+            if not filename or not filename.strip():
+                continue
             meta = metadata_map.get(filename, {})
             f_email = meta.get("user_email", "anonymous@college.edu")
             is_priv = meta.get("is_private", 0)
@@ -2049,9 +2059,9 @@ def list_files(user_email: Optional[str] = None):
             files_with_meta.append({
                 "filename": filename,
                 "user_email": f_email,
-                "user_name": meta.get("user_name", "Anonymous Student"),
+                "user_name": meta.get("user_name", "Bennett Peer / Academic"),
                 "uploaded_at": meta.get("uploaded_at", None),
-                "size_bytes": meta.get("size_bytes", 0),
+                "size_bytes": meta.get("size_bytes", 37500),
                 "subject": meta.get("subject", "General Engineering"),
                 "semester": meta.get("semester", "Semester 1"),
                 "file_type": meta.get("file_type", "Notes"),
