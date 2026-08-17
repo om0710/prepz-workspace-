@@ -2174,52 +2174,23 @@ def add_contribution_points(email: str, points: int, name: Optional[str] = None)
             c.commit()
     db_retry(_do)
 
-def seed_leaderboard_community():
-    """Seed vibrant Bennett University peer contributors if needed to ensure live community feel."""
-    ACTIVE_BENNETT_PEERS = [
-        {"name": "Aryan Sharma", "email": "aryan.sharma@bennett.edu.in", "branch": "CSE '25", "score": 420, "streak": 7},
-        {"name": "Priya Patel", "email": "priya.patel@bennett.edu.in", "branch": "AI/DS '26", "score": 380, "streak": 6},
-        {"name": "Rohan Mehta", "email": "rohan.mehta@bennett.edu.in", "branch": "ECE '25", "score": 295, "streak": 5},
-        {"name": "Sneha Gupta", "email": "sneha.gupta@bennett.edu.in", "branch": "CSE '26", "score": 260, "streak": 4},
-        {"name": "Aditya Verma", "email": "aditya.verma@bennett.edu.in", "branch": "ME '25", "score": 215, "streak": 4},
-        {"name": "Ananya Roy", "email": "ananya.roy@bennett.edu.in", "branch": "CST '26", "score": 180, "streak": 3},
-        {"name": "Harsh Vardhan", "email": "harsh.v@bennett.edu.in", "branch": "AI '26", "score": 120, "streak": 2},
-        {"name": "Ritik Singh", "email": "ritik.s@bennett.edu.in", "branch": "CSE '27", "score": 95, "streak": 2},
-        {"name": "Tanvi Saxena", "email": "tanvi.s@bennett.edu.in", "branch": "BioTech '25", "score": 75, "streak": 2}
-    ]
-    with get_db() as c:
-        cursor = c.cursor()
-        for p in ACTIVE_BENNETT_PEERS:
-            cursor.execute("SELECT id FROM users WHERE lower(email) = lower(?)", (p["email"],))
-            if not cursor.fetchone():
-                avatar = f"https://api.dicebear.com/7.x/bottts/svg?seed={p['name'].replace(' ', '')}"
-                cursor.execute("""
-                    INSERT INTO users (name, email, provider, avatar_url, contribution_score, current_streak, last_active_date, is_verified)
-                    VALUES (?, ?, 'seeded', ?, ?, ?, ?, 1)
-                """, (p["name"], p["email"], avatar, p["score"], p["streak"], datetime.now().strftime("%Y-%m-%d")))
-        c.commit()
-
-# Ensure community users exist on module load
-try:
-    seed_leaderboard_community()
-except Exception:
-    pass
-
 def get_top_contributors(limit: int = 25, current_user_email: Optional[str] = None) -> dict:
     """
-    Retrieve live rankings of active contributors, computing accurate ranks, streak badges,
-    and user rank position.
+    Retrieve live rankings of real registered students, computing accurate ranks, streak badges,
+    and user rank position based strictly on genuine activity.
     """
     with get_db() as c:
         cursor = c.cursor()
-        # Query active real users excluding system test runners
+        # Query only genuine real users
         cursor.execute("""
             SELECT name, email, avatar_url, COALESCE(contribution_score, 0) as score, COALESCE(current_streak, 0) as streak
             FROM users
-            WHERE lower(email) NOT LIKE '%test%'
+            WHERE provider != 'seeded'
+              AND lower(email) NOT LIKE '%test%'
               AND lower(email) NOT LIKE 'lockout%'
               AND lower(email) NOT LIKE 'clean_user%'
               AND lower(email) NOT LIKE 'anonymous%'
+              AND lower(email) NOT LIKE 'sec_test%'
               AND lower(email) != 'student1@college.edu'
               AND lower(email) != 'student2@college.edu'
             ORDER BY score DESC, streak DESC, id ASC
@@ -2233,9 +2204,9 @@ def get_top_contributors(limit: int = 25, current_user_email: Optional[str] = No
         for idx, r in enumerate(rows):
             rank = idx + 1
             raw_name = (r[0] or "").strip()
-            # Clean up display name
-            display_name = raw_name.title() if raw_name else "Bennett Student"
             email = r[1] or ""
+            # Clean up display name
+            display_name = raw_name.title() if raw_name else (email.split("@")[0].replace(".", " ").title() if email else "Student")
             avatar = r[2] or f"https://api.dicebear.com/7.x/bottts/svg?seed={raw_name or email}"
             score = int(r[3])
             streak = max(int(r[4]), 1)
@@ -2250,6 +2221,10 @@ def get_top_contributors(limit: int = 25, current_user_email: Optional[str] = No
                 dept = "ME"
             elif "biotech" in email.lower():
                 dept = "BioTech"
+            elif "s24" in email.lower():
+                dept = "CSE '28"
+            elif "s23" in email.lower():
+                dept = "CSE '27"
 
             item = {
                 "rank": rank,
@@ -2275,7 +2250,12 @@ def get_top_contributors(limit: int = 25, current_user_email: Optional[str] = No
             u_row = cursor.fetchone()
             if u_row:
                 user_score = u_row[3]
-                cursor.execute("SELECT COUNT(*) FROM users WHERE COALESCE(contribution_score, 0) > ?", (user_score,))
+                cursor.execute("""
+                    SELECT COUNT(*) FROM users 
+                    WHERE provider != 'seeded' 
+                      AND lower(email) NOT LIKE '%test%' 
+                      AND COALESCE(contribution_score, 0) > ?
+                """, (user_score,))
                 higher_count = cursor.fetchone()[0]
                 user_rank_info = {
                     "rank": higher_count + 1,
@@ -2288,13 +2268,13 @@ def get_top_contributors(limit: int = 25, current_user_email: Optional[str] = No
                     "is_current_user": True
                 }
 
-        top_podium = leaderboard[:3] if len(leaderboard) >= 3 else leaderboard
+        top_podium = leaderboard[:3]
 
         return {
             "leaderboard": leaderboard,
             "top_podium": top_podium,
             "user_rank": user_rank_info,
-            "total_active_students": max(len(leaderboard) + 124, 150)
+            "total_active_students": len(leaderboard)
         }
 
 def record_upload(filename: str, user_email: str, user_name: str, file_path: str, size_bytes: int = 0, subject: str = "General Engineering", semester: str = "Semester 1", file_type: str = "Notes", exam_type: str = "Other", is_private: int = 0):

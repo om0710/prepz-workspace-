@@ -1508,18 +1508,19 @@ function initializeDocPilotApp() {
             const res = await fetch("/api/leaderboard" + (userEmail ? `?email=${encodeURIComponent(userEmail)}` : ""));
             const data = await res.json();
 
-            if (liveCountLabel && data.total_active_students) {
-                liveCountLabel.textContent = `LIVE TRACKING • ${data.total_active_students}+ BENNETT STUDENTS`;
+            if (liveCountLabel) {
+                const count = data.total_active_students || (data.leaderboard ? data.leaderboard.length : 0);
+                liveCountLabel.textContent = `LIVE TRACKING • ${count} ACTIVE STUDENT${count === 1 ? '' : 'S'}`;
             }
 
-            // 1. Render Top 3 Podium Cards
+            // 1. Render Top Podium Cards for Real Users
             if (podiumBox) {
                 const podium = data.top_podium || [];
-                if (podium.length >= 3) {
+                if (podium.length > 0) {
                     const crownIcons = ["👑 1st", "🥈 2nd", "🥉 3rd"];
                     const podiumClasses = ["podium-gold", "podium-silver", "podium-bronze"];
                     
-                    podiumBox.innerHTML = podium.map((p, idx) => `
+                    let podiumHtml = podium.map((p, idx) => `
                         <div class="podium-card-item ${podiumClasses[idx] || ''}">
                             <div class="podium-avatar-wrapper">
                                 <div class="podium-avatar-img" style="background-image: url('${p.avatar_url}');"></div>
@@ -1531,6 +1532,22 @@ function initializeDocPilotApp() {
                             <div class="podium-streak">🔥 ${p.current_streak} Day Streak</div>
                         </div>
                     `).join("");
+
+                    for (let i = podium.length; i < 3; i++) {
+                        podiumHtml += `
+                            <div class="podium-card-item" style="border: 1px dashed rgba(255,255,255,0.15); background: rgba(255,255,255,0.02); opacity: 0.7;">
+                                <div class="podium-avatar-wrapper">
+                                    <div class="podium-avatar-img" style="background: rgba(255,255,255,0.05); display: flex; align-items: center; justify-content: center; font-size: 20px;">✨</div>
+                                    <span class="podium-crown-badge" style="background: rgba(255,255,255,0.1); color: #94a3b8;">${crownIcons[i]}</span>
+                                </div>
+                                <div class="podium-name" style="color: #94a3b8;">Position Open</div>
+                                <span class="podium-dept-badge" style="background: transparent; border: 1px solid rgba(255,255,255,0.1); color: #64748b;">Claim Rank</span>
+                                <div class="podium-score" style="color: #64748b; font-size: 13px;">Upload notes to rank</div>
+                            </div>
+                        `;
+                    }
+
+                    podiumBox.innerHTML = podiumHtml;
                     podiumBox.style.display = "grid";
                 } else {
                     podiumBox.style.display = "none";

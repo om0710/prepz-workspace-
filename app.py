@@ -869,8 +869,7 @@ async def rate_playlist_endpoint(playlist_id: int, request: RatePlaylistRequest)
 @app.on_event("startup")
 async def startup_event():
     try:
-        from database import seed_leaderboard_community, seed_bennett_channels_if_needed
-        seed_leaderboard_community()
+        from database import seed_bennett_channels_if_needed
         seed_bennett_channels_if_needed()
         print("[STARTUP] Real user system and Bennett verified channels initialized successfully.")
     except Exception as e:
