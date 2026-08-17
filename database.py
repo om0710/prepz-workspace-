@@ -2192,11 +2192,32 @@ def get_top_contributors(limit: int = 25, current_user_email: Optional[str] = No
     """
     with get_db() as c:
         cursor = c.cursor()
+        try:
+            cursor.execute("""
+                DELETE FROM users 
+                WHERE provider = 'seeded' 
+                   OR lower(email) IN (
+                        'aryan.sharma@bennett.edu.in', 'priya.patel@bennett.edu.in', 
+                        'rohan.mehta@bennett.edu.in', 'sneha.gupta@bennett.edu.in', 
+                        'aditya.verma@bennett.edu.in', 'ananya.roy@bennett.edu.in', 
+                        'harsh.v@bennett.edu.in', 'ritik.s@bennett.edu.in', 'tanvi.s@bennett.edu.in'
+                   )
+            """)
+            c.commit()
+        except Exception:
+            pass
+
         # Query only genuine real users
         cursor.execute("""
             SELECT name, email, avatar_url, COALESCE(contribution_score, 0) as score, COALESCE(current_streak, 0) as streak
             FROM users
             WHERE provider != 'seeded'
+              AND lower(email) NOT IN (
+                    'aryan.sharma@bennett.edu.in', 'priya.patel@bennett.edu.in', 
+                    'rohan.mehta@bennett.edu.in', 'sneha.gupta@bennett.edu.in', 
+                    'aditya.verma@bennett.edu.in', 'ananya.roy@bennett.edu.in', 
+                    'harsh.v@bennett.edu.in', 'ritik.s@bennett.edu.in', 'tanvi.s@bennett.edu.in'
+              )
               AND lower(email) NOT LIKE '%test%'
               AND lower(email) NOT LIKE 'lockout%'
               AND lower(email) NOT LIKE 'clean_user%'
