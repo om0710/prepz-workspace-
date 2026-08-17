@@ -869,11 +869,10 @@ async def rate_playlist_endpoint(playlist_id: int, request: RatePlaylistRequest)
 @app.on_event("startup")
 async def startup_event():
     try:
-        from database import seed_course_repository_if_needed, seed_leaderboard_community, seed_bennett_channels_if_needed
-        seed_course_repository_if_needed()
+        from database import seed_leaderboard_community, seed_bennett_channels_if_needed
         seed_leaderboard_community()
         seed_bennett_channels_if_needed()
-        print("[STARTUP] All course documents, channels, and community seeds initialized successfully.")
+        print("[STARTUP] Real user system and Bennett verified channels initialized successfully.")
     except Exception as e:
         print(f"[STARTUP NOTICE] {e}")
 
@@ -2043,17 +2042,9 @@ def download_file_route(filename: str, disposition: Optional[str] = "attachment"
 @app.get("/files")
 def list_files(user_email: Optional[str] = None):
     try:
-        try:
-            from database import seed_course_repository_if_needed
-            seed_course_repository_if_needed()
-        except Exception:
-            pass
-
         from backend_rag import get_uploaded_files
-        raw_filenames = set(get_uploaded_files())
+        raw_filenames = get_uploaded_files()
         metadata_map = get_file_uploads_metadata()
-        for k in metadata_map.keys():
-            raw_filenames.add(k)
         
         files_with_meta = []
         for filename in sorted(raw_filenames):
@@ -2067,13 +2058,16 @@ def list_files(user_email: Optional[str] = None):
             if is_priv == 1 and user_email and f_email.lower() != user_email.lower():
                 continue
 
+            file_path = os.path.join("uploads", filename)
+            actual_size = os.path.getsize(file_path) if os.path.exists(file_path) else meta.get("size_bytes", 0)
+
             files_with_meta.append({
                 "filename": filename,
                 "user_email": f_email,
-                "user_name": meta.get("user_name", "Bennett Peer / Academic"),
+                "user_name": meta.get("user_name", "Student Contributor"),
                 "uploaded_at": meta.get("uploaded_at", None),
-                "size_bytes": meta.get("size_bytes", 37500),
-                "subject": meta.get("subject", "General Engineering"),
+                "size_bytes": actual_size,
+                "subject": meta.get("subject", "General"),
                 "semester": meta.get("semester", "Semester 1"),
                 "file_type": meta.get("file_type", "Notes"),
                 "exam_type": meta.get("exam_type", "Other"),

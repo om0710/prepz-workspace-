@@ -372,20 +372,6 @@ def init_user_db():
 
 init_user_db()
 
-def seed_course_repository_if_needed():
-    try:
-        from seed_course_documents import generate_docs
-        os.makedirs("uploads", exist_ok=True)
-        cur = conn.cursor()
-        cur.execute("SELECT COUNT(*) FROM user_uploads")
-        cnt = cur.fetchone()[0]
-        if cnt < 5:
-            generate_docs()
-    except Exception as e:
-        print(f"[SEED DOCS NOTICE] {e}")
-
-seed_course_repository_if_needed()
-
 # ── Bennett University Pre-Seeded Channels ─────────────────────────────────────
 
 import json as _json
