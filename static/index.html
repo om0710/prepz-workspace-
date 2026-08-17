@@ -22,7 +22,7 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <!-- GIS loaded synchronously so it's ready before any user click -->
     <script src="https://accounts.google.com/gsi/client"></script>
-    <link rel="stylesheet" href="style.css?v=20260817_warning_buttons_v8">
+    <link rel="stylesheet" href="style.css?v=20260818_tour_v1">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
     <script>
@@ -296,25 +296,35 @@
         </div>
     </div>
 
-    <!-- First-Time User Onboarding Modal -->
+    <!-- Interactive First-Time & Feature Tour Modal -->
     <div id="onboarding-modal" class="modal-overlay hidden" style="display: none;">
         <div class="onboarding-card">
-            <button type="button" id="btn-skip-onboarding" class="onboarding-skip-btn" onclick="var m=document.getElementById('onboarding-modal'); if(m){ m.classList.add('hidden'); m.style.setProperty('display', 'none', 'important'); }">Skip</button>
+            <div class="onboarding-top-bar">
+                <div class="onboarding-brand-pill">
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+                    <span>BU Prepz Tour</span>
+                </div>
+                <button type="button" id="btn-skip-onboarding" class="onboarding-skip-btn" onclick="window.closeOnboardingModal()">Skip Tour</button>
+            </div>
             
             <div class="onboarding-dots">
-                <span class="onboarding-dot active" data-step="1"></span>
-                <span class="onboarding-dot" data-step="2"></span>
-                <span class="onboarding-dot" data-step="3"></span>
-                <span class="onboarding-dot" data-step="4"></span>
+                <span class="onboarding-dot active" data-step="1" title="AI Doubt Solver"></span>
+                <span class="onboarding-dot" data-step="2" title="Course Repository"></span>
+                <span class="onboarding-dot" data-step="3" title="Exam Predictor"></span>
+                <span class="onboarding-dot" data-step="4" title="Academic Edge"></span>
+                <span class="onboarding-dot" data-step="5" title="Leaderboard & Streaks"></span>
             </div>
 
             <div id="onboarding-step-content" class="onboarding-step-content">
-                <!-- Dynamically updated -->
+                <!-- Dynamically populated -->
             </div>
 
             <div class="onboarding-footer">
-                <span id="onboarding-step-indicator" class="onboarding-step-text">Step 1 of 4</span>
-                <button type="button" id="btn-next-onboarding" class="btn-onboarding-primary">Next →</button>
+                <button type="button" id="btn-prev-onboarding" class="btn-onboarding-secondary" style="display: none;">← Back</button>
+                <span id="onboarding-step-indicator" class="onboarding-step-text">Step 1 of 5</span>
+                <div class="onboarding-footer-actions">
+                    <button type="button" id="btn-next-onboarding" class="btn-onboarding-primary">Next →</button>
+                </div>
             </div>
         </div>
     </div>
@@ -472,6 +482,10 @@
 
                         <!-- Platform Quick Metrics Ribbon -->
                         <div class="landing-metrics-ribbon">
+                            <div class="metric-pill metric-pill-tour" role="button" tabindex="0" onclick="window.openProductTour()" title="Explore all BU Prepz AI features" style="cursor: pointer; border-color: rgba(255,107,0,0.45); background: rgba(255,107,0,0.12); color: #ff6b00;">
+                                <span class="metric-icon"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg></span>
+                                <span class="metric-text" style="font-weight: 800;">✨ Platform Tour</span>
+                            </div>
                             <div class="metric-pill">
                                 <span class="metric-icon"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg></span>
                                 <span class="metric-text"><strong>24+</strong> Subjects</span>
@@ -1344,6 +1358,6 @@
     </div>
 
     <!-- Main JavaScript Link -->
-    <script src="app.js?v=20260817_warning_buttons_v8"></script>
+    <script src="app.js?v=20260818_tour_v1"></script>
 </body>
 </html>

@@ -180,6 +180,17 @@ window.loginUser = function(user) {
     if (typeof fetchThreads === "function") fetchThreads();
     if (typeof fetchIndexedFiles === "function") fetchIndexedFiles();
     if (typeof fetchUserStats === "function") fetchUserStats();
+
+    // Check if new user should be shown the interactive feature tour
+    setTimeout(function() {
+        var userEmail = (user && user.email) ? user.email.toLowerCase() : "guest";
+        var hasSeenTour = localStorage.getItem("bu_prepz_tour_seen_" + userEmail);
+        if (!user.has_seen_onboarding && !hasSeenTour) {
+            if (typeof window.openProductTour === "function") {
+                window.openProductTour();
+            }
+        }
+    }, 600);
 };
 
 window.showLoginScreen = function() {
@@ -3893,55 +3904,115 @@ function initializeDocPilotApp() {
     }
 
     // ----------------------------------------------------
-    // First-Time User Onboarding Manager
+    // First-Time User Onboarding & Feature Preview Tour
     // ----------------------------------------------------
     let currentOnboardingStep = 1;
     const onboardingSteps = [
         {
-            title: "Course Repository",
-            desc: "Find notes, PYQs, and assignments filtered by subject and semester. Chat directly with any document to ask questions!",
-            icon: `<svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/><line x1="11" y1="8" x2="11" y2="14"/><line x1="8" y1="11" x2="14" y2="11"/></svg>`
+            tag: "AI DOUBT SOLVER & LECTURES",
+            title: "Instant AI Doubt Solver & Video Match",
+            desc: "Ask complex questions across all 24+ engineering subjects. Get step-by-step mathematical reasoning, code solutions, and verified Bennett faculty lecture playlists.",
+            icon: `<svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/><line x1="9" y1="10" x2="15" y2="10"/><line x1="12" y1="7" x2="12" y2="13"/></svg>`,
+            items: [
+                "⚡ Step-by-step calculus derivations, code explanations, and formula breakdowns",
+                "🎥 Recommended Bennett faculty video lectures & playlists mapped to your doubts",
+                "💬 LaTeX math rendering and multi-turn contextual syllabus memory"
+            ],
+            visual: `💡 Try asking: "Explain Bayes Theorem with derivation & formula"`
         },
         {
-            title: "My Workspace",
-            desc: "Your personal workspace where your own uploaded notes and study materials live. Kept safe and private to you.",
-            icon: `<svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>`
+            tag: "CAMPUS REPOSITORY",
+            title: "Verified Engineering Notes & PYQs",
+            desc: "Search, explore, and download notes, past year question papers, and lab assignments organized cleanly by Semester and Engineering Subject.",
+            icon: `<svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="3"/></svg>`,
+            items: [
+                "🔍 Instant filtering by Semester (1-8), Subject, and Category (Notes, PYQs, Labs)",
+                "📤 Upload your study materials to earn +15 campus contribution points",
+                "🔒 Private My Workspace storage or public sharing with university peers"
+            ],
+            visual: `📁 Filter by: Semester 3 → Probability & Statistics → PYQs`
         },
         {
-            title: "Exam Predictor",
-            desc: "Generate high-yield predicted question papers based on past year questions, pattern frequency, and topic weightage analysis.",
-            icon: `<svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>`
+            tag: "EXAM ANALYTICS",
+            title: "Predictive Exam Paper Generator",
+            desc: "AI analyzes past year examination recurrence patterns, question types, and topic weightage to predict high-yield questions for upcoming exams.",
+            icon: `<svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>`,
+            items: [
+                "🎯 Structured Mid-Sem and End-Sem question papers with Section A, B, and C",
+                "📈 High-probability recurrence tags (e.g. 90% High Probability)",
+                "📥 In-browser exam previews and instant study question sets"
+            ],
+            visual: `🎯 Predicted: Baye's Rule (90% Prob), Normal Distribution (85% Prob)`
         },
         {
-            title: "Leaderboard & Streaks",
-            desc: "Earn points for uploading notes and active studying! Build up your daily Study Streak and climb the college leaderboard.",
-            icon: `<svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2z"/></svg>`
+            tag: "ACADEMIC EDGE",
+            title: "Concept Gap Profiler & Adaptive Practice",
+            desc: "Identifies foundational concept weaknesses blocking your comprehension and delivers personalized adaptive practice sessions in real-time.",
+            icon: `<svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/><path d="M8 12h.01"/><path d="M16 12h.01"/></svg>`,
+            items: [
+                "🔬 Automatic diagnosis of prerequisite gaps from your study interactions",
+                "🎯 Interactive adaptive quizzes with dynamic difficulty scaling (Level 1 → 3)",
+                "📊 Concept dependency graphs and mastery recovery roadmaps"
+            ],
+            visual: `🧠 Foundational Gap Resolved: Conditional Probability → Ready for Level 2`
+        },
+        {
+            tag: "GAMIFIED MASTERY",
+            title: "Daily Streaks & Live Campus Leaderboard",
+            desc: "Stay consistent and motivated! Earn contribution points, build daily streaks, and climb the university leaderboard.",
+            icon: `<svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2z"/></svg>`,
+            items: [
+                "🔥 Maintain your daily Study Streak to unlock special campus badges",
+                "🥇 Earn points: Doubts (+2), Tests (+5), Notes Upload (+15), Predictions (+5)",
+                "👑 Real-time live tracking with student ranks across Bennett University"
+            ],
+            visual: `🔥 7-Day Streak Active! Top 5 in Computer Science & Engineering`
         }
     ];
 
     function renderOnboardingStep(stepNum) {
+        if (stepNum < 1) stepNum = 1;
+        if (stepNum > onboardingSteps.length) stepNum = onboardingSteps.length;
         currentOnboardingStep = stepNum;
+
         const content = document.getElementById("onboarding-step-content");
         const indicator = document.getElementById("onboarding-step-indicator");
         const btnNext = document.getElementById("btn-next-onboarding");
+        const btnPrev = document.getElementById("btn-prev-onboarding");
         const dots = document.querySelectorAll(".onboarding-dot");
-
-        if (stepNum < 1) currentOnboardingStep = 1;
-        if (stepNum > 4) currentOnboardingStep = 4;
 
         const data = onboardingSteps[currentOnboardingStep - 1];
 
-        if (content) {
+        if (content && data) {
+            const checkIcon = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>`;
+            const itemsHtml = (data.items || []).map(it => `
+                <div class="onboarding-feature-item">
+                    ${checkIcon}
+                    <span>${it}</span>
+                </div>
+            `).join("");
+
             content.innerHTML = `
                 <div class="onboarding-icon-box">
                     ${data.icon}
                 </div>
+                <div class="onboarding-feature-badge">${data.tag}</div>
                 <h2 class="onboarding-step-title">${data.title}</h2>
                 <p class="onboarding-step-desc">${data.desc}</p>
+                <div class="onboarding-feature-list">
+                    ${itemsHtml}
+                </div>
+                <div class="onboarding-visual-mock">
+                    ${data.visual}
+                </div>
             `;
         }
 
-        if (indicator) indicator.textContent = `Step ${currentOnboardingStep} of 4`;
+        if (indicator) indicator.textContent = `Step ${currentOnboardingStep} of ${onboardingSteps.length}`;
+
+        if (btnPrev) {
+            btnPrev.style.display = currentOnboardingStep > 1 ? "inline-flex" : "none";
+        }
 
         dots.forEach((dot, idx) => {
             if (idx + 1 === currentOnboardingStep) {
@@ -3952,26 +4023,55 @@ function initializeDocPilotApp() {
         });
 
         if (btnNext) {
-            if (currentOnboardingStep === 4) {
-                btnNext.textContent = "Get Started";
+            if (currentOnboardingStep === onboardingSteps.length) {
+                btnNext.innerHTML = `<span>🚀 Explore Workspace</span>`;
                 btnNext.className = "btn-onboarding-primary get-started-btn";
             } else {
-                btnNext.textContent = "Next";
+                btnNext.innerHTML = `<span>Next →</span>`;
                 btnNext.className = "btn-onboarding-primary";
             }
         }
     }
 
+    window.closeOnboardingModal = function() {
+        completeUserOnboarding();
+    };
+
+    window.openProductTour = function() {
+        const modal = document.getElementById("onboarding-modal");
+        if (modal) {
+            renderOnboardingStep(1);
+            if (typeof window.openModalById === "function") {
+                window.openModalById("onboarding-modal");
+            } else {
+                modal.classList.remove("hidden");
+                modal.style.removeProperty("display");
+                modal.style.display = "flex";
+            }
+        }
+    };
+
     async function completeUserOnboarding() {
         const modal = document.getElementById("onboarding-modal");
         if (modal) {
-            modal.classList.add("hidden");
-            modal.style.display = "none";
+            if (typeof window.closeModalById === "function") {
+                window.closeModalById("onboarding-modal");
+            } else {
+                modal.classList.add("hidden");
+                modal.style.setProperty("display", "none", "important");
+            }
         }
+
+        var userEmail = (currentUser && currentUser.email) ? currentUser.email.toLowerCase() : "guest";
+        try {
+            localStorage.setItem("bu_prepz_tour_seen_" + userEmail, "true");
+        } catch(e) {}
 
         if (currentUser) {
             currentUser.has_seen_onboarding = true;
-            localStorage.setItem("docpilot-user", JSON.stringify(currentUser));
+            try {
+                localStorage.setItem("docpilot-user", JSON.stringify(currentUser));
+            } catch(e) {}
             try {
                 await fetch("/api/user/complete-onboarding", {
                     method: "POST",
@@ -3980,34 +4080,37 @@ function initializeDocPilotApp() {
                 });
             } catch(e) {}
         }
-        showLandingState();
     }
 
     function checkAndShowOnboarding(user) {
         if (!user) return false;
         if (!user.has_seen_onboarding) {
-            const modal = document.getElementById("onboarding-modal");
-            if (modal) {
-                renderOnboardingStep(1);
-                modal.classList.remove("hidden");
-                modal.style.display = "flex";
-                return true;
-            }
+            window.openProductTour();
+            return true;
         }
         return false;
     }
 
     function initOnboardingListeners() {
         const btnNext = document.getElementById("btn-next-onboarding");
+        const btnPrev = document.getElementById("btn-prev-onboarding");
         const btnSkip = document.getElementById("btn-skip-onboarding");
         const dots = document.querySelectorAll(".onboarding-dot");
 
         if (btnNext) {
             btnNext.addEventListener("click", () => {
-                if (currentOnboardingStep < 4) {
+                if (currentOnboardingStep < onboardingSteps.length) {
                     renderOnboardingStep(currentOnboardingStep + 1);
                 } else {
                     completeUserOnboarding();
+                }
+            });
+        }
+
+        if (btnPrev) {
+            btnPrev.addEventListener("click", () => {
+                if (currentOnboardingStep > 1) {
+                    renderOnboardingStep(currentOnboardingStep - 1);
                 }
             });
         }
@@ -4017,9 +4120,9 @@ function initializeDocPilotApp() {
         }
 
         dots.forEach(dot => {
-                    dot.addEventListener("click", () => {
+            dot.addEventListener("click", () => {
                 const step = parseInt(dot.dataset.step, 10);
-                if (step >= 1 && step <= 4) {
+                if (step >= 1 && step <= onboardingSteps.length) {
                     renderOnboardingStep(step);
                 }
             });
