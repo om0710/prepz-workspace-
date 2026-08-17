@@ -876,6 +876,15 @@ async def seed_channels_endpoint(admin_token: Optional[str] = None):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+@app.get("/api/admin/users")
+async def get_admin_users_analytics_endpoint():
+    """Retrieve list and total count of all registered / logged in students."""
+    try:
+        data = get_users_admin_analytics()
+        return data
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
 # ── Part 6: Concept Weakness Profiler & Adaptive Practice Endpoints ───────────
 @app.get("/api/weaknesses/profile")
 async def get_weakness_profile_api(request: Request, user_id: int = 1, user_email: Optional[str] = None):
@@ -1051,7 +1060,8 @@ from database import (
     update_conversation_context_record,
     get_concept_dependency_graph, detect_concept_weakness, record_concept_weakness,
     create_weakness_profile, generate_adaptive_practice, submit_practice_answer,
-    complete_practice_session, verify_user_ownership, encrypt_sensitive, decrypt_sensitive
+    complete_practice_session, verify_user_ownership, encrypt_sensitive, decrypt_sensitive,
+    get_users_admin_analytics
 )
 from fastapi import Form
 from typing import Optional

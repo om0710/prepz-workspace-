@@ -3642,3 +3642,57 @@ def get_email_logs(recipient_email: Optional[str] = None) -> list:
             }
             for r in rows
         ]
+
+def get_users_admin_analytics():
+    """Retrieve full analytics of all logged-in and registered users."""
+    cur = conn.cursor()
+    # Total users
+    cur.execute("SELECT COUNT(*) FROM users")
+    total_count = cur.fetchone()[0]
+
+    # Google users
+    cur.execute("SELECT COUNT(*) FROM users WHERE lower(provider) IN ('google', 'google.com', 'firebase')")
+    google_count = cur.fetchone()[0]
+
+    # Email/Password users
+    cur.execute("SELECT COUNT(*) FROM users WHERE lower(provider) = 'local'")
+    local_count = cur.fetchone()[0]
+
+    # Active users (with activity date)
+    cur.execute("SELECT COUNT(*) FROM users WHERE last_active_date IS NOT NULL AND last_active_date != ''")
+    active_count = cur.fetchone()[0]
+
+    # Detailed user list
+    cur.execute("""
+        SELECT u.id, u.name, u.email, u.provider, u.created_at, u.last_active_date, 
+               COALESCE(u.contribution_score, 0), COALESCE(u.current_streak, 0),
+               (SELECT COUNT(*) FROM user_uploads WHERE lower(user_email) = lower(u.email)) as upload_count
+        FROM users u
+        ORDER BY u.id DESC
+    """)
+    rows = cur.fetchall()
+
+    user_list = []
+    for r in rows:
+        user_list.append({
+            "id": r[0],
+            "name": r[1],
+            "email": r[2],
+            "auth_provider": r[3] or "local",
+            "registered_on": str(r[4]) if r[4] else "N/A",
+            "last_active": str(r[5]) if r[5] else "N/A",
+            "contribution_points": r[6],
+            "streak_days": r[7],
+            "documents_uploaded": r[8]
+        })
+
+    return {
+        "status": "success",
+        "summary": {
+            "total_users": total_count,
+            "google_signins": google_count,
+            "email_signins": local_count,
+            "active_students": active_count
+        },
+        "users": user_list
+    }
