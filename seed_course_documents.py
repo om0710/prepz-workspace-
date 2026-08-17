@@ -166,6 +166,22 @@ SEED_DOCS = [
 def generate_docs():
     conn = sqlite3.connect("chatbot.db")
     cur = conn.cursor()
+    cur.execute("""
+        CREATE TABLE IF NOT EXISTS user_uploads (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            filename TEXT UNIQUE NOT NULL,
+            user_email TEXT NOT NULL,
+            user_name TEXT NOT NULL,
+            uploaded_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            file_path TEXT,
+            size_bytes INTEGER DEFAULT 0,
+            subject TEXT DEFAULT 'General',
+            semester TEXT DEFAULT 'Semester 1',
+            file_type TEXT DEFAULT 'Notes',
+            exam_type TEXT DEFAULT 'Other',
+            is_private INTEGER DEFAULT 0
+        )
+    """)
 
     for item in SEED_DOCS:
         file_path = os.path.join("uploads", item["filename"])

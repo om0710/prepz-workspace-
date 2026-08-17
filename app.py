@@ -866,6 +866,17 @@ async def rate_playlist_endpoint(playlist_id: int, request: RatePlaylistRequest)
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+@app.on_event("startup")
+async def startup_event():
+    try:
+        from database import seed_course_repository_if_needed, seed_leaderboard_community, seed_bennett_channels_if_needed
+        seed_course_repository_if_needed()
+        seed_leaderboard_community()
+        seed_bennett_channels_if_needed()
+        print("[STARTUP] All course documents, channels, and community seeds initialized successfully.")
+    except Exception as e:
+        print(f"[STARTUP NOTICE] {e}")
+
 # ── Part 5: Seed Channels Endpoint (/api/admin/seed-channels) ─────────────────
 @app.post("/api/admin/seed-channels")
 async def seed_channels_endpoint(admin_token: Optional[str] = None):
