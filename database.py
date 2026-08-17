@@ -376,8 +376,10 @@ def seed_course_repository_if_needed():
     try:
         from seed_course_documents import generate_docs
         os.makedirs("uploads", exist_ok=True)
-        files = [f for f in os.listdir("uploads") if f.lower().endswith((".pdf", ".docx", ".doc"))]
-        if len(files) < 5:
+        cur = conn.cursor()
+        cur.execute("SELECT COUNT(*) FROM user_uploads")
+        cnt = cur.fetchone()[0]
+        if cnt < 5:
             generate_docs()
     except Exception as e:
         print(f"[SEED DOCS NOTICE] {e}")
