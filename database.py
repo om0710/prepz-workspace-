@@ -368,6 +368,17 @@ def init_user_db():
         )
     """)
 
+    cursor.execute("""
+        DELETE FROM users 
+        WHERE provider = 'seeded' 
+           OR lower(email) IN (
+                'aryan.sharma@bennett.edu.in', 'priya.patel@bennett.edu.in', 
+                'rohan.mehta@bennett.edu.in', 'sneha.gupta@bennett.edu.in', 
+                'aditya.verma@bennett.edu.in', 'ananya.roy@bennett.edu.in', 
+                'harsh.v@bennett.edu.in', 'ritik.s@bennett.edu.in', 'tanvi.s@bennett.edu.in'
+           )
+    """)
+
     conn.commit()
 
 init_user_db()
