@@ -2063,10 +2063,16 @@ function initializeDocPilotApp() {
         if (predictorLoadingCard) predictorLoadingCard.classList.remove("hidden");
 
         try {
+            const u = currentUser || window.currentUser || JSON.parse(localStorage.getItem("docpilot-user") || "{}");
             const res = await fetch("/api/predict-paper", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ semester: sem, subject: sub, exam_type: examType })
+                body: JSON.stringify({ 
+                    semester: sem, 
+                    subject: sub, 
+                    exam_type: examType,
+                    user_email: (u && u.email) ? u.email : null
+                })
             });
 
             const data = await res.json();
