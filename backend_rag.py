@@ -201,9 +201,13 @@ def reset_bm25_cache():
 def get_uploaded_files():
     import os
     allowed_exts = (".pdf", ".docx", ".doc")
+    files = set()
     if os.path.exists("uploads"):
-        return [f for f in os.listdir("uploads") if any(f.lower().endswith(ext) for ext in allowed_exts)]
-    return []
+        for root, _, filenames in os.walk("uploads"):
+            for f in filenames:
+                if any(f.lower().endswith(ext) for ext in allowed_exts):
+                    files.add(f)
+    return list(files)
 
 def route_query_to_files(query: str, uploaded_files: list[str]) -> list[str]:
     if not uploaded_files:

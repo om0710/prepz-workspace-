@@ -53,16 +53,62 @@ def init_user_db():
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS user_uploads (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
-            filename TEXT UNIQUE NOT NULL,
+            filename TEXT NOT NULL,
             user_email TEXT NOT NULL,
             user_name TEXT NOT NULL,
             uploaded_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             file_path TEXT,
             size_bytes INTEGER DEFAULT 0,
             subject TEXT DEFAULT 'General',
-            semester TEXT DEFAULT 'Semester 1'
+            semester TEXT DEFAULT 'Semester 1',
+            file_type TEXT DEFAULT 'Notes',
+            exam_type TEXT DEFAULT 'Other',
+            is_private INTEGER DEFAULT 0
         )
     """)
+    # Migration helper: remove UNIQUE constraint on filename if present
+    try:
+        cursor.execute("SELECT sql FROM sqlite_master WHERE type='table' AND name='user_uploads'")
+        row = cursor.fetchone()
+        if row and "UNIQUE" in row[0]:
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS user_uploads_migrated (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    filename TEXT NOT NULL,
+                    user_email TEXT NOT NULL,
+                    user_name TEXT NOT NULL,
+                    uploaded_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    file_path TEXT,
+                    size_bytes INTEGER DEFAULT 0,
+                    subject TEXT DEFAULT 'General',
+                    semester TEXT DEFAULT 'Semester 1',
+                    file_type TEXT DEFAULT 'Notes',
+                    exam_type TEXT DEFAULT 'Other',
+                    is_private INTEGER DEFAULT 0
+                )
+            """)
+            cursor.execute("""
+                INSERT INTO user_uploads_migrated (id, filename, user_email, user_name, uploaded_at, file_path, size_bytes, subject, semester, file_type, exam_type, is_private)
+                SELECT id, filename, user_email, user_name, uploaded_at, file_path, size_bytes, 
+                       COALESCE(subject, 'General'), 
+                       COALESCE(semester, 'Semester 1'), 
+                       COALESCE(file_type, 'Notes'), 
+                       COALESCE(exam_type, 'Other'), 
+                       COALESCE(is_private, 0)
+                FROM user_uploads
+            """)
+            cursor.execute("DROP TABLE user_uploads")
+            cursor.execute("ALTER TABLE user_uploads_migrated RENAME TO user_uploads")
+            conn.commit()
+    except Exception as me:
+        print(f"[DB MIGRATION WARNING] {me}")
+
+    try:
+        cursor.execute("CREATE INDEX IF NOT EXISTS idx_user_uploads_lookup ON user_uploads(lower(filename), lower(user_email), is_private)")
+        conn.commit()
+    except Exception:
+        pass
+
     # Migration helper for existing table
     try:
         cursor.execute("ALTER TABLE user_uploads ADD COLUMN subject TEXT DEFAULT 'General'")
@@ -2310,19 +2356,70 @@ def get_top_contributors(limit: int = 25, current_user_email: Optional[str] = No
         }
 
 def record_upload(filename: str, user_email: str, user_name: str, file_path: str, size_bytes: int = 0, subject: str = "General Engineering", semester: str = "Semester 1", file_type: str = "Notes", exam_type: str = "Other", is_private: int = 0):
+    clean_fn = (filename or "").strip()
+    clean_email = (user_email or "").strip().lower()
+    is_priv = 1 if int(is_private) == 1 else 0
     def _do():
         with get_db() as c:
-            c.execute("""
-                INSERT OR REPLACE INTO user_uploads (filename, user_email, user_name, uploaded_at, file_path, size_bytes, subject, semester, file_type, exam_type, is_private)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            """, (filename, user_email, user_name, datetime.now().isoformat(), file_path, size_bytes, subject, semester, file_type, exam_type, is_private))
+            cur = c.cursor()
+            # If private, match specific user; if public, match public scope
+            if is_priv == 1 and clean_email:
+                cur.execute("SELECT id FROM user_uploads WHERE lower(filename) = lower(?) AND is_private = 1 AND lower(user_email) = lower(?)", (clean_fn, clean_email))
+            else:
+                cur.execute("SELECT id FROM user_uploads WHERE lower(filename) = lower(?) AND is_private = 0", (clean_fn,))
+            
+            row = cur.fetchone()
+            if row:
+                doc_id = row[0]
+                cur.execute("""
+                    UPDATE user_uploads 
+                    SET filename = ?, user_email = ?, user_name = ?, uploaded_at = ?, file_path = ?, size_bytes = ?, subject = ?, semester = ?, file_type = ?, exam_type = ?, is_private = ?
+                    WHERE id = ?
+                """, (clean_fn, user_email, user_name, datetime.now().isoformat(), file_path, size_bytes, subject, semester, file_type, exam_type, is_priv, doc_id))
+            else:
+                cur.execute("""
+                    INSERT INTO user_uploads (filename, user_email, user_name, uploaded_at, file_path, size_bytes, subject, semester, file_type, exam_type, is_private)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """, (clean_fn, user_email, user_name, datetime.now().isoformat(), file_path, size_bytes, subject, semester, file_type, exam_type, is_priv))
             c.commit()
     db_retry(_do)
+
+def get_all_uploads(user_email: Optional[str] = None):
+    with get_db() as c:
+        cursor = c.cursor()
+        cursor.execute("SELECT id, filename, user_email, user_name, uploaded_at, size_bytes, subject, semester, file_type, exam_type, is_private, file_path FROM user_uploads ORDER BY id DESC")
+        rows = cursor.fetchall()
+        result = []
+        for r in rows:
+            f_email = (r[2] or "anonymous@college.edu").strip()
+            is_priv = r[10] if len(r) > 10 and r[10] is not None else 0
+            
+            # Privacy filter: If private, only show if user_email matches
+            if is_priv == 1 and user_email and f_email.lower() != user_email.lower().strip():
+                continue
+            if is_priv == 1 and not user_email:
+                continue
+
+            result.append({
+                "id": r[0],
+                "filename": r[1],
+                "user_email": f_email,
+                "user_name": r[3] if len(r) > 3 and r[3] else "Student Contributor",
+                "uploaded_at": r[4],
+                "size_bytes": r[5] if len(r) > 5 else 0,
+                "subject": r[6] if len(r) > 6 and r[6] else "General Engineering",
+                "semester": r[7] if len(r) > 7 and r[7] else "Semester 1",
+                "file_type": r[8] if len(r) > 8 and r[8] else "Notes",
+                "exam_type": r[9] if len(r) > 9 and r[9] else "Other",
+                "is_private": is_priv,
+                "file_path": r[11] if len(r) > 11 else None
+            })
+        return result
 
 def get_file_uploads_metadata():
     with get_db() as c:
         cursor = c.cursor()
-        cursor.execute("SELECT filename, user_email, user_name, uploaded_at, size_bytes, subject, semester, file_type, exam_type, is_private FROM user_uploads")
+        cursor.execute("SELECT filename, user_email, user_name, uploaded_at, size_bytes, subject, semester, file_type, exam_type, is_private, file_path, id FROM user_uploads")
         rows = cursor.fetchall()
         result = {}
         for r in rows:
@@ -2336,41 +2433,163 @@ def get_file_uploads_metadata():
                 "semester": r[6] if len(r) > 6 and r[6] else "Semester 1",
                 "file_type": r[7] if len(r) > 7 and r[7] else "Notes",
                 "exam_type": r[8] if len(r) > 8 and r[8] else "Other",
-                "is_private": r[9] if len(r) > 9 and r[9] is not None else 0
+                "is_private": r[9] if len(r) > 9 and r[9] is not None else 0,
+                "file_path": r[10] if len(r) > 10 else None,
+                "id": r[11] if len(r) > 11 else None
             }
         return result
 
-def delete_upload_record(filename: str):
+def delete_upload_record(filename: str, user_email: Optional[str] = None, is_private: Optional[int] = None):
     from urllib.parse import unquote
     clean = unquote(filename or "").strip()
     raw = (filename or "").strip()
+    clean_email = (user_email or "").strip().lower()
     def _do():
         with get_db() as c:
-            c.execute("DELETE FROM user_uploads WHERE lower(filename) = lower(?) OR lower(filename) = lower(?)", (clean, raw))
+            cur = c.cursor()
+            if is_private is not None and int(is_private) == 1 and clean_email:
+                cur.execute("""
+                    DELETE FROM user_uploads 
+                    WHERE (lower(filename) = lower(?) OR lower(filename) = lower(?)) 
+                      AND is_private = 1 
+                      AND lower(user_email) = lower(?)
+                """, (clean, raw, clean_email))
+            elif is_private is not None and int(is_private) == 0:
+                cur.execute("""
+                    DELETE FROM user_uploads 
+                    WHERE (lower(filename) = lower(?) OR lower(filename) = lower(?)) 
+                      AND is_private = 0
+                """, (clean, raw))
+            elif clean_email:
+                cur.execute("""
+                    DELETE FROM user_uploads 
+                    WHERE (lower(filename) = lower(?) OR lower(filename) = lower(?)) 
+                      AND lower(user_email) = lower(?)
+                """, (clean, raw, clean_email))
+            else:
+                cur.execute("""
+                    DELETE FROM user_uploads 
+                    WHERE lower(filename) = lower(?) OR lower(filename) = lower(?)
+                """, (clean, raw))
             c.commit()
     db_retry(_do)
 
-def get_upload_by_filename(filename: str):
+def _row_to_upload_dict(row):
+    if not row:
+        return None
+    return {
+        "filename": row[0],
+        "user_email": row[1],
+        "user_name": row[2],
+        "uploaded_at": row[3],
+        "size_bytes": row[4],
+        "subject": row[5] if len(row) > 5 and row[5] else "General Engineering",
+        "semester": row[6] if len(row) > 6 and row[6] else "Semester 1",
+        "file_type": row[7] if len(row) > 7 and row[7] else "Notes",
+        "exam_type": row[8] if len(row) > 8 and row[8] else "Other",
+        "is_private": row[9] if len(row) > 9 and row[9] is not None else 0,
+        "file_path": row[10] if len(row) > 10 else None,
+        "id": row[11] if len(row) > 11 else None
+    }
+
+def get_upload_by_filename(filename: str, user_email: Optional[str] = None, is_private: Optional[int] = None):
     from urllib.parse import unquote
     clean = unquote(filename or "").strip()
     raw = (filename or "").strip()
+    clean_email = (user_email or "").strip().lower()
     with get_db() as c:
         cursor = c.cursor()
-        cursor.execute("SELECT filename, user_email, user_name, uploaded_at, size_bytes, subject, semester, file_type, exam_type, is_private FROM user_uploads WHERE lower(filename) = lower(?) OR lower(filename) = lower(?)", (clean, raw))
+        if is_private is not None:
+            is_priv_val = 1 if int(is_private) == 1 else 0
+            if is_priv_val == 1 and clean_email:
+                cursor.execute("""
+                    SELECT filename, user_email, user_name, uploaded_at, size_bytes, subject, semester, file_type, exam_type, is_private, file_path, id 
+                    FROM user_uploads 
+                    WHERE (lower(filename) = lower(?) OR lower(filename) = lower(?)) 
+                      AND is_private = 1 
+                      AND lower(user_email) = lower(?)
+                    LIMIT 1
+                """, (clean, raw, clean_email))
+            else:
+                cursor.execute("""
+                    SELECT filename, user_email, user_name, uploaded_at, size_bytes, subject, semester, file_type, exam_type, is_private, file_path, id 
+                    FROM user_uploads 
+                    WHERE (lower(filename) = lower(?) OR lower(filename) = lower(?)) 
+                      AND is_private = ?
+                    LIMIT 1
+                """, (clean, raw, is_priv_val))
+        elif clean_email:
+            cursor.execute("""
+                SELECT filename, user_email, user_name, uploaded_at, size_bytes, subject, semester, file_type, exam_type, is_private, file_path, id 
+                FROM user_uploads 
+                WHERE (lower(filename) = lower(?) OR lower(filename) = lower(?)) 
+                  AND is_private = 1 
+                  AND lower(user_email) = lower(?)
+                LIMIT 1
+            """, (clean, raw, clean_email))
+            row = cursor.fetchone()
+            if row:
+                return _row_to_upload_dict(row)
+            cursor.execute("""
+                SELECT filename, user_email, user_name, uploaded_at, size_bytes, subject, semester, file_type, exam_type, is_private, file_path, id 
+                FROM user_uploads 
+                WHERE (lower(filename) = lower(?) OR lower(filename) = lower(?)) 
+                  AND is_private = 0
+                LIMIT 1
+            """, (clean, raw))
+        else:
+            cursor.execute("""
+                SELECT filename, user_email, user_name, uploaded_at, size_bytes, subject, semester, file_type, exam_type, is_private, file_path, id 
+                FROM user_uploads 
+                WHERE lower(filename) = lower(?) OR lower(filename) = lower(?)
+                ORDER BY is_private ASC
+                LIMIT 1
+            """, (clean, raw))
+            
         row = cursor.fetchone()
         if row:
-            return {
-                "filename": row[0],
-                "user_email": row[1],
-                "user_name": row[2],
-                "uploaded_at": row[3],
-                "size_bytes": row[4],
-                "subject": row[5] if len(row) > 5 and row[5] else "General Engineering",
-                "semester": row[6] if len(row) > 6 and row[6] else "Semester 1",
-                "file_type": row[7] if len(row) > 7 and row[7] else "Notes",
-                "exam_type": row[8] if len(row) > 8 and row[8] else "Other",
-                "is_private": row[9] if len(row) > 9 and row[9] is not None else 0
-            }
+            return _row_to_upload_dict(row)
+        return None
+
+def get_upload_by_scope(filename: str, subject: Optional[str] = None, semester: Optional[str] = None, is_private: int = 0, user_email: Optional[str] = None):
+    from urllib.parse import unquote
+    clean = unquote(filename or "").strip()
+    raw = (filename or "").strip()
+    clean_email = (user_email or "").strip().lower()
+    is_priv = 1 if int(is_private) == 1 else 0
+
+    with get_db() as c:
+        cursor = c.cursor()
+        if is_priv == 1:
+            query = """
+                SELECT filename, user_email, user_name, uploaded_at, size_bytes, subject, semester, file_type, exam_type, is_private, file_path, id
+                FROM user_uploads
+                WHERE (lower(filename) = lower(?) OR lower(filename) = lower(?))
+                  AND is_private = 1
+                  AND lower(user_email) = lower(?)
+            """
+            params = [clean, raw, clean_email]
+        else:
+            query = """
+                SELECT filename, user_email, user_name, uploaded_at, size_bytes, subject, semester, file_type, exam_type, is_private, file_path, id
+                FROM user_uploads
+                WHERE (lower(filename) = lower(?) OR lower(filename) = lower(?))
+                  AND is_private = 0
+            """
+            params = [clean, raw]
+
+        if subject:
+            query += " AND lower(subject) = lower(?)"
+            params.append(subject.strip())
+        if semester:
+            query += " AND lower(semester) = lower(?)"
+            params.append(semester.strip())
+
+        query += " LIMIT 1"
+        cursor.execute(query, params)
+        row = cursor.fetchone()
+        if row:
+            return _row_to_upload_dict(row)
         return None
 
 def record_report(filename: str, reporter_email: str = "anonymous@college.edu", reporter_name: str = "Anonymous Student", reason: str = "Inappropriate", notes: str = ""):

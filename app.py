@@ -1053,8 +1053,8 @@ async def complete_practice_session_api(session_id: int, request: Request, user_
 
 from database import (
     create_user, get_user_by_email, verify_password,
-    record_upload, get_file_uploads_metadata, delete_upload_record,
-    get_upload_by_filename, record_report, get_reported_files,
+    record_upload, get_file_uploads_metadata, get_all_uploads, delete_upload_record,
+    get_upload_by_filename, get_upload_by_scope, record_report, get_reported_files,
     update_user_activity, add_contribution_points, get_top_contributors,
     mark_onboarding_completed, validate_password_strength, create_otp,
     verify_otp_code, update_user_password, mark_user_verified,
@@ -1735,13 +1735,21 @@ async def upload_pdf(
     if not file_type or not file_type.strip():
         raise HTTPException(status_code=400, detail="File Type is required.")
 
-    # Check for existing duplicate file under same subject & semester
+    # Check for existing duplicate file under same subject & semester within the target scope
+    is_priv_int = 1 if int(is_private) == 1 else 0
     if not confirm_overwrite:
-        existing = get_upload_by_filename(filename_clean)
-        if existing and existing["subject"] == subject and existing["semester"] == semester:
+        existing = get_upload_by_scope(
+            filename=filename_clean,
+            subject=subject,
+            semester=semester,
+            is_private=is_priv_int,
+            user_email=user_email
+        )
+        if existing:
+            scope_desc = "your Personal Workspace" if is_priv_int == 1 else f"Course Repository ({subject} - {semester})"
             raise HTTPException(
                 status_code=409,
-                detail=f"A similar file named '{filename_clean}' for {subject} ({semester}) already exists. Do you still want to upload?"
+                detail=f"A document named '{filename_clean}' already exists under {scope_desc}. Do you still want to overwrite it?"
             )
 
     # Check headers / size if provided by client
@@ -1752,8 +1760,17 @@ async def upload_pdf(
             detail=f"File size exceeds 20MB limit ({size_mb} MB). Please select a smaller PDF."
         )
 
+    # Scoped file storage directory (Completely separate storage for Course Repo and Personal Workspace)
+    import re
+    if is_priv_int == 1:
+        safe_user = re.sub(r'[^a-zA-Z0-9_.-]', '_', (user_email or "anonymous").strip().lower())
+        upload_dir = os.path.join("uploads", "workspace", safe_user)
+    else:
+        upload_dir = os.path.join("uploads", "course_repo")
+
+    os.makedirs(upload_dir, exist_ok=True)
     os.makedirs("uploads", exist_ok=True)
-    file_path = os.path.join("uploads", file.filename)
+    file_path = os.path.join(upload_dir, filename_clean)
     
     try:
         content = await file.read()
@@ -1768,10 +1785,19 @@ async def upload_pdf(
 
         with open(file_path, "wb") as buffer:
             buffer.write(content)
+
+        # Also write / mirror to root uploads/ for legacy static serving compatibility if it doesn't overwrite a different file
+        root_path = os.path.join("uploads", filename_clean)
+        if not os.path.exists(root_path) or is_priv_int == 0:
+            try:
+                with open(root_path, "wb") as r_buf:
+                    r_buf.write(content)
+            except Exception:
+                pass
         
         # Record file uploader info and subject/semester/file_type/exam_type/is_private in database
         record_upload(
-            filename=file.filename,
+            filename=filename_clean,
             user_email=user_email,
             user_name=user_name,
             file_path=file_path,
@@ -1780,7 +1806,7 @@ async def upload_pdf(
             semester=semester,
             file_type=file_type,
             exam_type=exam_type,
-            is_private=int(is_private)
+            is_private=is_priv_int
         )
         
         # Add to vector DB with clean text parsing and user/subject/semester/file_type metadata
@@ -1800,7 +1826,7 @@ async def upload_pdf(
 
         return {
             "status": "success",
-            "filename": file.filename,
+            "filename": filename_clean,
             "user_email": user_email,
             "user_name": user_name,
             "subject": subject,
@@ -1941,50 +1967,81 @@ def render_docx_viewer_html(filename: str, meta: dict, text_docs: list) -> HTMLR
 
 from urllib.parse import unquote, quote
 
-def get_sanitized_upload_file_path(raw_filename: str) -> tuple[str, str]:
+def get_sanitized_upload_file_path(raw_filename: str, user_email: Optional[str] = None, is_private: Optional[int] = None) -> tuple[str, str]:
+    from urllib.parse import unquote
     unquoted = unquote(raw_filename or "").strip()
     clean_name = os.path.basename(unquoted)
-    file_path = os.path.join("uploads", clean_name)
-    if not os.path.exists(file_path):
-        alt_name = os.path.basename(raw_filename or "")
-        alt_path = os.path.join("uploads", alt_name)
-        if os.path.exists(alt_path):
-            file_path = alt_path
-            clean_name = alt_name
-    return clean_name, file_path
+    alt_name = os.path.basename(raw_filename or "")
+    
+    # 1. First check if DB knows exact file_path for this scope/user
+    meta = get_upload_by_filename(clean_name, user_email=user_email, is_private=is_private) or \
+           get_upload_by_filename(alt_name, user_email=user_email, is_private=is_private)
+    if meta and meta.get("file_path") and os.path.exists(meta["file_path"]):
+        return clean_name, meta["file_path"]
+
+    # 2. Check workspace path
+    if user_email:
+        import re
+        safe_user = re.sub(r'[^a-zA-Z0-9_.-]', '_', user_email.strip().lower())
+        ws_path = os.path.join("uploads", "workspace", safe_user, clean_name)
+        if os.path.exists(ws_path):
+            return clean_name, ws_path
+        ws_alt = os.path.join("uploads", "workspace", safe_user, alt_name)
+        if os.path.exists(ws_alt):
+            return alt_name, ws_alt
+
+    # 3. Check course repo path
+    repo_path = os.path.join("uploads", "course_repo", clean_name)
+    if os.path.exists(repo_path):
+        return clean_name, repo_path
+    repo_alt = os.path.join("uploads", "course_repo", alt_name)
+    if os.path.exists(repo_alt):
+        return alt_name, repo_alt
+
+    # 4. Check root uploads/ path (legacy)
+    root_path = os.path.join("uploads", clean_name)
+    if os.path.exists(root_path):
+        return clean_name, root_path
+        
+    root_alt = os.path.join("uploads", alt_name)
+    if os.path.exists(root_alt):
+        return alt_name, root_alt
+
+    return clean_name, root_path
 
 @app.get("/view/{filename}")
-def view_file_route(filename: str):
-    filename, file_path = get_sanitized_upload_file_path(filename)
+def view_file_route(filename: str, user_email: Optional[str] = None, is_private: Optional[int] = None):
+    clean_name, file_path = get_sanitized_upload_file_path(filename, user_email=user_email, is_private=is_private)
     if not os.path.exists(file_path):
         raise HTTPException(status_code=404, detail=f"File '{filename}' not found.")
     
-    meta = get_upload_by_filename(filename) or get_upload_by_filename(unquote(filename))
+    meta = get_upload_by_filename(clean_name, user_email=user_email, is_private=is_private) or \
+           get_upload_by_filename(filename, user_email=user_email, is_private=is_private)
     if meta and meta.get("user_email"):
         uploader_email = meta["user_email"]
         if uploader_email and uploader_email != "anonymous@college.edu":
             add_contribution_points(uploader_email, 2)
 
-    fn_lower = filename.lower()
+    fn_lower = clean_name.lower()
     if fn_lower.endswith(".docx") or fn_lower.endswith(".doc"):
         from rag import extract_text_from_file
         docs = extract_text_from_file(file_path)
-        return render_docx_viewer_html(filename, meta or {}, docs)
+        return render_docx_viewer_html(clean_name, meta or {}, docs)
 
     return FileResponse(
         file_path,
-        media_type="application/pdf" if fn_lower.endswith(".pdf") else get_media_type(filename),
-        headers={"Content-Disposition": f'inline; filename="{quote(filename)}"'}
+        media_type="application/pdf" if fn_lower.endswith(".pdf") else get_media_type(clean_name),
+        headers={"Content-Disposition": f'inline; filename="{quote(clean_name)}"'}
     )
 
 @app.get("/files/{filename}")
-def get_file(filename: str):
-    filename, file_path = get_sanitized_upload_file_path(filename)
+def get_file(filename: str, user_email: Optional[str] = None, is_private: Optional[int] = None):
+    clean_name, file_path = get_sanitized_upload_file_path(filename, user_email=user_email, is_private=is_private)
     if not os.path.exists(file_path):
         raise HTTPException(status_code=404, detail="File not found.")
     
     # Award +2 contribution points to original uploader
-    meta = get_upload_by_filename(filename)
+    meta = get_upload_by_filename(clean_name, user_email=user_email, is_private=is_private)
     if meta and meta.get("user_email"):
         uploader_email = meta["user_email"]
         if uploader_email and uploader_email != "anonymous@college.edu":
@@ -1992,40 +2049,22 @@ def get_file(filename: str):
 
     return FileResponse(
         file_path,
-        media_type=get_media_type(filename),
-        headers={"Content-Disposition": f'inline; filename="{quote(filename)}"'}
+        media_type=get_media_type(clean_name),
+        headers={"Content-Disposition": f'inline; filename="{quote(clean_name)}"'}
     )
 
 @app.get("/download/{filename}")
 @app.get("/api/download/{filename}")
-def download_file_route(filename: str, disposition: Optional[str] = "attachment"):
+def download_file_route(filename: str, disposition: Optional[str] = "attachment", user_email: Optional[str] = None, is_private: Optional[int] = None):
     try:
-        from urllib.parse import unquote, quote
-        clean_filename = os.path.basename(unquote(filename or "")).strip()
-        raw_name = os.path.basename(filename or "").strip()
-        
-        file_path = os.path.join("uploads", clean_filename)
-        if not os.path.exists(file_path):
-            file_path = os.path.join("uploads", raw_name)
-        
-        if not os.path.exists(file_path):
-            # Check absolute path fallback
-            abs_uploads = os.path.join(os.path.dirname(os.path.abspath(__file__)), "uploads")
-            if os.path.exists(abs_uploads):
-                target_lower = clean_filename.lower()
-                for fname in os.listdir(abs_uploads):
-                    if fname.lower() == target_lower or unquote(fname).lower() == target_lower:
-                        file_path = os.path.join(abs_uploads, fname)
-                        clean_filename = fname
-                        break
-        
+        clean_filename, file_path = get_sanitized_upload_file_path(filename, user_email=user_email, is_private=is_private)
         if not os.path.exists(file_path):
             print(f"[DOWNLOAD] File not found: {file_path}")
             raise HTTPException(status_code=404, detail=f"File '{filename}' not found on server.")
 
         # Award contribution points (non-blocking)
         try:
-            meta = get_upload_by_filename(clean_filename) or get_upload_by_filename(raw_name)
+            meta = get_upload_by_filename(clean_filename, user_email=user_email, is_private=is_private)
             if meta and meta.get("user_email"):
                 uploader_email = meta["user_email"]
                 if uploader_email and uploader_email not in ("anonymous@college.edu", "student@college.edu"):
@@ -2053,49 +2092,57 @@ def download_file_route(filename: str, disposition: Optional[str] = "attachment"
 @app.get("/files")
 def list_files(user_email: Optional[str] = None):
     try:
+        from database import get_all_uploads
+        db_files = get_all_uploads(user_email=user_email)
+        
+        # Verify sizes and existence
+        result_files = []
+        known_set = set()
+        for f in db_files:
+            file_p = f.get("file_path") or os.path.join("uploads", f["filename"])
+            actual_size = os.path.getsize(file_p) if (file_p and os.path.exists(file_p)) else f.get("size_bytes", 0)
+            f_copy = dict(f)
+            f_copy["size_bytes"] = actual_size
+            result_files.append(f_copy)
+            known_set.add((f["filename"].lower(), f["is_private"]))
+
+        # Also incorporate any legacy unrecorded files directly in uploads/ as public Course Repo files
         from backend_rag import get_uploaded_files
         raw_filenames = get_uploaded_files()
-        metadata_map = get_file_uploads_metadata()
-        
-        files_with_meta = []
-        for filename in sorted(raw_filenames):
-            if not filename or not filename.strip():
-                continue
-            meta = metadata_map.get(filename, {})
-            f_email = meta.get("user_email", "anonymous@college.edu")
-            is_priv = meta.get("is_private", 0)
-
-            # Privacy Filter: If private document, show ONLY to its owner
-            if is_priv == 1 and user_email and f_email.lower() != user_email.lower():
-                continue
-
-            file_path = os.path.join("uploads", filename)
-            actual_size = os.path.getsize(file_path) if os.path.exists(file_path) else meta.get("size_bytes", 0)
-
-            files_with_meta.append({
-                "filename": filename,
-                "user_email": f_email,
-                "user_name": meta.get("user_name", "Student Contributor"),
-                "uploaded_at": meta.get("uploaded_at", None),
-                "size_bytes": actual_size,
-                "subject": meta.get("subject", "General"),
-                "semester": meta.get("semester", "Semester 1"),
-                "file_type": meta.get("file_type", "Notes"),
-                "exam_type": meta.get("exam_type", "Other"),
-                "is_private": is_priv
-            })
-        return {"files": files_with_meta}
+        for fname in raw_filenames:
+            if (fname.lower(), 0) not in known_set:
+                file_p = os.path.join("uploads", fname)
+                size_b = os.path.getsize(file_p) if os.path.exists(file_p) else 0
+                result_files.append({
+                    "id": None,
+                    "filename": fname,
+                    "user_email": "system@prepz.edu",
+                    "user_name": "Faculty Contributor",
+                    "uploaded_at": None,
+                    "size_bytes": size_b,
+                    "subject": "General Engineering",
+                    "semester": "Semester 1",
+                    "file_type": "Notes",
+                    "exam_type": "Other",
+                    "is_private": 0,
+                    "file_path": file_p
+                })
+                known_set.add((fname.lower(), 0))
+                
+        return {"files": result_files}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.delete("/files/{filename}")
-def delete_file(filename: str, user_email: Optional[str] = None, user_name: Optional[str] = None):
+def delete_file(filename: str, user_email: Optional[str] = None, user_name: Optional[str] = None, is_private: Optional[int] = None):
     try:
         clean_filename = os.path.basename(unquote(filename or "")).strip()
         raw_name = os.path.basename(filename or "").strip()
         
         # Ownership verification
-        existing_meta = get_upload_by_filename(clean_filename) or get_upload_by_filename(raw_name)
+        existing_meta = get_upload_by_filename(clean_filename, user_email=user_email, is_private=is_private) or \
+                        get_upload_by_filename(raw_name, user_email=user_email, is_private=is_private)
+        
         if existing_meta:
             uploader_email = (existing_meta.get("user_email") or "").lower().strip()
             uploader_name = (existing_meta.get("user_name") or "").lower().strip()
@@ -2107,25 +2154,21 @@ def delete_file(filename: str, user_email: Optional[str] = None, user_name: Opti
                 if req_email != uploader_email and (not req_name or req_name != uploader_name):
                     raise HTTPException(status_code=403, detail="Permission denied. You can only delete files that you uploaded.")
 
-        # Delete from disk
-        for cand in set([clean_filename, raw_name, filename, unquote(filename)]):
-            p = os.path.join("uploads", cand)
-            if os.path.exists(p):
-                try:
-                    os.remove(p)
-                except Exception as fe:
-                    print(f"[DELETE FILE DISK ERROR] {fe}")
-            abs_p = os.path.join(os.path.dirname(os.path.abspath(__file__)), "uploads", cand)
-            if os.path.exists(abs_p):
-                try:
-                    os.remove(abs_p)
-                except Exception as afe:
-                    print(f"[DELETE FILE ABS DISK ERROR] {afe}")
+        # Determine exact file path
+        _, file_path = get_sanitized_upload_file_path(clean_filename, user_email=user_email, is_private=is_private)
+        if existing_meta and existing_meta.get("file_path") and os.path.exists(existing_meta["file_path"]):
+            file_path = existing_meta["file_path"]
+
+        # Delete from disk only if it exists
+        if os.path.exists(file_path):
+            try:
+                os.remove(file_path)
+            except Exception as fe:
+                print(f"[DELETE FILE DISK ERROR] {fe}")
             
         try:
             from rag import delete_pdf_from_vectordb
-            delete_pdf_from_vectordb(os.path.join("uploads", clean_filename))
-            delete_pdf_from_vectordb(os.path.join("uploads", raw_name))
+            delete_pdf_from_vectordb(file_path)
         except Exception as ve:
             print(f"[DELETE VECTOR ERROR (IGNORED)] {ve}")
 
@@ -2135,8 +2178,8 @@ def delete_file(filename: str, user_email: Optional[str] = None, user_name: Opti
         except Exception as be:
             print(f"[RESET BM25 ERROR (IGNORED)] {be}")
 
-        delete_upload_record(clean_filename)
-        delete_upload_record(raw_name)
+        delete_upload_record(clean_filename, user_email=user_email, is_private=is_private)
+        delete_upload_record(raw_name, user_email=user_email, is_private=is_private)
         
         return {"status": "success", "message": f"{clean_filename} deleted."}
     except HTTPException:
@@ -2153,7 +2196,7 @@ class ToggleFilePrivacyRequest(BaseModel):
 def toggle_file_privacy_endpoint(filename: str, req: ToggleFilePrivacyRequest, request: Request):
     filename = os.path.basename(filename)
     user_email = req.user_email or request.headers.get("X-User-Email") or request.query_params.get("user_email")
-    existing_meta = get_upload_by_filename(filename)
+    existing_meta = get_upload_by_filename(filename, user_email=user_email)
     if not existing_meta:
         raise HTTPException(status_code=404, detail="File metadata not found.")
     
@@ -2164,9 +2207,13 @@ def toggle_file_privacy_endpoint(filename: str, req: ToggleFilePrivacyRequest, r
         raise HTTPException(status_code=403, detail="Permission denied. You can only change privacy for files you uploaded.")
     
     new_priv = 1 if req.is_private else 0
+    doc_id = existing_meta.get("id")
     def _do():
         with get_db() as c:
-            c.execute("UPDATE user_uploads SET is_private = ? WHERE lower(filename) = lower(?)", (new_priv, filename))
+            if doc_id:
+                c.execute("UPDATE user_uploads SET is_private = ? WHERE id = ?", (new_priv, doc_id))
+            else:
+                c.execute("UPDATE user_uploads SET is_private = ? WHERE lower(filename) = lower(?) AND lower(user_email) = lower(?)", (new_priv, filename, uploader_email))
             c.commit()
     db_retry(_do)
     return {"status": "success", "filename": filename, "is_private": new_priv}

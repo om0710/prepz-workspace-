@@ -1845,10 +1845,10 @@ function initializeDocPilotApp() {
                 </div>
 
                 <div class="doc-card-actions">
-                    <button type="button" class="btn-download-file btn-download-doc" data-filename="${filename}" onclick="downloadDocumentFile('${escapeHtmlLocal(filename).replace(/'/g, "\\'")}')" title="Download File">
+                    <button type="button" class="btn-download-file btn-download-doc" data-filename="${filename}" onclick="downloadDocumentFile('${escapeHtmlLocal(filename).replace(/'/g, "\\'")}', 0)" title="Download File">
                         <span>⬇ Download</span>
                     </button>
-                    <a href="/view/${encodeURIComponent(filename)}" target="_blank" class="btn-open-browse-pdf" title="View Document">
+                    <a href="/view/${encodeURIComponent(filename)}?is_private=0" target="_blank" class="btn-open-browse-pdf" title="View Document">
                         <span>View</span>
                     </a>
                     <button type="button" class="btn-chat-with-doc btn-browse-chat" data-filename="${filename}" title="Chat with Document">
@@ -2916,22 +2916,71 @@ function initializeDocPilotApp() {
     const MAX_FILE_SIZE_BYTES = 20 * 1024 * 1024; // 20MB limit
     let currentUploadTarget = "browse"; // "library" (private) or "browse" (public)
 
+    function updateScopeToggleVisuals(selectedScope) {
+        const radioLib = document.getElementById("radio-scope-library");
+        const radioBrowse = document.getElementById("radio-scope-browse");
+        const labelLib = document.getElementById("label-scope-library");
+        const labelBrowse = document.getElementById("label-scope-browse");
+        const modal = document.getElementById("upload-modal");
+        const modalTitle = modal ? modal.querySelector(".modal-header h3") : null;
+
+        if (selectedScope === "library") {
+            currentUploadTarget = "library";
+            if (radioLib) radioLib.checked = true;
+            if (labelLib) {
+                labelLib.style.border = "1.5px solid #8b5cf6";
+                labelLib.style.background = "rgba(139, 92, 246, 0.25)";
+                labelLib.style.color = "#ffffff";
+            }
+            if (labelBrowse) {
+                labelBrowse.style.border = "1.5px solid rgba(255, 255, 255, 0.1)";
+                labelBrowse.style.background = "rgba(255, 255, 255, 0.04)";
+                labelBrowse.style.color = "#94a3b8";
+            }
+            if (modalTitle) modalTitle.textContent = "Upload Document to My Workspace (Private)";
+        } else {
+            currentUploadTarget = "browse";
+            if (radioBrowse) radioBrowse.checked = true;
+            if (labelBrowse) {
+                labelBrowse.style.border = "1.5px solid #8b5cf6";
+                labelBrowse.style.background = "rgba(139, 92, 246, 0.25)";
+                labelBrowse.style.color = "#ffffff";
+            }
+            if (labelLib) {
+                labelLib.style.border = "1.5px solid rgba(255, 255, 255, 0.1)";
+                labelLib.style.background = "rgba(255, 255, 255, 0.04)";
+                labelLib.style.color = "#94a3b8";
+            }
+            if (modalTitle) modalTitle.textContent = "Upload Document to Course Repository (Public)";
+        }
+    }
+
     function openUploadModal(targetScope = "browse") {
         currentUploadTarget = targetScope;
         const modal = document.getElementById("upload-modal") || uploadModal;
+        updateScopeToggleVisuals(targetScope);
         if (modal) {
             modal.classList.remove("hidden");
             modal.style.display = "flex";
         }
     }
     window.openUploadModal = openUploadModal;
+    window.openUploadModalDirect = openUploadModal;
+
+    const radioLibElem = document.getElementById("radio-scope-library");
+    const radioBrowseElem = document.getElementById("radio-scope-browse");
+    if (radioLibElem) radioLibElem.addEventListener("change", () => updateScopeToggleVisuals("library"));
+    if (radioBrowseElem) radioBrowseElem.addEventListener("change", () => updateScopeToggleVisuals("browse"));
 
     function closeUploadModal() {
         const modal = document.getElementById("upload-modal") || uploadModal;
         if (modal) {
             modal.classList.add("hidden");
             modal.style.display = "none";
-            if (formUploadDocument) formUploadDocument.reset();
+            if (formUploadDocument) {
+                formUploadDocument.reset();
+                delete formUploadDocument.dataset.confirmedOverwrite;
+            }
             if (fileChosenLabel) {
                 fileChosenLabel.textContent = "Click or drag PDF or Word (.docx, .doc) file here";
                 fileChosenLabel.style.color = "#a78bfa";
@@ -3087,18 +3136,40 @@ function initializeDocPilotApp() {
                 return;
             }
 
-            // Check for duplicate document (same filename + same subject + same semester)
+            // Check for duplicate document strictly within target scope (Workspace vs Course Repo)
             const isConfirmedOverwrite = formUploadDocument.dataset.confirmedOverwrite === "true";
+            const radioSelected = document.querySelector('input[name="upload_target_scope"]:checked');
+            const targetIsPrivate = radioSelected ? (radioSelected.value === "library") : (currentUploadTarget === "library");
+            const activeUser = currentUser || window.currentUser;
+            const currentEmail = activeUser && activeUser.email ? activeUser.email.toLowerCase().trim() : "";
 
             if (!isConfirmedOverwrite) {
                 const existingFile = allCachedFiles.find(f => {
-                    const fn = (typeof f === 'string' ? f : f.filename || "").toLowerCase();
-                    const sub = typeof f === 'object' ? f.subject : "";
-                    const sem = typeof f === 'object' ? f.semester : "";
-                    return fn === file.name.toLowerCase() && sub === subject && sem === semester;
+                    if (!f || typeof f !== 'object') return false;
+                    const fn = (f.filename || "").toLowerCase().trim();
+                    const sub = (f.subject || "").trim();
+                    const sem = (f.semester || "").trim();
+                    const fIsPrivate = Boolean(f.is_private === 1 || f.is_private === true);
+                    const fEmail = (f.user_email || "").toLowerCase().trim();
+
+                    if (fn !== file.name.toLowerCase().trim() || sub !== subject || sem !== semester) {
+                        return false;
+                    }
+
+                    // Strict Separation:
+                    // 1. If uploading to Personal Workspace: ONLY check current user's own private workspace!
+                    // Course Repo files NEVER block or warn.
+                    if (targetIsPrivate) {
+                        return fIsPrivate && fEmail === currentEmail;
+                    }
+
+                    // 2. If uploading to Course Repository: ONLY check public Course Repo files!
+                    // Private workspace files NEVER block or warn.
+                    return !fIsPrivate;
                 });
 
                 if (existingFile) {
+                    const scopeDesc = targetIsPrivate ? "your Personal Workspace" : `Course Repository (${subject} - ${semester})`;
                     if (modalUploadStatus) {
                         modalUploadStatus.classList.remove("hidden");
                         modalUploadStatus.style.backgroundColor = "transparent";
@@ -3106,7 +3177,7 @@ function initializeDocPilotApp() {
                         modalUploadStatus.innerHTML = `
                             <div class="duplicate-warning-banner">
                                 <div class="warning-title">Similar Document Already Exists</div>
-                                <p class="warning-msg">A document named <strong>"${file.name}"</strong> already exists under <strong>${subject}</strong> (<strong>${semester}</strong>). Do you still want to upload and overwrite it?</p>
+                                <p class="warning-msg">A document named <strong>"${file.name}"</strong> already exists under <strong>${scopeDesc}</strong>. Do you still want to upload and overwrite it?</p>
                                 <div class="warning-actions">
                                     <button type="button" id="btn-confirm-overwrite" class="btn-warning-confirm">Yes, Overwrite & Upload</button>
                                     <button type="button" id="btn-cancel-overwrite" class="btn-warning-cancel">Cancel</button>
@@ -3141,7 +3212,7 @@ function initializeDocPilotApp() {
 
             delete formUploadDocument.dataset.confirmedOverwrite;
 
-            const isPrivateVal = currentUploadTarget === "library" ? "1" : "0";
+            const isPrivateVal = targetIsPrivate ? "1" : "0";
 
             const formData = new FormData();
             formData.append("file", file);
@@ -3152,7 +3223,6 @@ function initializeDocPilotApp() {
             formData.append("is_private", isPrivateVal);
             formData.append("confirm_overwrite", "true");
 
-            const activeUser = currentUser || window.currentUser;
             const activeEmail = activeUser ? (activeUser.email || "anonymous@college.edu") : "anonymous@college.edu";
             const activeName = activeUser ? (activeUser.name || "Anonymous Student") : "Anonymous Student";
 
@@ -3273,7 +3343,9 @@ function initializeDocPilotApp() {
 
     async function fetchIndexedFiles() {
         try {
-            const res = await fetch("/files");
+            const activeUser = currentUser || window.currentUser || JSON.parse(localStorage.getItem("docpilot-user") || "null");
+            const emailParam = activeUser && activeUser.email ? `?user_email=${encodeURIComponent(activeUser.email)}` : "";
+            const res = await fetch(`/files${emailParam}`);
             if (!res.ok) return;
             const data = await res.json();
             
@@ -3320,6 +3392,7 @@ function initializeDocPilotApp() {
                     const subject = typeof fileObj === 'object' && fileObj.subject ? fileObj.subject : "General";
                     const semester = typeof fileObj === 'object' && fileObj.semester ? fileObj.semester : "Sem 1";
                     const fileType = typeof fileObj === 'object' && fileObj.file_type ? fileObj.file_type : "Notes";
+                    const isPrivate = typeof fileObj === 'object' && (fileObj.is_private === 1 || fileObj.is_private === true);
                     const accent = accents[idx % accents.length];
 
                     const li = document.createElement("li");
@@ -3350,7 +3423,9 @@ function initializeDocPilotApp() {
                     const titleSpan = li.querySelector("span");
                     if (titleSpan) {
                         titleSpan.addEventListener("click", () => {
-                            window.open(`/view/${encodeURIComponent(filename)}`, "_blank");
+                            const activeUser = currentUser || window.currentUser;
+                            const emailParam = activeUser && activeUser.email ? `&user_email=${encodeURIComponent(activeUser.email)}` : "";
+                            window.open(`/view/${encodeURIComponent(filename)}?is_private=${isPrivate ? 1 : 0}${emailParam}`, "_blank");
                         });
                     }
 
@@ -3379,6 +3454,7 @@ function initializeDocPilotApp() {
                 const subject = typeof fileObj === 'object' && fileObj.subject ? fileObj.subject : "General";
                 const semester = typeof fileObj === 'object' && fileObj.semester ? fileObj.semester : "Sem 1";
                 const fileType = typeof fileObj === 'object' && fileObj.file_type ? fileObj.file_type : "Notes";
+                const isPrivate = typeof fileObj === 'object' && (fileObj.is_private === 1 || fileObj.is_private === true);
                 const isOwner = isFileUploadedByCurrentUser(fileObj);
 
                 const card = document.createElement("div");
@@ -3407,9 +3483,7 @@ function initializeDocPilotApp() {
                 if (btnDeleteMain) {
                     btnDeleteMain.addEventListener("click", (e) => {
                         e.stopPropagation();
-                        if (confirm(`Are you sure you want to delete "${filename}"?\n\nThis will permanently remove the file from both storage and the database.`)) {
-                            deleteUploadedFile(filename);
-                        }
+                        deleteUploadedFile(filename, isPrivate ? 1 : 0);
                     });
                 }
 
@@ -3488,7 +3562,7 @@ function initializeDocPilotApp() {
                         </div>
                     </div>
 
-                    <a href="/view/${encodeURIComponent(filename)}" target="_blank" class="browse-file-title" title="${filename}">
+                    <a href="/view/${encodeURIComponent(filename)}?is_private=1&user_email=${encodeURIComponent(activeUser.email)}" target="_blank" class="browse-file-title" title="${filename}">
                         ${filename}
                     </a>
 
@@ -3509,10 +3583,10 @@ function initializeDocPilotApp() {
                     </div>
 
                     <div class="doc-card-actions">
-                        <button type="button" class="btn-download-file btn-download-doc" data-filename="${filename}" onclick="downloadDocumentFile('${escapeHtmlLocal(filename).replace(/'/g, "\\'")}')" title="Download File">
+                        <button type="button" class="btn-download-file btn-download-doc" data-filename="${filename}" onclick="downloadDocumentFile('${escapeHtmlLocal(filename).replace(/'/g, "\\'")}', 1)" title="Download File">
                             <span>Download</span>
                         </button>
-                        <a href="/view/${encodeURIComponent(filename)}" target="_blank" class="btn-open-browse-pdf" title="View Document">
+                        <a href="/view/${encodeURIComponent(filename)}?is_private=1&user_email=${encodeURIComponent(activeUser.email)}" target="_blank" class="btn-open-browse-pdf" title="View Document">
                             <span>View</span>
                         </a>
                         <button type="button" class="btn-chat-with-doc btn-browse-chat" data-filename="${filename}" title="Chat with Document">
@@ -3521,7 +3595,7 @@ function initializeDocPilotApp() {
                         <button type="button" class="btn-browse-pin btn-pin-browse ${isPinnedInSidebar ? 'active-pinned' : ''}" data-filename="${filename}" title="${isPinnedInSidebar ? 'Unpin from Sidebar Pinned Folders' : 'Pin to Sidebar'}">
                             <span>${isPinnedInSidebar ? 'Pinned' : 'Pin'}</span>
                         </button>
-                        <button type="button" class="btn-delete-my-library btn-delete-file-doc" data-filename="${filename}" onclick="deleteUploadedDocument('${escapeHtmlLocal(filename).replace(/'/g, "\\'")}')" title="Delete File from Storage & DB">
+                        <button type="button" class="btn-delete-my-library btn-delete-file-doc" data-filename="${filename}" onclick="deleteUploadedDocument('${escapeHtmlLocal(filename).replace(/'/g, "\\'")}', 1)" title="Delete File from Storage & DB">
                             <span>Delete</span>
                         </button>
                     </div>
@@ -3728,14 +3802,17 @@ function initializeDocPilotApp() {
         }
     };
 
-    window.downloadDocumentFile = async function(filename) {
+    window.downloadDocumentFile = async function(filename, isPrivate = null) {
         if (!filename) return;
         try {
-            const downloadUrl = `/download/${encodeURIComponent(filename)}?disposition=attachment`;
+            const activeUser = currentUser || window.currentUser || JSON.parse(localStorage.getItem("docpilot-user") || "{}");
+            const emailParam = activeUser && activeUser.email ? `&user_email=${encodeURIComponent(activeUser.email)}` : "";
+            const privParam = isPrivate !== null ? `&is_private=${isPrivate}` : "";
+            const downloadUrl = `/download/${encodeURIComponent(filename)}?disposition=attachment${emailParam}${privParam}`;
             const res = await fetch(downloadUrl);
             if (!res.ok) {
                 // Fallback to /files/
-                const altRes = await fetch(`/files/${encodeURIComponent(filename)}`);
+                const altRes = await fetch(`/files/${encodeURIComponent(filename)}?${emailParam.replace('&', '')}${privParam}`);
                 if (altRes.ok) {
                     const blob = await altRes.blob();
                     window.triggerBlobDownload(blob, filename);
@@ -3753,9 +3830,9 @@ function initializeDocPilotApp() {
         }
     };
 
-    window.deleteUploadedDocument = async function(filename) {
+    window.deleteUploadedDocument = async function(filename, isPrivate = null) {
         if (!filename) return;
-        const confirmed = confirm(`Are you sure you want to delete "${filename}"?\n\nThis will permanently remove the file from your library, database, and storage.`);
+        const confirmed = confirm(`Are you sure you want to delete "${filename}"?\n\nThis will permanently remove the file from storage and the database.`);
         if (!confirmed) return;
 
         try {
@@ -3763,6 +3840,9 @@ function initializeDocPilotApp() {
             const userEmail = user.email || "";
             const userName = user.name || "";
             const queryParams = new URLSearchParams({ user_email: userEmail, user_name: userName });
+            if (isPrivate !== null) {
+                queryParams.append("is_private", isPrivate);
+            }
             
             const res = await fetch(`/files/${encodeURIComponent(filename)}?${queryParams.toString()}`, {
                 method: "DELETE"

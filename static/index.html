@@ -80,7 +80,11 @@
         };
 
         window.openUploadModal = function(targetScope) {
-            window.openModalById("upload-modal");
+            if (typeof window.openUploadModalDirect === 'function') {
+                window.openUploadModalDirect(targetScope || 'browse');
+            } else {
+                window.openModalById("upload-modal");
+            }
         };
         window.closeUploadModal = function() {
             window.closeModalById("upload-modal");
@@ -941,6 +945,19 @@
             </div>
             <form id="form-upload-document" class="modal-form" novalidate>
                 <div class="form-group">
+                    <label>Upload Destination <span class="req-star">*</span></label>
+                    <div class="upload-scope-toggle-group" style="display: flex; gap: 10px; margin-top: 4px;">
+                        <label class="scope-toggle-btn" id="label-scope-library" style="flex: 1; display: flex; align-items: center; justify-content: center; gap: 8px; padding: 10px; border-radius: 8px; border: 1.5px solid #8b5cf6; background: rgba(139, 92, 246, 0.2); color: #fff; cursor: pointer; font-size: 13px; font-weight: 600;">
+                            <input type="radio" name="upload_target_scope" value="library" id="radio-scope-library" checked style="accent-color: #8b5cf6; margin: 0;">
+                            <span>🔒 My Workspace (Private)</span>
+                        </label>
+                        <label class="scope-toggle-btn" id="label-scope-browse" style="flex: 1; display: flex; align-items: center; justify-content: center; gap: 8px; padding: 10px; border-radius: 8px; border: 1.5px solid rgba(255, 255, 255, 0.1); background: rgba(255, 255, 255, 0.04); color: #94a3b8; cursor: pointer; font-size: 13px; font-weight: 600;">
+                            <input type="radio" name="upload_target_scope" value="browse" id="radio-scope-browse" style="accent-color: #8b5cf6; margin: 0;">
+                            <span>🎓 Course Repo (Public)</span>
+                        </label>
+                    </div>
+                </div>
+                <div class="form-group">
                     <label for="upload-file-input">Select PDF or Word File (.pdf, .docx, .doc) <span class="req-star">*</span></label>
                     <div class="custom-file-dropzone" id="file-dropzone-box">
                         <input type="file" id="upload-file-input" accept=".pdf,.docx,.doc">
@@ -1354,6 +1371,6 @@
     </div>
 
     <!-- Main JavaScript Link -->
-    <script src="app.js?v=20260818_real_leaderboard_v2"></script>
+    <script src="app.js?v=20260820_scope_isolated_v4"></script>
 </body>
 </html>
