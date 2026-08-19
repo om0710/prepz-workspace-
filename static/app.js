@@ -4650,6 +4650,7 @@ let selectedPracticeAnswer = null;
 let questionStartTime = Date.now();
 
 // ── Open / Close Profiler Modal ──
+// ── Open / Close Profiler Modal ──
 window.showWeaknessProfile = async function() {
     const modal = document.getElementById("weakness-profile-modal");
     if (!modal) return;
@@ -4662,10 +4663,29 @@ window.showWeaknessProfile = async function() {
         spinner.style.display = "block";
         spinner.innerHTML = `
             <div class="loading-dots"><span></span><span></span><span></span></div>
-            <p style="font-size: 13px; color: #a1a1aa; margin-top: 10px;">Analyzing conceptual graphs across your chats...</p>
+            <p style="font-size: 13px; color: #a1a1aa; margin-top: 10px;">Analyzing conceptual graphs across your chats & documents...</p>
         `;
     }
     if (content) content.style.display = "none";
+
+    // Bind Enter key on concept analyzer input
+    const analyzerInput = document.getElementById("concept-analyzer-input");
+    if (analyzerInput && !analyzerInput.dataset.boundEnter) {
+        analyzerInput.dataset.boundEnter = "true";
+        analyzerInput.addEventListener("keydown", (e) => {
+            if (e.key === "Enter") {
+                e.preventDefault();
+                window.runAiConceptAnalysis();
+            }
+        });
+    }
+
+    await window.refreshWeaknessProfileData();
+};
+
+window.refreshWeaknessProfileData = async function() {
+    const spinner = document.getElementById("weakness-loading-spinner");
+    const content = document.getElementById("weakness-modal-content");
 
     try {
         const user = window.currentUser || JSON.parse(localStorage.getItem("docpilot-user") || "{}");
@@ -4691,39 +4711,12 @@ window.showWeaknessProfile = async function() {
             console.warn("[WEAKNESS GRAPH API WARN]", ge);
         }
 
-        // Fallback default profile if empty or null
         if (!profile) {
             profile = {
-                total_weaknesses: 3,
-                avg_mastery_score: 10.0,
-                critical_weaknesses: [
-                    {
-                        concept: "Entropy",
-                        subject: "Thermodynamics",
-                        mastery: 15,
-                        impact_score: 85,
-                        times_confused: 1,
-                        affected_topics: ["Heat Engines & Carnot Cycle", "Refrigeration", "Second Law"]
-                    }
-                ],
-                foundational_gaps: [
-                    {
-                        concept: "Thevenin's Theorem",
-                        subject: "Basic Electrical & Electronics Engineering",
-                        mastery: 20,
-                        impact_score: 80,
-                        times_confused: 1,
-                        affected_topics: ["Maximum Power Transfer", "Norton's Theorem"]
-                    },
-                    {
-                        concept: "Eigenvalues & Eigenvectors",
-                        subject: "Linear Algebra",
-                        mastery: 10,
-                        impact_score: 90,
-                        times_confused: 1,
-                        affected_topics: ["Cayley-Hamilton Theorem", "Diagonalization"]
-                    }
-                ],
+                total_weaknesses: 0,
+                avg_mastery_score: 0.0,
+                critical_weaknesses: [],
+                foundational_gaps: [],
                 secondary_weaknesses: []
             };
         }
@@ -4736,6 +4729,199 @@ window.showWeaknessProfile = async function() {
     } catch (err) {
         console.error("Error loading weakness profile:", err);
         if (spinner) spinner.innerHTML = `<span style="color:#ef4444;">Failed to load concept profile. Please try refreshing.</span>`;
+    }
+};
+
+window.runAiConceptAnalysis = async function() {
+    const input = document.getElementById("concept-analyzer-input");
+    const resultBox = document.getElementById("concept-analyzer-result");
+    const btn = document.getElementById("btn-run-concept-analyzer");
+    if (!input || !resultBox) return;
+
+    const query = input.value.trim();
+    if (!query) {
+        alert("Please enter a concept, question, or confusion to analyze.");
+        input.focus();
+        return;
+    }
+
+    if (btn) {
+        btn.disabled = true;
+        btn.innerHTML = `<span class="upload-btn-spinner"></span> Analyzing...`;
+    }
+
+    resultBox.style.display = "block";
+    resultBox.innerHTML = `
+        <div style="padding: 20px; text-align: center; background: rgba(15, 23, 42, 0.9); border: 1px solid rgba(139, 92, 246, 0.3); border-radius: 10px;">
+            <div class="upload-spinner" style="margin: 0 auto 10px auto;"></div>
+            <div style="font-size: 13.5px; color: #c084fc; font-weight: 600;">Diagnosing underlying misconceptions & mapping curriculum dependencies for "${escapeHtmlLocal(query)}"...</div>
+        </div>
+    `;
+
+    try {
+        const user = window.currentUser || JSON.parse(localStorage.getItem("docpilot-user") || "{}");
+        const email = user.email || "";
+
+        const res = await fetch("/api/concept-profile/analyze", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                text: query,
+                user_email: email
+            })
+        });
+
+        if (!res.ok) {
+            const errData = await res.json();
+            throw new Error(errData.detail || "Analysis failed");
+        }
+
+        const data = await res.json();
+        const a = data.analysis;
+
+        const prereqBadges = (a.prerequisites || []).map(p => `<span style="display:inline-block; margin: 3px 4px 3px 0; padding: 4px 10px; border-radius: 6px; background: rgba(59, 130, 246, 0.15); border: 1px solid rgba(59, 130, 246, 0.3); color: #93c5fd; font-size: 12px; font-weight: 500;">📌 ${escapeHtmlLocal(p)}</span>`).join('');
+        const downstreamBadges = (a.downstream_impact || []).map(d => `<span style="display:inline-block; margin: 3px 4px 3px 0; padding: 4px 10px; border-radius: 6px; background: rgba(244, 63, 94, 0.15); border: 1px solid rgba(244, 63, 94, 0.3); color: #fda4af; font-size: 12px; font-weight: 500;">⚠️ ${escapeHtmlLocal(d)}</span>`).join('');
+
+        const remediationHtml = (a.remediation_plan || []).map(r => `
+            <div style="margin-top: 6px; padding: 8px 12px; background: rgba(255,255,255,0.03); border-radius: 6px; font-size: 12.5px; line-height: 1.45;">
+                <strong style="color: #a78bfa;">${escapeHtmlLocal(r.step)}:</strong>
+                <span style="color: #e2e8f0; margin-left: 4px;">${escapeHtmlLocal(r.action)}</span>
+            </div>
+        `).join('');
+
+        const questionsHtml = (a.practice_questions || []).map((q, qIdx) => `
+            <div class="diagnostic-q-card" style="margin-top: 10px; padding: 12px 14px; background: rgba(15, 23, 42, 0.85); border: 1px solid rgba(255,255,255,0.08); border-radius: 8px;">
+                <div style="font-size: 13px; font-weight: 600; color: #f1f5f9; margin-bottom: 8px;">
+                    <span style="color: #8b5cf6;">Q${qIdx + 1}.</span> ${escapeHtmlLocal(q.question)}
+                </div>
+                <div class="diag-options-list" style="display: grid; gap: 6px;">
+                    ${(q.options || []).map(opt => `
+                        <div class="diag-opt-item" onclick="handleDiagnosticOptClick(this, '${escapeHtmlLocal(opt).replace(/'/g, "\\'")}', '${escapeHtmlLocal(q.correct_answer).replace(/'/g, "\\'")}')" style="padding: 8px 12px; font-size: 12.5px; background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1); border-radius: 6px; cursor: pointer; color: #cbd5e1; transition: all 0.2s;">
+                            ${escapeHtmlLocal(opt)}
+                        </div>
+                    `).join('')}
+                </div>
+                <div class="diag-explanation-box" style="display: none; margin-top: 8px; padding: 8px 12px; border-radius: 6px; font-size: 12px; line-height: 1.4;">
+                    <div class="diag-expl-text" style="color: #e2e8f0;"></div>
+                </div>
+            </div>
+        `).join('');
+
+        resultBox.innerHTML = `
+            <div style="padding: 18px; background: rgba(15, 23, 42, 0.95); border: 1.5px solid rgba(139, 92, 246, 0.4); border-radius: 12px; box-shadow: 0 8px 24px rgba(0,0,0,0.4);">
+                <div style="display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 12px;">
+                    <div>
+                        <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+                            <h3 style="margin: 0; font-size: 16px; font-weight: 700; color: #ffffff;">${escapeHtmlLocal(a.concept_name)}</h3>
+                            <span style="padding: 2px 8px; border-radius: 6px; font-size: 11px; font-weight: 600; background: rgba(139, 92, 246, 0.2); color: #c084fc; border: 1px solid rgba(139, 92, 246, 0.4);">${escapeHtmlLocal(a.subject)}</span>
+                            ${a.is_critical ? '<span style="padding: 2px 8px; border-radius: 6px; font-size: 11px; font-weight: 700; background: rgba(239, 68, 68, 0.2); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.4);">🚨 HIGH EXAM RISK</span>' : ''}
+                        </div>
+                    </div>
+                    <div style="display: flex; gap: 8px; align-items: center;">
+                        <span style="font-size: 12px; color: #94a3b8;">Exam Risk Score: <strong style="color: #f43f5e; font-size: 14px;">${a.exam_risk_score}/100</strong></span>
+                    </div>
+                </div>
+
+                <!-- Diagnostic Summary -->
+                <div style="padding: 12px 14px; background: rgba(99, 102, 241, 0.08); border-left: 3px solid #8b5cf6; border-radius: 6px; margin-bottom: 14px;">
+                    <div style="font-size: 12px; font-weight: 700; color: #a78bfa; margin-bottom: 4px; text-transform: uppercase;">🧠 Cognitive Misconception Diagnosis:</div>
+                    <div style="font-size: 13px; color: #e2e8f0; line-height: 1.5;">${escapeHtmlLocal(a.diagnostic_summary)}</div>
+                </div>
+
+                <!-- Prerequisite & Downstream Graph -->
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px; margin-bottom: 14px;">
+                    <div style="padding: 12px; background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.06); border-radius: 8px;">
+                        <div style="font-size: 11.5px; font-weight: 700; color: #60a5fa; margin-bottom: 6px; text-transform: uppercase;">📚 Prerequisite Foundations (Must Know First):</div>
+                        <div>${prereqBadges || '<span style="font-size: 12px; color: #94a3b8;">Standard Engineering Foundations</span>'}</div>
+                    </div>
+                    <div style="padding: 12px; background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.06); border-radius: 8px;">
+                        <div style="font-size: 11.5px; font-weight: 700; color: #f87171; margin-bottom: 6px; text-transform: uppercase;">⚡ Downstream Blocked Topics (High Impact):</div>
+                        <div>${downstreamBadges || '<span style="font-size: 12px; color: #94a3b8;">Direct Topic Scenarios</span>'}</div>
+                    </div>
+                </div>
+
+                <!-- 3-Step Remediation Plan -->
+                <div style="margin-bottom: 14px;">
+                    <div style="font-size: 12px; font-weight: 700; color: #34d399; margin-bottom: 6px; text-transform: uppercase;">🎯 3-Step Mastery Roadmap:</div>
+                    <div>${remediationHtml}</div>
+                </div>
+
+                <!-- Diagnostic Practice Check -->
+                ${questionsHtml ? `
+                    <div style="margin-top: 14px; border-top: 1px solid rgba(255,255,255,0.08); padding-top: 12px;">
+                        <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;">
+                            <div style="font-size: 12px; font-weight: 700; color: #f59e0b; text-transform: uppercase;">📝 Quick Concept Check (Click an Option to Test):</div>
+                        </div>
+                        <div>${questionsHtml}</div>
+                    </div>
+                ` : ''}
+
+                <div style="display: flex; gap: 10px; margin-top: 16px; justify-content: flex-end;">
+                    <button type="button" onclick="startAdaptivePractice('${escapeHtmlLocal(a.concept_name).replace(/'/g, "\\'")}', 'easy')" class="btn-auth-primary" style="padding: 9px 18px; font-size: 13px; font-weight: 600;">▶ Launch Full Adaptive Practice Session →</button>
+                </div>
+            </div>
+        `;
+
+        window.refreshWeaknessProfileData();
+
+    } catch (err) {
+        console.error("[CONCEPT ANALYZER ERROR]", err);
+        resultBox.innerHTML = `
+            <div style="padding: 14px; background: rgba(239, 68, 68, 0.15); border: 1px solid rgba(239, 68, 68, 0.3); border-radius: 8px; color: #f87171; font-size: 13px;">
+                ❌ Could not analyze concept: ${escapeHtmlLocal(err.message || "Server connection error")}. Please try again.
+            </div>
+        `;
+    } finally {
+        if (btn) {
+            btn.disabled = false;
+            btn.innerHTML = `⚡ Analyze Concept`;
+        }
+    }
+};
+
+window.handleDiagnosticOptClick = function(optEl, selectedOpt, correctOpt) {
+    const parent = optEl.closest(".diagnostic-q-card");
+    if (!parent) return;
+
+    const allOpts = parent.querySelectorAll(".diag-opt-item");
+    allOpts.forEach(o => {
+        o.style.pointerEvents = "none";
+        o.style.opacity = "0.7";
+    });
+
+    const isCorrect = selectedOpt.trim().startsWith(correctOpt.trim().charAt(0)) || selectedOpt.trim() === correctOpt.trim();
+    if (isCorrect) {
+        optEl.style.background = "rgba(16, 185, 129, 0.25)";
+        optEl.style.border = "1.5px solid #10b981";
+        optEl.style.color = "#34d399";
+        optEl.style.fontWeight = "700";
+        optEl.style.opacity = "1";
+    } else {
+        optEl.style.background = "rgba(239, 68, 68, 0.25)";
+        optEl.style.border = "1.5px solid #ef4444";
+        optEl.style.color = "#f87171";
+        optEl.style.fontWeight = "700";
+        optEl.style.opacity = "1";
+
+        allOpts.forEach(o => {
+            if (o.textContent.trim().startsWith(correctOpt.trim().charAt(0))) {
+                o.style.background = "rgba(16, 185, 129, 0.2)";
+                o.style.border = "1.5px solid #10b981";
+                o.style.color = "#34d399";
+                o.style.opacity = "1";
+            }
+        });
+    }
+
+    const explBox = parent.querySelector(".diag-explanation-box");
+    if (explBox) {
+        explBox.style.display = "block";
+        explBox.style.background = isCorrect ? "rgba(16, 185, 129, 0.1)" : "rgba(239, 68, 68, 0.1)";
+        explBox.style.borderLeft = isCorrect ? "3px solid #10b981" : "3px solid #ef4444";
+        const explText = explBox.querySelector(".diag-expl-text");
+        if (explText) {
+            explText.innerHTML = `<strong>${isCorrect ? '✅ Correct!' : '❌ Incorrect.'} Correct Answer: ${escapeHtmlLocal(correctOpt)}</strong>`;
+        }
     }
 };
 

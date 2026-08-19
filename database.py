@@ -3179,7 +3179,8 @@ def record_concept_weakness(
     topic: str = "",
     dependent_topics: list = None,
     is_foundational: bool = False,
-    is_critical: bool = False
+    is_critical: bool = False,
+    confusion_context: str = ""
 ) -> dict:
     """Save or update a detected concept weakness in the database."""
     if not concept_name:
@@ -3287,15 +3288,8 @@ def create_weakness_profile(user_id: int = 1, user_email: str = "") -> dict:
             }
 
             if not rows:
-                # If new user with no weaknesses recorded yet, provide pre-computed foundational diagnostic targets
-                deps = get_concept_dependency_graph()
-                foundational_seeds = [
-                    {"concept": "Entropy", "subject": "Thermodynamics", "mastery": 0, "impact_score": 85, "times_confused": 0, "affected_topics": ["Heat Engines", "Refrigeration", "Second Law"], "is_critical": True},
-                    {"concept": "Thevenin's Theorem", "subject": "BEEE", "mastery": 0, "impact_score": 80, "times_confused": 0, "affected_topics": ["Maximum Power Transfer", "Bridge Circuits"], "is_critical": True},
-                    {"concept": "Eigenvalues & Eigenvectors", "subject": "Linear Algebra", "mastery": 0, "impact_score": 90, "times_confused": 0, "affected_topics": ["Cayley-Hamilton Theorem", "Diagonalization"], "is_critical": True}
-                ]
-                profile["foundational_gaps"] = foundational_seeds
-                profile["intervention_priority"] = foundational_seeds
+                profile["total_weaknesses"] = 0
+                profile["avg_mastery_score"] = 0.0
                 return profile
 
             total_mastery = 0.0

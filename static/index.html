@@ -1217,6 +1217,27 @@
                     </div>
                 </div>
 
+                <!-- Interactive Real-Time AI Concept Analyzer -->
+                <div class="concept-analyzer-card" style="margin-top: 16px; padding: 18px; background: rgba(139, 92, 246, 0.08); border: 1.5px solid rgba(139, 92, 246, 0.3); border-radius: 12px;">
+                    <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;">
+                        <h4 style="margin: 0; font-size: 15px; font-weight: 700; color: #f8fafc; display: flex; align-items: center; gap: 8px;">
+                            <span>🔬 AI Deep Concept & Confusion Analyzer</span>
+                            <span style="font-size: 11px; padding: 2px 8px; border-radius: 12px; background: #8b5cf6; color: #fff;">LIVE AI</span>
+                        </h4>
+                        <span style="font-size: 12px; color: #a78bfa;">Instant Diagnostic & Remediation</span>
+                    </div>
+                    <p style="margin: 0 0 12px 0; font-size: 12.5px; color: #cbd5e1; line-height: 1.4;">
+                        Type any engineering topic, doubt, derivation, or formula you are struggling with. The AI will diagnose root misconceptions, map prerequisite blockers, and generate adaptive practice questions on-the-fly.
+                    </p>
+                    <div style="display: flex; gap: 10px;">
+                        <input type="text" id="concept-analyzer-input" placeholder="e.g. 'Why does Dijkstra algorithm fail on negative edges?', 'Bayes Theorem posterior probability', 'Semaphores vs Mutex'..." style="flex: 1; padding: 12px 16px; font-size: 13.5px; background: rgba(15, 23, 42, 0.85); border: 1px solid rgba(255, 255, 255, 0.15); border-radius: 10px; color: #ffffff; outline: none;">
+                        <button type="button" id="btn-run-concept-analyzer" onclick="runAiConceptAnalysis()" class="btn-primary-nexa" style="padding: 0 20px; font-size: 13.5px; font-weight: 600; white-space: nowrap; cursor: pointer; background: linear-gradient(135deg, #8b5cf6 0%, #6d28d9 100%);">⚡ Analyze Concept</button>
+                    </div>
+
+                    <!-- Live Analysis Result Container -->
+                    <div id="concept-analyzer-result" style="display: none; margin-top: 16px;"></div>
+                </div>
+
                 <!-- How it works guide banner -->
                 <div class="weakness-info-banner" style="margin-top: 14px; padding: 12px 16px; background: rgba(99, 102, 241, 0.08); border-left: 3px solid #6366f1; border-radius: 8px; display: flex; align-items: flex-start; gap: 10px;">
                     <span style="font-size: 16px;">💡</span>
@@ -1371,6 +1392,6 @@
     </div>
 
     <!-- Main JavaScript Link -->
-    <script src="app.js?v=20260820_predictor_email_v6"></script>
+    <script src="app.js?v=20260820_concept_profiler_ai_v7"></script>
 </body>
 </html>
