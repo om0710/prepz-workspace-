@@ -2220,7 +2220,7 @@ function initializeDocPilotApp() {
     }
     if (btnWarningUploadPyq) {
         btnWarningUploadPyq.addEventListener("click", () => {
-            openUploadModal();
+            openUploadModal("browse");
             const typeSel = document.getElementById("upload-filetype-select");
             if (typeSel) typeSel.value = "PYQ";
             if (predictorSemesterSelect) {

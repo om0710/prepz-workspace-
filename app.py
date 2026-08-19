@@ -2358,133 +2358,190 @@ class PredictPaperRequest(BaseModel):
 
 @app.post("/api/predict-paper")
 async def predict_paper(req: PredictPaperRequest):
-    subject = req.subject.strip()
-    semester = req.semester.strip()
-    exam_type = req.exam_type.strip() if req.exam_type else "Mid-Sem"
+    subject = (req.subject or "").strip()
+    semester = (req.semester or "").strip()
+    exam_type = (req.exam_type or "Mid-Sem").strip()
 
-    if not subject or not semester or not exam_type:
-        raise HTTPException(status_code=400, detail="Subject, Semester, and Exam Type are required.")
+    if not subject or not semester:
+        raise HTTPException(status_code=400, detail="Subject and Semester are required.")
 
-    # Fetch metadata for all uploaded files
-    metadata_map = get_file_uploads_metadata()
+    # Helper function to normalize subject strings for comparison
+    def norm_text(s: str) -> str:
+        if not s:
+            return ""
+        s = s.lower().replace("&", "and").replace("-", " ").replace("_", " ")
+        import re
+        return re.sub(r'\s+', ' ', s).strip()
+
+    norm_target_sub = norm_text(subject)
     
-    # Filter files that match subject, semester, file_type == 'PYQ', AND exam_type
-    pyq_files = []
-    for filename, meta in metadata_map.items():
-        m_sub = (meta.get("subject") or "").strip()
-        m_sem = (meta.get("semester") or "").strip()
-        m_type = (meta.get("file_type") or "").strip().upper()
-        m_exam = (meta.get("exam_type") or "Other").strip()
+    # Extract numeric semester identifier (e.g. '3' from 'Semester 3' or 'Sem 3')
+    import re
+    sem_digits = re.findall(r'\d+', semester)
+    target_sem_num = sem_digits[0] if sem_digits else semester.lower().strip()
 
-        if (m_sub.lower() == subject.lower() and 
-            m_sem.lower() == semester.lower() and 
-            m_type == "PYQ" and 
-            m_exam.lower() == exam_type.lower()):
-            pyq_files.append(filename)
+    # 1. Fetch all uploads from database
+    all_uploads = get_all_uploads(req.user_email)
+    
+    # Helper to resolve physical file path on disk across directories
+    def resolve_physical_file_path(filename: str, meta: Optional[dict] = None) -> Optional[str]:
+        if not filename:
+            return None
+        # Check meta file_path
+        if meta and meta.get("file_path") and os.path.exists(meta["file_path"]):
+            return meta["file_path"]
+        # Check uploads/course_repo
+        cr_path = os.path.join("uploads", "course_repo", filename)
+        if os.path.exists(cr_path):
+            return cr_path
+        # Check direct uploads path
+        root_path = os.path.join("uploads", filename)
+        if os.path.exists(root_path):
+            return root_path
+        # Check sanitized workspace path
+        is_priv = meta.get("is_private", 0) if meta else 0
+        u_email = meta.get("user_email") if meta else None
+        try:
+            _, san_path = get_sanitized_upload_file_path(filename, user_email=u_email, is_private=is_priv)
+            if san_path and os.path.exists(san_path):
+                return san_path
+        except Exception:
+            pass
+        # Recursive walk in uploads
+        if os.path.exists("uploads"):
+            for root_dir, _, file_list in os.walk("uploads"):
+                if filename in file_list:
+                    return os.path.join(root_dir, filename)
+        return None
 
-    # Check requirement: At least 2 PYQs needed for the selected exam type
-    if len(pyq_files) < 2:
-        return {
-            "success": False,
-            "pyq_count": len(pyq_files),
-            "message": f"Not enough {exam_type} PYQs uploaded yet for {subject} ({semester}). ({len(pyq_files)} found). Please upload at least 2 {exam_type} PYQ papers to generate an accurate paper prediction."
-        }
+    # Filter matching files from DB
+    matching_pyqs = []
+    other_subject_docs = []
 
-    # Extract text from the matching PYQ files
-    from langchain_community.document_loaders import PyPDFLoader
-    from rag import clean_spaced_text, is_spaced_out, llm
+    for u in all_uploads:
+        m_fname = u.get("filename", "")
+        m_sub = norm_text(u.get("subject", ""))
+        m_sem = u.get("semester", "")
+        m_sem_num = re.findall(r'\d+', m_sem)
+        m_sem_digit = m_sem_num[0] if m_sem_num else m_sem.lower().strip()
+        m_type = (u.get("file_type") or "").strip().upper()
+        m_exam = (u.get("exam_type") or "Other").strip().lower()
+
+        # Subject match check (exact or substring)
+        is_sub_match = (m_sub == norm_target_sub) or (norm_target_sub in m_sub) or (m_sub in norm_target_sub)
+        is_sem_match = (m_sem_digit == target_sem_num) if (target_sem_num and m_sem_digit) else True
+        is_pyq_type = (m_type == "PYQ") or ("pyq" in m_fname.lower()) or ("question" in m_fname.lower()) or ("paper" in m_fname.lower())
+
+        if is_sub_match:
+            if is_pyq_type:
+                # Give priority if exam_type also matches
+                is_exact_exam = (m_exam == exam_type.lower()) or (m_exam == "other")
+                matching_pyqs.append((u, is_exact_exam, is_sem_match))
+            else:
+                other_subject_docs.append(u)
+
+    # Sort matching PYQs: prioritize exact exam type and semester match
+    matching_pyqs.sort(key=lambda item: (1 if item[1] else 0, 1 if item[2] else 0), reverse=True)
+    selected_pyq_metas = [item[0] for item in matching_pyqs]
+
+    # If no explicit PYQs found, use subject study materials as fallback
+    if not selected_pyq_metas and other_subject_docs:
+        selected_pyq_metas = other_subject_docs[:5]
+
+    from rag import extract_text_from_file, clean_spaced_text, is_spaced_out, llm, vectorstore
 
     combined_text = ""
-    extracted_count = 0
+    extracted_filenames = []
 
-    for idx, fname in enumerate(pyq_files, 1):
-        file_path = os.path.join("uploads", fname)
-        if os.path.exists(file_path):
+    for idx, meta in enumerate(selected_pyq_metas, 1):
+        fname = meta.get("filename", "")
+        fpath = resolve_physical_file_path(fname, meta)
+        if fpath and os.path.exists(fpath):
             try:
-                loader = PyPDFLoader(file_path)
-                docs = loader.load()
+                docs = extract_text_from_file(fpath)
                 file_text = ""
                 for doc in docs:
-                    pcontent = doc.page_content or ""
+                    pcontent = doc.page_content if hasattr(doc, 'page_content') else str(doc)
                     if is_spaced_out(pcontent):
                         pcontent = clean_spaced_text(pcontent)
                     file_text += f"\n{pcontent}"
                 
-                if len(file_text) > 8000:
-                    file_text = file_text[:8000] + "\n...[truncated]..."
-
-                combined_text += f"\n\n=== PAST YEAR QUESTION PAPER #{idx} ({fname}) ===\n{file_text}"
-                extracted_count += 1
+                if len(file_text.strip()) > 50:
+                    if len(file_text) > 8000:
+                        file_text = file_text[:8000] + "\n...[truncated]..."
+                    combined_text += f"\n\n=== PAST YEAR QUESTION PAPER / MATERIAL #{idx} ({fname}) ===\n{file_text}"
+                    extracted_filenames.append(fname)
             except Exception as e:
-                print(f"Error extracting text from {fname}: {e}")
+                print(f"[PREDICTOR ERROR] Text extraction failed for {fname}: {e}")
+
+    # Fallback to ChromaDB semantic search if text from files is short
+    if len(combined_text.strip()) < 100:
+        try:
+            if vectorstore:
+                query_str = f"{subject} {semester} {exam_type} PYQ previous year questions mid-sem end-sem syllabus numericals"
+                sim_docs = vectorstore.similarity_search(query_str, k=8)
+                chroma_text = ""
+                for sdoc in sim_docs:
+                    c_src = sdoc.metadata.get("source", "Indexed Repository Material")
+                    chroma_text += f"\n[Source: {os.path.basename(c_src)}]\n{sdoc.page_content}\n"
+                if chroma_text.strip():
+                    combined_text += f"\n\n=== REPOSITORY INDEXED KNOWLEDGE ({subject}) ===\n{chroma_text}"
+                    if not extracted_filenames:
+                        extracted_filenames = ["Course Repository Knowledge Base"]
+        except Exception as ve:
+            print(f"[PREDICTOR NOTICE] ChromaDB retrieval fallback: {ve}")
 
     if not combined_text.strip():
         return {
             "success": False,
-            "pyq_count": len(pyq_files),
-            "message": f"Could not extract text content from the uploaded PYQ files for {subject}."
+            "pyq_count": 0,
+            "message": f"No PYQ question papers or documents found for {subject} ({semester}) in the Course Repository yet. Please upload at least 1 PYQ document under {subject} to generate paper predictions."
         }
 
+    # Search for course code or course abbreviations in extracted content
     import re
-    # Search for actual course code in extracted PYQ text (e.g. CS-301, KCS401, EE-101)
     extracted_course_code = None
     code_match = re.search(r'\b([A-Z]{2,4}\s*[-–]?\s*\d{3,4})\b', combined_text)
     if code_match:
         extracted_course_code = code_match.group(1).replace(" ", "-")
 
     COURSE_CODE_MAP = {
-        "Computer Science & Programming": "CS-101",
-        "Engineering Mathematics": "MA-101",
-        "Engineering Physics": "PH-101",
-        "Basic Electrical & Electronics": "EE-101",
-        "Environmental Studies": "EV-101",
-        "Data Structures & Algorithms": "CS-201",
-        "Engineering Chemistry": "CH-101",
-        "Digital Logic Design": "CS-202",
-        "Discrete Mathematics": "MA-202",
-        "Object Oriented Programming": "CS-203",
-        "Computer Organization & Architecture": "CS-301",
-        "Database Management Systems": "CS-302",
-        "Theory of Computation": "CS-303",
-        "Operating Systems": "CS-304",
-        "Software Engineering": "CS-305",
-        "Design & Analysis of Algorithms": "CS-401",
-        "Computer Networks": "CS-402",
-        "Microprocessors & Microcontrollers": "EC-403",
-        "Artificial Intelligence": "CS-404",
-        "Signals & Systems": "EC-405",
-        "Machine Learning": "CS-501",
-        "Web Technologies & Frameworks": "CS-502",
-        "Compiler Design": "CS-503",
-        "Information Security": "CS-504",
-        "Computer Graphics": "CS-505",
-        "Cloud Computing": "CS-601",
-        "Big Data Analytics": "CS-602",
-        "Cyber Security & Cryptography": "CS-603",
-        "Mobile Application Development": "CS-604",
-        "Deep Learning": "CS-605",
-        "Data Science": "CS-701",
-        "Internet of Things (IoT)": "CS-702",
-        "Blockchain Technologies": "CS-703",
-        "Natural Language Processing": "CS-704",
-        "Software Testing": "CS-705",
-        "Major Capstone Project": "CS-801",
-        "Distributed Systems": "CS-802",
-        "High Performance Computing": "CS-803",
-        "Neural Networks": "CS-804",
-        "Advanced AI": "CS-805"
+        "Computational Thinking & Programming": "CS-101",
+        "Engineering Calculus": "MA-101",
+        "Introduction to Electricals & Electronics": "EE-101",
+        "Electromagnetism & Mechanics": "PH-101",
+        "Linear Algebra & Ordinary Differential Equation": "MA-102",
+        "Digital Design": "CS-102",
+        "Discrete Mathematical Structure": "CS-201",
+        "OOPS using Java": "CS-202",
+        "Probability & Statistics": "MA-201",
+        "Statistical Machine Learning": "AI-201",
+        "Information Management System": "CS-203",
+        "DSA using C++": "CS-204",
+        "Computer Networks": "CS-301",
+        "Operating Systems": "CS-302",
+        "DAA": "CS-303",
+        "Microprocessor": "EC-301",
+        "Artificial Intelligence": "AI-301",
+        "Fullstack Development": "CS-304",
+        "Cyber Security": "CS-401",
+        "Quantum Computing": "PH-401",
+        "UI/UX Design": "CS-402",
+        "Cloud Computing": "CS-403",
+        "Blockchain": "CS-404",
+        "DevOps": "CS-405"
     }
 
-    course_code = extracted_course_code or COURSE_CODE_MAP.get(subject, f"ENG-{subject[:3].upper()}-2026")
+    course_code = extracted_course_code or COURSE_CODE_MAP.get(subject, f"BU-{subject[:3].upper()}-{exam_type[:3].upper()}")
 
     prompt = f"""You are a senior engineering university examiner and question paper creator for {subject} ({semester}).
-You are provided with text extracted from {extracted_count} past year question papers (PYQs) for {subject} ({semester}):
+You are provided with real text extracted from past year question papers (PYQs) and course repository materials for {subject} ({semester}):
 
 {combined_text[:25000]}
 
 INSTRUCTIONS & EXAM PAPER CREATION RULES:
-1. Analyze the provided PYQ texts carefully. Identify recurring topics, repeated numericals, essential core concepts, and high-frequency question patterns across the different exam years.
-2. Generate an explicit TOP HIGH-YIELD RECURRING TOPICS & INSIGHTS section followed by a complete PREDICTED QUESTION PAPER for the upcoming examination in {subject} ({semester}).
+1. Analyze the provided PYQ texts carefully. Identify recurring topics, repeated numericals, essential core concepts, and high-frequency question patterns across the different exam years for {exam_type}.
+2. Generate an explicit TOP HIGH-YIELD RECURRING TOPICS & INSIGHTS section followed by a complete, comprehensive PREDICTED QUESTION PAPER for the upcoming examination in {subject} ({semester} - {exam_type}).
 3. Structure the entire output in clean Markdown as follows:
 
 ## TOP HIGH-YIELD RECURRING TOPICS & INSIGHTS
@@ -2494,13 +2551,23 @@ INSTRUCTIONS & EXAM PAPER CREATION RULES:
 
 ---
 
-# BU PREPZ ACADEMIC EXAMINATION
-- Header: Subject: {subject} | {semester}
-- Exam Info: Time Allowed: 3 Hours | Maximum Marks: 70 Marks | Course Code: {course_code}
-- Instructions to Candidates (4 bullet points)
-- SECTION A (Short Answer Questions | 7 Questions x 2 Marks = 14 Marks | Mandatory)
-- SECTION B (Medium / Analytical / Problem-Solving Questions | Answer 4 out of 5 Questions x 7 Marks = 28 Marks)
-- SECTION C (Long Answer / Comprehensive / Numerical Questions | Answer 2 out of 3 Questions x 14 Marks = 28 Marks)
+# BU PREPZ ACADEMIC EXAMINATION — {exam_type.upper()}
+- **Subject**: {subject} | **Semester**: {semester}
+- **Exam Info**: Time Allowed: 3 Hours | Maximum Marks: 70 Marks | Course Code: {course_code}
+- **Instructions to Candidates**:
+  1. Answer all questions in Section A (Mandatory).
+  2. Answer any 4 out of 5 questions in Section B.
+  3. Answer any 2 out of 3 questions in Section C.
+  4. Assume suitable data if missing and mention assumptions clearly.
+
+### SECTION A (Short Answer Questions | 7 Questions x 2 Marks = 14 Marks | Mandatory)
+(Generate 7 short conceptual/definition questions with frequency tags)
+
+### SECTION B (Medium / Analytical / Problem-Solving Questions | Answer 4 out of 5 Questions x 7 Marks = 28 Marks)
+(Generate 5 analytical/numerical/problem-solving questions with sub-parts and frequency tags)
+
+### SECTION C (Long Answer / Comprehensive / Numerical Questions | Answer 2 out of 3 Questions x 14 Marks = 28 Marks)
+(Generate 3 extensive, in-depth derivations or complex problem-solving questions with frequency tags)
 
 4. CRITICAL MANDATORY REQUIREMENT: For EVERY single question in Section A, Section B, and Section C, you MUST append a frequency probability tag and question type tag at the very end in bold brackets, e.g.:
    `**[Frequency: Appeared in 3 of the last 4 years | 90% Probability | Type: Theory]**` or `**[Frequency: Appeared in 2 of last 3 years | 85% Probability | Type: Numerical]**`
@@ -2520,8 +2587,8 @@ Format the entire output in clean, professional Markdown with clear section head
             "subject": subject,
             "semester": semester,
             "exam_type": exam_type,
-            "pyq_count": len(pyq_files),
-            "pyq_filenames": pyq_files,
+            "pyq_count": max(len(extracted_filenames), 1),
+            "pyq_filenames": extracted_filenames,
             "paper_markdown": paper_content
         }
     except Exception as e:

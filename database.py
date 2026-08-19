@@ -2500,7 +2500,10 @@ def get_upload_by_filename(filename: str, user_email: Optional[str] = None, is_p
     with get_db() as c:
         cursor = c.cursor()
         if is_private is not None:
-            is_priv_val = 1 if int(is_private) == 1 else 0
+            try:
+                is_priv_val = 1 if int(is_private) == 1 else 0
+            except (ValueError, TypeError):
+                is_priv_val = 1 if is_private in (True, "1", "true", "True") else 0
             if is_priv_val == 1 and clean_email:
                 cursor.execute("""
                     SELECT filename, user_email, user_name, uploaded_at, size_bytes, subject, semester, file_type, exam_type, is_private, file_path, id 

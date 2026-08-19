@@ -16,16 +16,21 @@ os.environ["GROQ_API_KEY"] = groq_key
 # ---------------- LLM ---------------- #
 
 llm_primary = ChatGroq(
-    model="llama-3.3-70b-versatile",
-    temperature=0,
+    model="openai/gpt-oss-120b",
+    temperature=0.2,
     groq_api_key=groq_key
 )
-llm_fallback = ChatGroq(
-    model="llama-3.1-8b-instant",
-    temperature=0,
+llm_fb1 = ChatGroq(
+    model="openai/gpt-oss-20b",
+    temperature=0.2,
     groq_api_key=groq_key
 )
-llm = llm_primary.with_fallbacks([llm_fallback])
+llm_fb2 = ChatGroq(
+    model="qwen/qwen3.6-27b",
+    temperature=0.2,
+    groq_api_key=groq_key
+)
+llm = llm_primary.with_fallbacks([llm_fb1, llm_fb2])
 
 # ---------------- Text Splitter ---------------- #
 
