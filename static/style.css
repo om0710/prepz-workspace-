@@ -919,42 +919,6 @@ button, a[role="button"], input[type="button"], input[type="submit"] {
     color: #08090a !important;
 }
 
-/* Dedicated Creator Hub Button with high-contrast active state */
-.sidebar-link.nav-creator-hub-btn {
-    border-left: 3px solid #ff5722;
-    background: rgba(255, 87, 34, 0.08);
-    color: #ff8a65;
-    font-weight: 700;
-}
-
-.sidebar-link.nav-creator-hub-btn svg {
-    color: #ff5722;
-}
-
-.sidebar-link.nav-creator-hub-btn:hover {
-    background: rgba(255, 87, 34, 0.18);
-    color: #ffffff;
-    border-color: #ff5722;
-}
-
-.sidebar-link.nav-creator-hub-btn:hover svg {
-    color: #ffffff;
-}
-
-.sidebar-link.nav-creator-hub-btn.active {
-    background: linear-gradient(135deg, #ff5722 0%, #ff7043 100%) !important;
-    color: #ffffff !important;
-    font-weight: 800 !important;
-    border-color: #ff5722 !important;
-    box-shadow: 0 0 22px rgba(255, 87, 34, 0.55) !important;
-}
-
-.sidebar-link.nav-creator-hub-btn.active span,
-.sidebar-link.nav-creator-hub-btn.active svg {
-    color: #ffffff !important;
-    stroke: #ffffff !important;
-}
-
 .sidebar-search-box {
     position: relative;
     margin: 10px 0 14px 0;
