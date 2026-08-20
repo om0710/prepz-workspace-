@@ -1446,11 +1446,17 @@ GOOGLE_CLIENT_SECRET_OAUTH = "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"
 GOOGLE_REDIRECT_URI = "https://om123bansal-prepz-app.hf.space/api/auth/google/callback"
 
 @app.get("/api/auth/google")
-def google_auth_start():
+def google_auth_start(request: Request):
     from urllib.parse import urlencode
+    host = request.headers.get("host", "")
+    if "localhost" in host or "127.0.0.1" in host:
+        redirect_uri = f"http://{host}/api/auth/google/callback"
+    else:
+        redirect_uri = GOOGLE_REDIRECT_URI
+
     params = {
         "client_id": GOOGLE_CLIENT_ID_OAUTH,
-        "redirect_uri": GOOGLE_REDIRECT_URI,
+        "redirect_uri": redirect_uri,
         "response_type": "code",
         "scope": "openid email profile",
         "access_type": "online",
@@ -1465,13 +1471,20 @@ async def google_auth_callback(request: Request, code: str = None, error: str = 
     if error or not code:
         print(f"[GOOGLE OAUTH] Error/cancelled: {error}")
         return RedirectResponse("/?auth_error=" + (error or "cancelled"))
+
+    host = request.headers.get("host", "")
+    if "localhost" in host or "127.0.0.1" in host:
+        redirect_uri = f"http://{host}/api/auth/google/callback"
+    else:
+        redirect_uri = GOOGLE_REDIRECT_URI
+
     # Exchange code for access token
     async with httpx.AsyncClient(timeout=10) as client:
         token_resp = await client.post("https://oauth2.googleapis.com/token", data={
             "code": code,
             "client_id": GOOGLE_CLIENT_ID_OAUTH,
             "client_secret": GOOGLE_CLIENT_SECRET_OAUTH,
-            "redirect_uri": GOOGLE_REDIRECT_URI,
+            "redirect_uri": redirect_uri,
             "grant_type": "authorization_code"
         })
     tokens = token_resp.json()

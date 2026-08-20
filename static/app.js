@@ -215,9 +215,64 @@ var GOOGLE_CLIENT_ID = "585299422541-edqtcaaoljev3op2cffl98jfvr8asn56.apps.googl
 })();
 
 window.handleGoogleSignIn = function(e) {
-    if (e) { e.preventDefault(); e.stopPropagation(); }
-    console.log("[AUTH] Google Sign-In → backend OAuth");
+    if (e) {
+        if (typeof e.preventDefault === "function") e.preventDefault();
+        if (typeof e.stopPropagation === "function") e.stopPropagation();
+    }
+    console.log("[AUTH] Google Sign-In button clicked");
 
+    const authErrBox = document.getElementById("auth-error-msg");
+    if (authErrBox) {
+        authErrBox.textContent = "";
+        authErrBox.classList.add("hidden");
+    }
+
+    // 1. Try Google Identity Services (GIS) OAuth Token Client popup
+    try {
+        if (window.google && window.google.accounts && window.google.accounts.oauth2) {
+            const tokenClient = window.google.accounts.oauth2.initTokenClient({
+                client_id: GOOGLE_CLIENT_ID,
+                scope: "email profile openid",
+                callback: async function(resp) {
+                    if (resp && resp.access_token) {
+                        try {
+                            const res = await fetch("/api/auth/google-token", {
+                                method: "POST",
+                                headers: { "Content-Type": "application/json" },
+                                body: JSON.stringify({ access_token: resp.access_token })
+                            });
+                            const data = await res.json();
+                            if (data && data.user) {
+                                window.loginUser(data.user);
+                                return;
+                            }
+                        } catch(err) {
+                            console.warn("GIS token exchange error:", err);
+                        }
+                    }
+                }
+            });
+            tokenClient.requestAccessToken();
+            return;
+        }
+    } catch(gisErr) {
+        console.warn("GIS init error:", gisErr);
+    }
+
+    // 2. Try Supabase OAuth
+    try {
+        if (typeof supabaseClient !== "undefined" && supabaseClient && supabaseClient.auth) {
+            supabaseClient.auth.signInWithOAuth({
+                provider: 'google',
+                options: { redirectTo: window.location.origin }
+            });
+            return;
+        }
+    } catch(supaErr) {
+        console.warn("Supabase auth error:", supaErr);
+    }
+
+    // 3. Check if running inside Hugging Face embed iframe
     var isInIframe = false;
     try { isInIframe = (window.self !== window.top); } catch(err2) { isInIframe = true; }
     if (isInIframe) {
@@ -225,7 +280,7 @@ window.handleGoogleSignIn = function(e) {
         return;
     }
 
-    // Full page redirect to backend → Google → callback → back here with user data
+    // 4. Fallback to backend Google OAuth redirect
     window.location.href = "/api/auth/google";
 };
 
