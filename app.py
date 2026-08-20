@@ -1445,15 +1445,20 @@ GOOGLE_CLIENT_ID_OAUTH = "585299422541-edqtcaaoljev3op2cffl98jfvr8asn56.apps.goo
 GOOGLE_CLIENT_SECRET_OAUTH = "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"
 GOOGLE_REDIRECT_URI = "https://om123bansal-prepz-app.hf.space/api/auth/google/callback"
 
+def get_google_redirect_uri(request: Request) -> str:
+    """Resolve correct Google OAuth redirect URI accounting for Hugging Face proxy headers."""
+    # If running in Hugging Face Space, always use official Space callback
+    if os.environ.get("SPACE_ID") or os.environ.get("SPACE_AUTHOR_NAME") or os.environ.get("HF_SPACE_ID"):
+        return GOOGLE_REDIRECT_URI
+    host = request.headers.get("host", "")
+    if ("localhost" in host or "127.0.0.1" in host) and "hf.space" not in host:
+        return f"http://{host}/api/auth/google/callback"
+    return GOOGLE_REDIRECT_URI
+
 @app.get("/api/auth/google")
 def google_auth_start(request: Request):
     from urllib.parse import urlencode
-    host = request.headers.get("host", "")
-    if "localhost" in host or "127.0.0.1" in host:
-        redirect_uri = f"http://{host}/api/auth/google/callback"
-    else:
-        redirect_uri = GOOGLE_REDIRECT_URI
-
+    redirect_uri = get_google_redirect_uri(request)
     params = {
         "client_id": GOOGLE_CLIENT_ID_OAUTH,
         "redirect_uri": redirect_uri,
@@ -1463,7 +1468,7 @@ def google_auth_start(request: Request):
         "prompt": "select_account"
     }
     url = "https://accounts.google.com/o/oauth2/v2/auth?" + urlencode(params)
-    print(f"[GOOGLE OAUTH] Redirecting to Google: {url[:80]}...")
+    print(f"[GOOGLE OAUTH] Redirecting to Google: {url[:80]}... (redirect_uri={redirect_uri})")
     return RedirectResponse(url)
 
 @app.get("/api/auth/google/callback")
@@ -1472,12 +1477,7 @@ async def google_auth_callback(request: Request, code: str = None, error: str = 
         print(f"[GOOGLE OAUTH] Error/cancelled: {error}")
         return RedirectResponse("/?auth_error=" + (error or "cancelled"))
 
-    host = request.headers.get("host", "")
-    if "localhost" in host or "127.0.0.1" in host:
-        redirect_uri = f"http://{host}/api/auth/google/callback"
-    else:
-        redirect_uri = GOOGLE_REDIRECT_URI
-
+    redirect_uri = get_google_redirect_uri(request)
     email = ""
     name = ""
     avatar_url = ""
@@ -1494,6 +1494,22 @@ async def google_auth_callback(request: Request, code: str = None, error: str = 
                 "grant_type": "authorization_code"
             })
         tokens = token_resp.json()
+
+        # Retry with standard GOOGLE_REDIRECT_URI if first attempt returned error
+        if "error" in tokens and redirect_uri != GOOGLE_REDIRECT_URI:
+            print(f"[GOOGLE OAUTH] Retrying token exchange with fallback GOOGLE_REDIRECT_URI...")
+            async with httpx.AsyncClient(timeout=10) as client:
+                retry_resp = await client.post("https://oauth2.googleapis.com/token", data={
+                    "code": code,
+                    "client_id": GOOGLE_CLIENT_ID_OAUTH,
+                    "client_secret": GOOGLE_CLIENT_SECRET_OAUTH,
+                    "redirect_uri": GOOGLE_REDIRECT_URI,
+                    "grant_type": "authorization_code"
+                })
+            retry_tokens = retry_resp.json()
+            if "id_token" in retry_tokens or "access_token" in retry_tokens:
+                tokens = retry_tokens
+
         print(f"[GOOGLE OAUTH] Token response keys: {list(tokens.keys())}")
 
         # Primary: Extract directly from signed id_token JWT (zero extra network calls)
