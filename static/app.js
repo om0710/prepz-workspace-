@@ -23,8 +23,125 @@ window.fetch = function (url, options = {}) {
         }
     }
     
-    return originalFetch(url, options);
+// ── GLOBAL LAYOUT & WINDOW CONTROLLERS ─────────────────────────
+window.setSidebarState = function(collapsed) {
+    const appSidebar = document.querySelector(".app-sidebar");
+    const btnExpandSidebar = document.getElementById("btn-expand-sidebar");
+    const sidebarBackdrop = document.getElementById("sidebar-backdrop");
+    if (!appSidebar) return;
+
+    if (collapsed) {
+        appSidebar.classList.add("sidebar-collapsed");
+        if (btnExpandSidebar) {
+            btnExpandSidebar.classList.remove("hidden");
+            btnExpandSidebar.style.setProperty("display", "inline-flex", "important");
+        }
+        if (sidebarBackdrop) {
+            sidebarBackdrop.classList.add("hidden");
+            sidebarBackdrop.style.setProperty("display", "none", "important");
+        }
+        try { localStorage.setItem("sidebar-collapsed", "true"); } catch(e){}
+    } else {
+        appSidebar.classList.remove("sidebar-collapsed");
+        if (btnExpandSidebar) {
+            btnExpandSidebar.classList.add("hidden");
+            btnExpandSidebar.style.setProperty("display", "none", "important");
+        }
+        if (window.innerWidth <= 768 && sidebarBackdrop) {
+            sidebarBackdrop.classList.remove("hidden");
+            sidebarBackdrop.style.setProperty("display", "block", "important");
+        } else if (sidebarBackdrop) {
+            sidebarBackdrop.classList.add("hidden");
+            sidebarBackdrop.style.setProperty("display", "none", "important");
+        }
+        try { localStorage.setItem("sidebar-collapsed", "false"); } catch(e){}
+    }
 };
+
+window.toggleSidebar = function(e) {
+    if (e && typeof e.preventDefault === "function") e.preventDefault();
+    if (e && typeof e.stopPropagation === "function") e.stopPropagation();
+    const appSidebar = document.querySelector(".app-sidebar");
+    if (!appSidebar) return;
+    const isCurrentlyCollapsed = appSidebar.classList.contains("sidebar-collapsed");
+    window.setSidebarState(!isCurrentlyCollapsed);
+};
+
+window.toggleFullscreen = function(e) {
+    if (e && typeof e.preventDefault === "function") e.preventDefault();
+    if (e && typeof e.stopPropagation === "function") e.stopPropagation();
+    
+    const doc = document;
+    const docEl = document.documentElement;
+    const isFull = !!(doc.fullscreenElement || doc.webkitFullscreenElement || doc.mozFullScreenElement || doc.msFullscreenElement);
+    const btnFullscreen = document.getElementById("btn-fullscreen-toggle");
+
+    const updateBtn = function(full) {
+        if (!btnFullscreen) return;
+        const expandSvg = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/></svg>';
+        const minimizeSvg = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M4 14h6v6m10-10h-6V4m0 16h6v-6M10 4H4v6"/></svg>';
+        if (full) {
+            btnFullscreen.innerHTML = `${minimizeSvg}<span>Exit Fullscreen</span>`;
+            btnFullscreen.title = "Exit Fullscreen Mode (Esc)";
+        } else {
+            btnFullscreen.innerHTML = `${expandSvg}<span>Fullscreen</span>`;
+            btnFullscreen.title = "Toggle Fullscreen Mode";
+        }
+    };
+
+    if (!isFull) {
+        if (docEl.requestFullscreen) {
+            docEl.requestFullscreen().then(() => updateBtn(true)).catch(err => {
+                console.warn("Fullscreen request error:", err);
+                updateBtn(false);
+            });
+        } else if (docEl.webkitRequestFullscreen) {
+            docEl.webkitRequestFullscreen();
+            updateBtn(true);
+        } else if (docEl.mozRequestFullScreen) {
+            docEl.mozRequestFullScreen();
+            updateBtn(true);
+        } else if (docEl.msRequestFullscreen) {
+            docEl.msRequestFullscreen();
+            updateBtn(true);
+        }
+    } else {
+        if (doc.exitFullscreen) {
+            doc.exitFullscreen().then(() => updateBtn(false)).catch(err => {
+                console.warn("Exit fullscreen error:", err);
+                updateBtn(false);
+            });
+        } else if (doc.webkitExitFullscreen) {
+            doc.webkitExitFullscreen();
+            updateBtn(false);
+        } else if (doc.mozCancelFullScreen) {
+            doc.mozCancelFullScreen();
+            updateBtn(false);
+        } else if (doc.msExitFullscreen) {
+            doc.msExitFullscreen();
+            updateBtn(false);
+        }
+    }
+};
+
+document.addEventListener("fullscreenchange", function() {
+    const isFull = !!(document.fullscreenElement || document.webkitFullscreenElement);
+    const btnFullscreen = document.getElementById("btn-fullscreen-toggle");
+    if (btnFullscreen) {
+        const expandSvg = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/></svg>';
+        const minimizeSvg = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M4 14h6v6m10-10h-6V4m0 16h6v-6M10 4H4v6"/></svg>';
+        btnFullscreen.innerHTML = isFull ? `${minimizeSvg}<span>Exit Fullscreen</span>` : `${expandSvg}<span>Fullscreen</span>`;
+    }
+});
+document.addEventListener("webkitfullscreenchange", function() {
+    const isFull = !!(document.fullscreenElement || document.webkitFullscreenElement);
+    const btnFullscreen = document.getElementById("btn-fullscreen-toggle");
+    if (btnFullscreen) {
+        const expandSvg = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/></svg>';
+        const minimizeSvg = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M4 14h6v6m10-10h-6V4m0 16h6v-6M10 4H4v6"/></svg>';
+        btnFullscreen.innerHTML = isFull ? `${minimizeSvg}<span>Exit Fullscreen</span>` : `${expandSvg}<span>Fullscreen</span>`;
+    }
+});
 
 // ── SUPABASE AUTH (replaces Firebase) ──────────────────────────────────────
 var SUPABASE_URL = "https://tuynzxkucwfcgwzynzrw.supabase.co";

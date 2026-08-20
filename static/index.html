@@ -22,7 +22,7 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <!-- GIS loaded synchronously so it's ready before any user click -->
     <script src="https://accounts.google.com/gsi/client"></script>
-    <link rel="stylesheet" href="style.css?v=20260821_sidebar_v15">
+    <link rel="stylesheet" href="style.css?v=20260821_sidebar_v16">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
     <script>
@@ -456,7 +456,7 @@
                 </div>
 
                 <div class="header-right">
-                    <button id="btn-fullscreen-toggle" class="btn-header-action" title="Toggle Fullscreen Mode">
+                    <button id="btn-fullscreen-toggle" class="btn-header-action" title="Toggle Fullscreen Mode" onclick="window.toggleFullscreen(event)">
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/></svg>
                         <span>Fullscreen</span>
                     </button>
@@ -1591,6 +1591,6 @@
     </div>
 
     <!-- Main JavaScript Link -->
-    <script src="app.js?v=20260821_sidebar_v15"></script>
+    <script src="app.js?v=20260821_sidebar_v16"></script>
 </body>
 </html>
