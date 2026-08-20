@@ -1,6 +1,62 @@
 [
   {
-    "id": 1,
+    "id": 19,
+    "filename": "Tutorial Assignment 1 Solution.pdf",
+    "user_email": "s24cseu1694@bennett.edu.in",
+    "user_name": "om bansal",
+    "uploaded_at": "2026-07-23T00:35:42.342716",
+    "size_bytes": 161702,
+    "subject": "Data Structures & Algorithms",
+    "semester": "Semester 4",
+    "file_type": "PYQ",
+    "exam_type": "Other",
+    "is_private": 0,
+    "file_path": "uploads/Tutorial Assignment 1 Solution.pdf"
+  },
+  {
+    "id": 20,
+    "filename": "cn certificate .pdf",
+    "user_email": "s24cseu1694@bennett.edu.in",
+    "user_name": "om bansal",
+    "uploaded_at": "2026-07-23T00:36:30.650275",
+    "size_bytes": 293420,
+    "subject": "Operating Systems",
+    "semester": "Semester 1",
+    "file_type": "PYQ",
+    "exam_type": "Other",
+    "is_private": 0,
+    "file_path": "uploads/cn certificate .pdf"
+  },
+  {
+    "id": 54,
+    "filename": "AIML_Lab_Week6 (1).docx",
+    "user_email": "ombansal221@gmail.com",
+    "user_name": "om",
+    "uploaded_at": "2026-08-01T01:30:05.064725",
+    "size_bytes": 734006,
+    "subject": "Introduction to Electricals & Electronics",
+    "semester": "Semester 2",
+    "file_type": "PYQ",
+    "exam_type": "Mid-Sem",
+    "is_private": 0,
+    "file_path": "uploads/AIML_Lab_Week6 (1).docx"
+  },
+  {
+    "id": 56,
+    "filename": "AIML_Lab_Week2.docx",
+    "user_email": "ombansal221@gmail.com",
+    "user_name": "Om Bansal",
+    "uploaded_at": "2026-08-04T21:50:34.965929",
+    "size_bytes": 539648,
+    "subject": "Introduction to Electricals & Electronics",
+    "semester": "Semester 2",
+    "file_type": "PYQ",
+    "exam_type": "Mid-Sem",
+    "is_private": 1,
+    "file_path": "uploads/AIML_Lab_Week2.docx"
+  },
+  {
+    "id": 59,
     "filename": "F44.pdf",
     "user_email": "ombansal221@gmail.com",
     "user_name": "Ombansal221",
@@ -14,7 +70,7 @@
     "file_path": "uploads/course_repo/F44.pdf"
   },
   {
-    "id": 2,
+    "id": 60,
     "filename": "CBSC204_Statistics+and+Probability.pdf",
     "user_email": "ombansal221@gmail.com",
     "user_name": "Ombansal221",
@@ -26,47 +82,5 @@
     "exam_type": "End-Sem",
     "is_private": 0,
     "file_path": "uploads/course_repo/CBSC204_Statistics+and+Probability.pdf"
-  },
-  {
-    "id": 3,
-    "filename": "AIML_Lab_Week6 (1).docx",
-    "user_email": "ombansal221@gmail.com",
-    "user_name": "om",
-    "uploaded_at": "2026-08-01T01:30:05.064725",
-    "size_bytes": 734006,
-    "subject": "Introduction to Electricals & Electronics",
-    "semester": "Semester 2",
-    "file_type": "PYQ",
-    "exam_type": "Mid-Sem",
-    "is_private": 0,
-    "file_path": "uploads/course_repo/AIML_Lab_Week6 (1).docx"
-  },
-  {
-    "id": 4,
-    "filename": "cn certificate .pdf",
-    "user_email": "s24cseu1694@bennett.edu.in",
-    "user_name": "om bansal",
-    "uploaded_at": "2026-07-23T00:36:30.650275",
-    "size_bytes": 293420,
-    "subject": "Operating Systems",
-    "semester": "Semester 1",
-    "file_type": "PYQ",
-    "exam_type": "Other",
-    "is_private": 0,
-    "file_path": "uploads/course_repo/cn certificate .pdf"
-  },
-  {
-    "id": 5,
-    "filename": "Tutorial Assignment 1 Solution.pdf",
-    "user_email": "s24cseu1694@bennett.edu.in",
-    "user_name": "om bansal",
-    "uploaded_at": "2026-07-23T00:35:42.342716",
-    "size_bytes": 161702,
-    "subject": "Data Structures & Algorithms",
-    "semester": "Semester 4",
-    "file_type": "PYQ",
-    "exam_type": "Other",
-    "is_private": 0,
-    "file_path": "uploads/course_repo/Tutorial Assignment 1 Solution.pdf"
   }
 ]
