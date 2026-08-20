@@ -281,6 +281,14 @@ window.loginUser = function(user) {
     } catch(e) { console.error("[AUTH] auth_data parse error:", e); }
 })();
 
+// Cross-window postMessage listener for popup OAuth completion
+window.addEventListener("message", function(event) {
+    if (event.data && event.data.type === "PREPZ_GOOGLE_AUTH_SUCCESS" && event.data.user) {
+        console.log("[AUTH] Received Google user via popup postMessage:", event.data.user.email);
+        window.loginUser(event.data.user);
+    }
+});
+
 window.handleGoogleSignIn = function(e) {
     if (e) {
         if (typeof e.preventDefault === "function") e.preventDefault();
@@ -294,22 +302,39 @@ window.handleGoogleSignIn = function(e) {
         authErrBox.classList.add("hidden");
     }
 
-    var isInIframe = false;
-    try { isInIframe = (window.self !== window.top); } catch(err2) { isInIframe = true; }
+    const authUrl = "https://om123bansal-prepz-app.hf.space/api/auth/google";
+    const width = 520;
+    const height = 650;
+    const left = Math.max(0, (window.screen.width - width) / 2);
+    const top = Math.max(0, (window.screen.height - height) / 2);
 
-    if (isInIframe) {
-        // If embedded in Hugging Face iframe, redirect top window or open direct tab
-        try {
-            window.top.location.href = "https://om123bansal-prepz-app.hf.space/api/auth/google";
-            return;
-        } catch(frameErr) {
-            window.open("https://om123bansal-prepz-app.hf.space/api/auth/google", "_blank", "noopener,noreferrer");
-            return;
-        }
+    // Try clean centered popup first
+    let popup = null;
+    try {
+        popup = window.open(
+            authUrl,
+            "PrepzGoogleAuth",
+            `width=${width},height=${height},top=${top},left=${left},status=no,toolbar=no,menubar=no,scrollbars=yes,resizable=yes`
+        );
+    } catch(popErr) {
+        console.warn("Popup error:", popErr);
     }
 
-    // Direct official Google OAuth 2.0 backend redirect
-    window.location.href = "/api/auth/google";
+    // If popup was blocked or failed to open, fallback to top-level navigation
+    if (!popup || popup.closed || typeof popup.closed === "undefined") {
+        var isInIframe = false;
+        try { isInIframe = (window.self !== window.top); } catch(err2) { isInIframe = true; }
+        if (isInIframe) {
+            try {
+                window.top.location.href = authUrl;
+                return;
+            } catch(e3) {
+                window.open(authUrl, "_blank", "noopener,noreferrer");
+                return;
+            }
+        }
+        window.location.href = "/api/auth/google";
+    }
 };
 
 // Global click event delegation for Google Sign-In button

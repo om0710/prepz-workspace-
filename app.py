@@ -1566,7 +1566,38 @@ async def google_auth_callback(request: Request, code: str = None, error: str = 
         "avatar_url": user["avatar_url"]
     }
     encoded = base64.b64encode(json.dumps(user_payload).encode()).decode()
-    return RedirectResponse(f"/?auth_data={encoded}")
+    user_json = json.dumps(user_payload)
+
+    # Return HTML bridge supporting both window.opener postMessage (popup flow) and direct redirect
+    html_content = f"""<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>Logging in...</title>
+</head>
+<body style="background:#0a0c0f;color:#ffffff;font-family:system-ui,sans-serif;display:flex;align-items:center;justify-content:center;height:100vh;margin:0;">
+    <div style="text-align:center;">
+        <div style="width:40px;height:40px;border:3px solid rgba(255,107,0,0.3);border-top-color:#ff6b00;border-radius:50%;animation:spin 0.8s linear infinite;margin:0 auto 16px;"></div>
+        <p style="font-size:15px;font-weight:600;">Authenticated! Connecting to BU Prepz workspace...</p>
+    </div>
+    <style>@keyframes spin {{ to {{ transform: rotate(360deg); }} }}</style>
+    <script>
+        const userPayload = {user_json};
+        const authData = "{encoded}";
+        try {{
+            if (window.opener && !window.opener.closed) {{
+                window.opener.postMessage({{ type: "PREPZ_GOOGLE_AUTH_SUCCESS", user: userPayload, authData: authData }}, "*");
+                setTimeout(function() {{ window.close(); }}, 300);
+            }} else {{
+                window.location.href = "/?auth_data=" + authData;
+            }}
+        }} catch(e) {{
+            window.location.href = "/?auth_data=" + authData;
+        }}
+    </script>
+</body>
+</html>"""
+    return HTMLResponse(content=html_content)
 # ────────────────────────────────────────────────────────────────────────────────
 
 
