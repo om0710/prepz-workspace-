@@ -4487,6 +4487,14 @@ function initializeDocPilotApp() {
         document.addEventListener("webkitfullscreenchange", updateFullscreenUI);
     }
 
+    // Expose core app controllers to window
+    window.fetchThreads = fetchThreads;
+    window.fetchIndexedFiles = fetchIndexedFiles;
+    window.selectThread = selectThread;
+    window.loadThreadHistory = loadThreadHistory;
+    window.showChatState = showChatState;
+    window.showLandingState = showLandingState;
+
     // Start flows
     initSearchFilter();
     initSuggestions();
@@ -4502,6 +4510,13 @@ function initializeDocPilotApp() {
     // Auto-sync uploaded files across all users in real-time every 4 seconds
     fetchIndexedFiles();
     setInterval(fetchIndexedFiles, 4000);
+
+    // If active user is already logged in, immediately load threads and stats
+    if (window.currentUser && window.currentUser.email) {
+        fetchThreads();
+        if (typeof checkAndEnableAdminUI === "function") checkAndEnableAdminUI();
+        if (typeof startHeartbeatDaemon === "function") startHeartbeatDaemon();
+    }
 }
 
 if (document.readyState === "loading") {
