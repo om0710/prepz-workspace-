@@ -198,18 +198,23 @@ var GOOGLE_CLIENT_ID = "585299422541-edqtcaaoljev3op2cffl98jfvr8asn56.apps.googl
             var userData = JSON.parse(atob(authData));
             window.history.replaceState({}, document.title, window.location.pathname);
             console.log("[AUTH] Backend OAuth success:", userData.email);
-            // Wait for loginUser to be defined
-            var attempts = 0;
-            var waitLogin = setInterval(function() {
-                if (typeof window.loginUser === "function") {
-                    clearInterval(waitLogin);
-                    window.loginUser(userData);
-                } else if (++attempts > 20) { clearInterval(waitLogin); }
-            }, 100);
+            window.currentUser = userData;
+            try {
+                localStorage.setItem("docpilot-user", JSON.stringify(userData));
+            } catch(e) {}
+            if (typeof window.loginUser === "function") {
+                window.loginUser(userData);
+            }
         }
         if (authError) {
             window.history.replaceState({}, document.title, window.location.pathname);
             console.warn("[AUTH] Backend OAuth error:", authError);
+            const authErrBox = document.getElementById("auth-error-msg");
+            if (authErrBox) {
+                authErrBox.textContent = "Google Sign-In was cancelled or encountered an error. Please try again.";
+                authErrBox.classList.remove("hidden");
+                authErrBox.style.display = "block";
+            }
         }
     } catch(e) { console.error("[AUTH] auth_data parse error:", e); }
 })();
@@ -275,10 +280,9 @@ window.loginUser = function(user) {
         window.syncAppCurrentUser(user);
     }
 
-    // Always overwrite — single key docpilot-user
+    // Persist user session to localStorage
     const userData = JSON.stringify(user);
     try {
-        localStorage.clear();
         localStorage.setItem("docpilot-user", userData);
     } catch(e) {}
 
@@ -378,14 +382,17 @@ window.logoutUser = async function() {
     window.currentUser = null;
     try {
         localStorage.removeItem("docpilot-user");
-        localStorage.clear();
         sessionStorage.clear();
     } catch(e) {}
     if (typeof window.showLoginScreen === "function") window.showLoginScreen();
 };
 
-// Global User State
-window.currentUser = null;
+// Global User State initialized from cache if present
+try {
+    const raw = localStorage.getItem("docpilot-user") || localStorage.getItem("prepz_user");
+    if (raw && !window.currentUser) window.currentUser = JSON.parse(raw);
+} catch(e) {}
+if (!window.currentUser) window.currentUser = null;
 
 window.switchAuthTab = function (tab) {
     const tabLogin = document.getElementById("tab-login");
@@ -1071,54 +1078,16 @@ function initializeDocPilotApp() {
             logoutUser();
         } else {
             const cachedRaw = localStorage.getItem("docpilot-user") || localStorage.getItem("prepz_user");
-            let cachedUser = null;
-            try { cachedUser = cachedRaw ? JSON.parse(cachedRaw) : null; } catch(e) {}
-            const cachedEmail = cachedUser ? cachedUser.email : null;
-
-            console.log("[AUTH PAGE LOAD] localStorage email:", cachedEmail || "(none)");
-
-            if (cachedUser && cachedEmail) {
-                console.log("[AUTH PAGE LOAD] Restoring active user session:", cachedEmail);
-                loginUser(cachedUser);
+            let cachedUser = window.currentUser;
+            if (!cachedUser && cachedRaw) {
+                try { cachedUser = JSON.parse(cachedRaw); } catch(e) {}
             }
 
-            if (typeof firebaseAuth !== "undefined" && firebaseAuth) {
-                firebaseAuth.onAuthStateChanged(async (firebaseUser) => {
-                    if (window.currentUser) {
-                        console.log("[AUTH PAGE LOAD] Local active session present — ignoring background auth reset");
-                        return;
-                    }
-                    if (firebaseUser) {
-                        const providerId = (firebaseUser.providerData && firebaseUser.providerData[0])
-                            ? firebaseUser.providerData[0].providerId : "firebase";
-                        try {
-                            const res = await fetch("/api/firebase-sync", {
-                                method: "POST",
-                                headers: { "Content-Type": "application/json" },
-                                body: JSON.stringify({
-                                    uid: firebaseUser.uid,
-                                    email: firebaseUser.email,
-                                    name: firebaseUser.displayName || firebaseUser.email.split("@")[0],
-                                    provider: providerId.includes("google") ? "google" : "local",
-                                    avatar_url: firebaseUser.photoURL || `https://api.dicebear.com/7.x/bottts/svg?seed=${encodeURIComponent(firebaseUser.email)}`
-                                })
-                            });
-                            const data = await res.json();
-                            loginUser(res.ok && data.user ? data.user : {
-                                id: firebaseUser.uid,
-                                email: firebaseUser.email,
-                                name: firebaseUser.displayName || firebaseUser.email.split("@")[0],
-                                provider: providerId,
-                                avatar_url: firebaseUser.photoURL || `https://api.dicebear.com/7.x/bottts/svg?seed=${encodeURIComponent(firebaseUser.email)}`
-                            });
-                        } catch(err) {
-                            if (!window.currentUser) showLoginScreen();
-                        }
-                    } else if (!window.currentUser && !cachedUser) {
-                        showLoginScreen();
-                    }
-                });
-            } else if (!window.currentUser && !cachedUser) {
+            if (cachedUser && cachedUser.email) {
+                console.log("[AUTH PAGE LOAD] Active user session verified:", cachedUser.email);
+                window.currentUser = cachedUser;
+                loginUser(cachedUser);
+            } else {
                 showLoginScreen();
             }
         }
