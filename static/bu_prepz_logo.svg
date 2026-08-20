@@ -1,0 +1,63 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 280" width="1024" height="280">
+  <defs>
+    <linearGradient id="fullBgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#161922"/>
+      <stop offset="100%" stop-color="#0a0c10"/>
+    </linearGradient>
+
+    <linearGradient id="orangeGradLg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#ff9100"/>
+      <stop offset="50%" stop-color="#ff5722"/>
+      <stop offset="100%" stop-color="#e64a19"/>
+    </linearGradient>
+
+    <linearGradient id="goldGradLg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#ffe082"/>
+      <stop offset="50%" stop-color="#ffb300"/>
+      <stop offset="100%" stop-color="#ff8f00"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Canvas Container -->
+  <rect width="1024" height="280" rx="36" fill="url(#fullBgGrad)" stroke="#ff5722" stroke-width="3" stroke-opacity="0.3"/>
+
+  <!-- Logo Icon Left Container -->
+  <g transform="translate(50, 40)">
+    <rect width="200" height="200" rx="44" fill="#1c202d" stroke="#ff5722" stroke-width="3" stroke-opacity="0.5"/>
+    
+    <!-- Open Book Left Page -->
+    <path d="M40 152 C 62 134, 84 130, 96 132 L 96 52 C 84 50, 62 54, 40 72 Z" 
+          fill="url(#orangeGradLg)" opacity="0.95"/>
+    
+    <!-- Open Book Right Page -->
+    <path d="M160 152 C 138 134, 116 130, 104 132 L 104 52 C 116 50, 138 54, 160 72 Z" 
+          fill="url(#orangeGradLg)" opacity="0.85"/>
+          
+    <path d="M100 50 L 100 135" stroke="#ffffff" stroke-width="3.5" stroke-linecap="round" opacity="0.9"/>
+
+    <!-- Lightning Bolt -->
+    <polygon points="108,30 76,96 98,96 90,152 130,80 106,80" 
+             fill="url(#goldGradLg)" 
+             stroke="#ffffff" 
+             stroke-width="2.5"
+             stroke-linejoin="round"/>
+  </g>
+
+  <!-- Typography: BU PREPZ -->
+  <text x="285" y="135" font-family="'Plus Jakarta Sans', 'Inter', system-ui, -apple-system, sans-serif" font-size="82" font-weight="900" fill="#ffffff" letter-spacing="1.5">
+    BU <tspan fill="url(#orangeGradLg)">PREPZ</tspan>
+  </text>
+
+  <!-- Tagline / Subtitle -->
+  <text x="290" y="182" font-family="'Inter', system-ui, -apple-system, sans-serif" font-size="21" font-weight="700" fill="#94a3b8" letter-spacing="4">
+    BENNETT UNIVERSITY AI ACADEMIC SUITE
+  </text>
+
+  <!-- Active Status Indicator -->
+  <g transform="translate(290, 208)">
+    <circle cx="6" cy="6" r="5" fill="#10b981"/>
+    <text x="20" y="10" font-family="'Inter', sans-serif" font-size="14" font-weight="600" fill="#34d399" letter-spacing="1">
+      VERIFIED UNIVERSITY ARCHIVES • AI PREDICTOR • PYQ REPOSITORY
+    </text>
+  </g>
+</svg>
