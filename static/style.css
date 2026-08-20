@@ -552,6 +552,8 @@ button, a[role="button"], input[type="button"], input[type="submit"] {
     gap: 10px;
     transition: all var(--transition-fast);
     cursor: pointer;
+    text-decoration: none;
+    box-sizing: border-box;
 }
 
 .btn-social-circle.google-single:hover {
