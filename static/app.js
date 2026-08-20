@@ -2050,96 +2050,39 @@ function initializeDocPilotApp() {
     function formatPaperMarkdown(mdText) {
         if (!mdText) return "";
 
-        let html = mdText
-            .replace(/&/g, "&amp;")
-            .replace(/</g, "&lt;")
-            .replace(/>/g, "&gt;");
+        // 1. Strip reasoning traces from DeepSeek / Gemini / Groq models
+        let cleanMd = mdText.replace(/<think>[\s\S]*?<\/think>/gi, "").trim();
+        if (cleanMd.startsWith("```markdown")) cleanMd = cleanMd.slice(11).trim();
+        if (cleanMd.startsWith("```")) cleanMd = cleanMd.slice(3).trim();
+        if (cleanMd.endsWith("```")) cleanMd = cleanMd.slice(0, -3).trim();
 
-        // Headers
-        html = html.replace(/^### (.*$)/gim, '<h3>$1</h3>');
-        html = html.replace(/^## (.*$)/gim, '<h2>$1</h2>');
-        html = html.replace(/^# (.*$)/gim, '<h1>$1</h1>');
-
-        // Horizontal Rules
-        html = html.replace(/^---$/gim, '<hr>');
-
-        // Bold & Italic
-        html = html.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
-        html = html.replace(/\*(.*?)\*/g, '<em>$1</em>');
-
-        // Lists
-        html = html.replace(/^\s*[\-\*]\s+(.*$)/gim, '<ul><li>$1</li></ul>');
-        html = html.replace(/<\/ul>\s*<ul>/g, '');
-
-        // Paragraphs & Line breaks
-        html = html.replace(/\n\n/g, '</p><p>');
-        html = html.replace(/\n/g, '<br>');
-
-        return `<p>${html}</p>`;
-    }
-
-    async function generatePredictedPaper() {
-        const activeUser = currentUser || window.currentUser || { name: "Student User", email: "student@college.edu", provider: "local" };
-        currentUser = activeUser;
-        window.currentUser = activeUser;
-
-        const sem = predictorSemesterSelect ? predictorSemesterSelect.value : "Semester 1";
-        const sub = predictorSubjectSelect ? predictorSubjectSelect.value : "";
-        const examType = predictorExamTypeSelect ? predictorExamTypeSelect.value : "Mid-Sem";
-
-        if (!sub) {
-            alert("Please select a subject.");
-            return;
+        // 2. Parse Markdown with marked.js
+        let html = "";
+        if (typeof marked !== "undefined" && typeof marked.parse === "function") {
+            html = marked.parse(cleanMd);
+        } else {
+            // Fallback manual parser
+            html = cleanMd
+                .replace(/^### (.*$)/gim, '<h3>$1</h3>')
+                .replace(/^## (.*$)/gim, '<h2>$1</h2>')
+                .replace(/^# (.*$)/gim, '<h1>$1</h1>')
+                .replace(/^---$/gim, '<hr>')
+                .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+                .replace(/\*(.*?)\*/g, '<em>$1</em>')
+                .replace(/^\s*[\-\*]\s+(.*$)/gim, '<ul><li>$1</li></ul>')
+                .replace(/<\/ul>\s*<ul>/g, '')
+                .replace(/\n\n/g, '</p><p>')
+                .replace(/\n/g, '<br>');
+            html = `<p>${html}</p>`;
         }
 
-        // Reset state
-        if (predictorResultCard) predictorResultCard.classList.add("hidden");
-        if (predictorWarningCard) predictorWarningCard.classList.add("hidden");
-        if (predictorLoadingCard) predictorLoadingCard.classList.remove("hidden");
+        // 3. Format Frequency & Probability tags as sleek exam badges
+        html = html.replace(/\[\s*Frequency:\s*([^\]]+)\]/gi, '<span class="exam-freq-chip">🎯 Frequency: $1</span>');
+        html = html.replace(/\[\s*Probability:\s*([^\]]+)\]/gi, '<span class="exam-prob-chip">⚡ Probability: $1</span>');
+        html = html.replace(/`\[(\d+)\s*Marks?\]`/gi, '<span class="exam-marks-badge">[$1 Marks]</span>');
+        html = html.replace(/\[(\d+)\s*Marks?\]/gi, '<span class="exam-marks-badge">[$1 Marks]</span>');
 
-        try {
-            const u = currentUser || window.currentUser || JSON.parse(localStorage.getItem("docpilot-user") || "{}");
-            const res = await fetch("/api/predict-paper", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ 
-                    semester: sem, 
-                    subject: sub, 
-                    exam_type: examType,
-                    user_email: (u && u.email) ? u.email : null
-                })
-            });
-
-            const data = await res.json();
-            if (predictorLoadingCard) predictorLoadingCard.classList.add("hidden");
-
-            if (!res.ok || data.success === false) {
-                if (predictorWarningCard) {
-                    predictorWarningCard.classList.remove("hidden");
-                    const msgEl = document.getElementById("predictor-warning-message");
-                    if (msgEl) msgEl.textContent = data.message || `Not enough ${examType} PYQs uploaded yet for accurate prediction.`;
-                }
-                return;
-            }
-
-            // Render Result Card
-            if (predictorResultCard) predictorResultCard.classList.remove("hidden");
-
-            const badgePyq = document.getElementById("badge-pyq-count");
-            if (badgePyq) badgePyq.textContent = `📊 Based on ${data.pyq_count} ${data.exam_type || examType} PYQs (${data.pyq_filenames ? data.pyq_filenames.join(', ') : ''})`;
-
-            const badgeSub = document.getElementById("badge-predicted-subject");
-            if (badgeSub) badgeSub.textContent = `${data.subject} (${data.semester} • ${data.exam_type || examType})`;
-
-            if (predictedPaperBody) {
-                const formattedHtml = formatPaperMarkdown(data.paper_markdown);
-                window._rawPaperMarkdownHtml = formattedHtml;
-                predictedPaperBody.innerHTML = formattedHtml;
-            }
-        } catch (err) {
-            if (predictorLoadingCard) predictorLoadingCard.classList.add("hidden");
-            alert(`Error generating predicted paper: ${err.message || err}`);
-        }
+        return html;
     }
 
     function downloadPredictedPDF() {
@@ -2148,18 +2091,42 @@ function initializeDocPilotApp() {
 
         const sub = predictorSubjectSelect ? predictorSubjectSelect.value : "Exam";
         const sem = predictorSemesterSelect ? predictorSemesterSelect.value : "Sem";
-        const filename = `BU Prepz_Predicted_Paper_${sub.replace(/\s+/g, '_')}_${sem.replace(/\s+/g, '_')}.pdf`;
+        const examType = predictorExamTypeSelect ? predictorExamTypeSelect.value : "Mid-Sem";
+        const filename = `Bennett_University_${sub.replace(/\s+/g, '_')}_${sem.replace(/\s+/g, '_')}_${examType.replace(/\s+/g, '_')}_Predicted_Paper.pdf`;
+
+        // Create clean, print-styled wrapper for high quality PDF rendering
+        const printClone = paperElement.cloneNode(true);
+        printClone.classList.add("pdf-print-export-mode");
+
+        const wrapper = document.createElement("div");
+        wrapper.style.position = "absolute";
+        wrapper.style.left = "-9999px";
+        wrapper.style.top = "0";
+        wrapper.style.width = "794px"; // A4 standard width at 96 DPI
+        wrapper.style.background = "#ffffff";
+        wrapper.style.color = "#111827";
+        wrapper.style.padding = "32px";
+        wrapper.appendChild(printClone);
+        document.body.appendChild(wrapper);
 
         if (window.html2pdf) {
             const opt = {
-                margin:       12,
+                margin:       [10, 10, 10, 10],
                 filename:     filename,
                 image:        { type: 'jpeg', quality: 0.98 },
-                html2canvas:  { scale: 2, useCORS: true },
-                jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
+                html2canvas:  { scale: 2, useCORS: true, letterRendering: true, backgroundColor: '#ffffff' },
+                jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' },
+                pagebreak:    { mode: ['avoid-all', 'css', 'legacy'] }
             };
-            html2pdf().set(opt).from(paperElement).save();
+            html2pdf().set(opt).from(printClone).save().then(() => {
+                document.body.removeChild(wrapper);
+            }).catch(err => {
+                console.error("PDF generation error:", err);
+                document.body.removeChild(wrapper);
+                window.print();
+            });
         } else {
+            document.body.removeChild(wrapper);
             window.print();
         }
     }

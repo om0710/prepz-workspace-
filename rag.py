@@ -152,7 +152,7 @@ def extract_text_from_file(file_path: str) -> list[Document]:
             except Exception:
                 pass
 
-    if ext == ".pdf" or not text.strip():
+    if ext == ".pdf":
         # 1. Try pypdf PdfReader
         try:
             import pypdf
@@ -160,7 +160,8 @@ def extract_text_from_file(file_path: str) -> list[Document]:
             extracted_pages = []
             for p_idx, page in enumerate(reader.pages):
                 page_txt = page.extract_text() or ""
-                if page_txt.strip():
+                # Sanitize extracted text to eliminate binary garbage
+                if page_txt.strip() and not page_txt.startswith("%PDF") and "FlateDecode" not in page_txt:
                     extracted_pages.append(Document(page_content=page_txt.strip(), metadata={"source": file_path, "page": p_idx + 1}))
             if extracted_pages:
                 return extracted_pages
@@ -171,32 +172,29 @@ def extract_text_from_file(file_path: str) -> list[Document]:
         try:
             loader = PyPDFLoader(file_path)
             docs = loader.load()
-            if docs and any(d.page_content.strip() for d in docs):
-                return docs
+            clean_docs = [d for d in docs if d.page_content.strip() and not d.page_content.startswith("%PDF") and "FlateDecode" not in d.page_content]
+            if clean_docs:
+                return clean_docs
         except Exception:
             pass
 
-        # 3. Try pdfplumber if installed
+        # If PDF has no direct text layer (e.g. scanned photocopy), return clean placeholder rather than raw binary stream
+        fname_base = os.path.basename(file_path)
+        clean_desc = f"Document: {fname_base} (Scanned Academic Question Paper / Notes Resource)"
+        return [Document(page_content=clean_desc, metadata={"source": file_path})]
+
+    # For plain text or other formats
+    if not text.strip():
         try:
-            import pdfplumber
-            with pdfplumber.open(file_path) as pdf:
-                pages_plumb = []
-                for p_idx, p in enumerate(pdf.pages):
-                    pt = p.extract_text() or ""
-                    if pt.strip():
-                        pages_plumb.append(Document(page_content=pt.strip(), metadata={"source": file_path, "page": p_idx + 1}))
-                if pages_plumb:
-                    return pages_plumb
+            with open(file_path, "r", encoding="utf-8", errors="ignore") as f:
+                raw_t = f.read()
+                if not raw_t.startswith("%PDF") and "FlateDecode" not in raw_t:
+                    text = raw_t
         except Exception:
             pass
 
-        # 4. Fallback reading text/strings
-        if not text.strip():
-            try:
-                with open(file_path, "r", encoding="utf-8", errors="ignore") as f:
-                    text = f.read()
-            except Exception:
-                text = f"Document content from {os.path.basename(file_path)}"
+    if not text.strip():
+        text = f"Document content from {os.path.basename(file_path)}"
 
     return [Document(page_content=text, metadata={"source": file_path})]
 
