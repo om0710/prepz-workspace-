@@ -2237,6 +2237,15 @@ function initializeDocPilotApp() {
                 const modalSubSel = document.getElementById("upload-subject-select");
                 if (modalSubSel) modalSubSel.value = predictorSubjectSelect.value;
             }
+            if (predictorExamTypeSelect) {
+                const modalExamSel = document.getElementById("upload-examtype-select");
+                if (modalExamSel) modalExamSel.value = predictorExamTypeSelect.value;
+            }
+            const scopeRepo = document.getElementById("upload-scope-repo");
+            if (scopeRepo) {
+                scopeRepo.checked = true;
+                if (window.updateScopeToggleVisuals) window.updateScopeToggleVisuals(0);
+            }
         });
     }
 

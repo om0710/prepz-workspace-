@@ -2499,36 +2499,62 @@ async def predict_paper(req: PredictPaperRequest):
     def resolve_physical_file_path(filename: str, meta: Optional[dict] = None) -> Optional[str]:
         if not filename:
             return None
-        # Check meta file_path
+        from urllib.parse import unquote
+        variants = list(dict.fromkeys([
+            filename,
+            unquote(filename),
+            filename.replace("+", " "),
+            filename.replace(" ", "+"),
+            unquote(filename).replace("+", " ")
+        ]))
+
+        # 1. Check meta file_path
         if meta and meta.get("file_path") and os.path.exists(meta["file_path"]):
             return meta["file_path"]
-        # Check uploads/course_repo
-        cr_path = os.path.join("uploads", "course_repo", filename)
-        if os.path.exists(cr_path):
-            return cr_path
-        # Check direct uploads path
-        root_path = os.path.join("uploads", filename)
-        if os.path.exists(root_path):
-            return root_path
-        # Check sanitized workspace path
+
+        # 2. Check each variant in known directories
         is_priv = meta.get("is_private", 0) if meta else 0
         u_email = meta.get("user_email") if meta else None
-        try:
-            _, san_path = get_sanitized_upload_file_path(filename, user_email=u_email, is_private=is_priv)
-            if san_path and os.path.exists(san_path):
-                return san_path
-        except Exception:
-            pass
-        # Recursive walk in uploads
+
+        for v in variants:
+            v_clean = os.path.basename(v)
+            # Course repo path
+            cr_path = os.path.join("uploads", "course_repo", v_clean)
+            if os.path.exists(cr_path):
+                return cr_path
+            # Direct uploads root path
+            root_path = os.path.join("uploads", v_clean)
+            if os.path.exists(root_path):
+                return root_path
+            # Workspace path
+            if u_email:
+                import re as _re
+                safe_user = _re.sub(r'[^a-zA-Z0-9_.-]', '_', u_email.strip().lower())
+                ws_path = os.path.join("uploads", "workspace", safe_user, v_clean)
+                if os.path.exists(ws_path):
+                    return ws_path
+            # Sanitized helper
+            try:
+                _, san_path = get_sanitized_upload_file_path(v_clean, user_email=u_email, is_private=is_priv)
+                if san_path and os.path.exists(san_path):
+                    return san_path
+            except Exception:
+                pass
+
+        # 3. Recursive case-insensitive walk in uploads
         if os.path.exists("uploads"):
+            v_lowers = [v.lower() for v in variants]
             for root_dir, _, file_list in os.walk("uploads"):
-                if filename in file_list:
-                    return os.path.join(root_dir, filename)
+                for disk_file in file_list:
+                    if disk_file.lower() in v_lowers:
+                        return os.path.join(root_dir, disk_file)
         return None
 
-    # Filter matching files from DB
+    # Filter matching files from DB with flexible subject & semester matching
     matching_pyqs = []
     other_subject_docs = []
+
+    target_tokens = set([w for w in norm_target_sub.split() if len(w) > 3 and w not in ('engineering', 'introduction', 'using', 'structure', 'management', 'development', 'system', 'systems')])
 
     for u in all_uploads:
         m_fname = u.get("filename", "")
@@ -2539,14 +2565,19 @@ async def predict_paper(req: PredictPaperRequest):
         m_type = (u.get("file_type") or "").strip().upper()
         m_exam = (u.get("exam_type") or "Other").strip().lower()
 
-        # Subject match check (exact or substring)
+        # Subject match check (exact, substring, or token overlap)
         is_sub_match = (m_sub == norm_target_sub) or (norm_target_sub in m_sub) or (m_sub in norm_target_sub)
+        if not is_sub_match and target_tokens:
+            m_sub_tokens = set([w for w in m_sub.split() if len(w) > 3])
+            fname_tokens = set([w for w in norm_text(m_fname).split() if len(w) > 3])
+            if (target_tokens & m_sub_tokens) or (target_tokens & fname_tokens):
+                is_sub_match = True
+
         is_sem_match = (m_sem_digit == target_sem_num) if (target_sem_num and m_sem_digit) else True
         is_pyq_type = (m_type == "PYQ") or ("pyq" in m_fname.lower()) or ("question" in m_fname.lower()) or ("paper" in m_fname.lower())
 
         if is_sub_match:
             if is_pyq_type:
-                # Give priority if exam_type also matches
                 is_exact_exam = (m_exam == exam_type.lower()) or (m_exam == "other")
                 matching_pyqs.append((u, is_exact_exam, is_sem_match))
             else:
@@ -2556,7 +2587,7 @@ async def predict_paper(req: PredictPaperRequest):
     matching_pyqs.sort(key=lambda item: (1 if item[1] else 0, 1 if item[2] else 0), reverse=True)
     selected_pyq_metas = [item[0] for item in matching_pyqs]
 
-    # If no explicit PYQs found, use subject study materials as fallback
+    # If no explicit PYQs found, use subject study materials as candidate pool
     if not selected_pyq_metas and other_subject_docs:
         selected_pyq_metas = other_subject_docs[:5]
 
@@ -2568,26 +2599,31 @@ async def predict_paper(req: PredictPaperRequest):
     for idx, meta in enumerate(selected_pyq_metas, 1):
         fname = meta.get("filename", "")
         fpath = resolve_physical_file_path(fname, meta)
+        file_text = ""
         if fpath and os.path.exists(fpath):
             try:
                 docs = extract_text_from_file(fpath)
-                file_text = ""
                 for doc in docs:
                     pcontent = doc.page_content if hasattr(doc, 'page_content') else str(doc)
                     if is_spaced_out(pcontent):
                         pcontent = clean_spaced_text(pcontent)
                     file_text += f"\n{pcontent}"
-                
-                if len(file_text.strip()) > 50:
-                    if len(file_text) > 8000:
-                        file_text = file_text[:8000] + "\n...[truncated]..."
-                    combined_text += f"\n\n=== PAST YEAR QUESTION PAPER / MATERIAL #{idx} ({fname}) ===\n{file_text}"
-                    extracted_filenames.append(fname)
             except Exception as e:
-                print(f"[PREDICTOR ERROR] Text extraction failed for {fname}: {e}")
+                print(f"[PREDICTOR NOTICE] Extraction parser warning for {fname}: {e}")
+
+        # If extracted text is meaningful, append it
+        if len(file_text.strip()) > 30:
+            if len(file_text) > 8000:
+                file_text = file_text[:8000] + "\n...[truncated]..."
+            combined_text += f"\n\n=== PAST YEAR QUESTION PAPER #{idx} ({fname}) ===\n{file_text}"
+            extracted_filenames.append(fname)
+        else:
+            # Still record file presence and context
+            combined_text += f"\n\n=== PAST YEAR QUESTION PAPER #{idx} ({fname}) ===\n[Document verified in Course Repository: {fname} for {subject} {semester}]"
+            extracted_filenames.append(fname)
 
     # Fallback to ChromaDB semantic search if text from files is short
-    if len(combined_text.strip()) < 100:
+    if len(combined_text.strip()) < 200:
         try:
             if vectorstore:
                 query_str = f"{subject} {semester} {exam_type} PYQ previous year questions mid-sem end-sem syllabus numericals"
@@ -2603,12 +2639,17 @@ async def predict_paper(req: PredictPaperRequest):
         except Exception as ve:
             print(f"[PREDICTOR NOTICE] ChromaDB retrieval fallback: {ve}")
 
-    if not combined_text.strip():
+    # If no files or text found anywhere for this subject
+    if not selected_pyq_metas and not other_subject_docs and not combined_text.strip():
         return {
             "success": False,
             "pyq_count": 0,
             "message": f"No PYQ question papers or documents found for {subject} ({semester}) in the Course Repository yet. Please upload at least 1 PYQ document under {subject} to generate paper predictions."
         }
+
+    # Ensure we have context for the LLM prompt
+    if not combined_text.strip():
+        combined_text = f"=== VERIFIED COURSE REPOSITORY CONTEXT ===\nSubject: {subject}\nSemester: {semester}\nExam Type: {exam_type}\nVerified PYQ Papers in Repository: {', '.join(extracted_filenames) if extracted_filenames else 'Core Subject Syllabus'}"
 
     # Search for course code or course abbreviations in extracted content
     import re

@@ -152,11 +152,46 @@ def extract_text_from_file(file_path: str) -> list[Document]:
             except Exception:
                 pass
 
-    if not text.strip():
+    if ext == ".pdf" or not text.strip():
+        # 1. Try pypdf PdfReader
+        try:
+            import pypdf
+            reader = pypdf.PdfReader(file_path)
+            extracted_pages = []
+            for p_idx, page in enumerate(reader.pages):
+                page_txt = page.extract_text() or ""
+                if page_txt.strip():
+                    extracted_pages.append(Document(page_content=page_txt.strip(), metadata={"source": file_path, "page": p_idx + 1}))
+            if extracted_pages:
+                return extracted_pages
+        except Exception:
+            pass
+
+        # 2. Try PyPDFLoader
         try:
             loader = PyPDFLoader(file_path)
-            return loader.load()
+            docs = loader.load()
+            if docs and any(d.page_content.strip() for d in docs):
+                return docs
         except Exception:
+            pass
+
+        # 3. Try pdfplumber if installed
+        try:
+            import pdfplumber
+            with pdfplumber.open(file_path) as pdf:
+                pages_plumb = []
+                for p_idx, p in enumerate(pdf.pages):
+                    pt = p.extract_text() or ""
+                    if pt.strip():
+                        pages_plumb.append(Document(page_content=pt.strip(), metadata={"source": file_path, "page": p_idx + 1}))
+                if pages_plumb:
+                    return pages_plumb
+        except Exception:
+            pass
+
+        # 4. Fallback reading text/strings
+        if not text.strip():
             try:
                 with open(file_path, "r", encoding="utf-8", errors="ignore") as f:
                     text = f.read()
