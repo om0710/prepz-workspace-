@@ -491,8 +491,36 @@ def _save_uploads_metadata_backup():
     except Exception as e:
         print(f"[SAVE UPLOADS BACKUP NOTICE] {e}")
 
+UPLOADS_BUNDLE_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "uploads_data_bundle.json")
+
+def _restore_physical_files_from_bundle():
+    """Ensure all seed files and user uploads exist on disk by decoding the JSON bundle."""
+    if not os.path.exists(UPLOADS_BUNDLE_PATH):
+        return
+    try:
+        import base64
+        with open(UPLOADS_BUNDLE_PATH, "r", encoding="utf-8") as f:
+            bundle = _json.load(f)
+        if not bundle or not isinstance(bundle, dict):
+            return
+        
+        for rel_p, b64_content in bundle.items():
+            try:
+                if not os.path.exists(rel_p) or os.path.getsize(rel_p) == 0:
+                    dir_name = os.path.dirname(rel_p)
+                    if dir_name:
+                        os.makedirs(dir_name, exist_ok=True)
+                    data = base64.b64decode(b64_content)
+                    with open(rel_p, "wb") as out_f:
+                        out_f.write(data)
+            except Exception as fe:
+                print(f"[BUNDLE RESTORE SINGLE FILE NOTICE] {rel_p}: {fe}")
+    except Exception as e:
+        print(f"[RESTORE PHYSICAL BUNDLE NOTICE] {e}")
+
 def _restore_uploads_from_backup():
     """Restore all uploads metadata from JSON backup file so records never disappear on container restarts."""
+    _restore_physical_files_from_bundle()
     if not os.path.exists(UPLOADS_BACKUP_PATH):
         return
     try:

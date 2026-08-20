@@ -2132,6 +2132,24 @@ def render_docx_viewer_html(filename: str, meta: dict, text_docs: list) -> HTMLR
     return HTMLResponse(content=html_content)
 
 from urllib.parse import unquote, quote
+import mimetypes
+
+def get_media_type(filename: str) -> str:
+    fn = (filename or "").lower().strip()
+    if fn.endswith(".pdf"):
+        return "application/pdf"
+    if fn.endswith(".docx"):
+        return "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+    if fn.endswith(".doc"):
+        return "application/msword"
+    if fn.endswith(".png"):
+        return "image/png"
+    if fn.endswith(".jpg") or fn.endswith(".jpeg"):
+        return "image/jpeg"
+    if fn.endswith(".txt"):
+        return "text/plain; charset=utf-8"
+    guessed, _ = mimetypes.guess_type(filename)
+    return guessed or "application/octet-stream"
 
 def get_sanitized_upload_file_path(raw_filename: str, user_email: Optional[str] = None, is_private: Optional[int] = None) -> tuple[str, str]:
     from urllib.parse import unquote
@@ -2141,7 +2159,9 @@ def get_sanitized_upload_file_path(raw_filename: str, user_email: Optional[str] 
     
     # 1. First check if DB knows exact file_path for this scope/user
     meta = get_upload_by_filename(clean_name, user_email=user_email, is_private=is_private) or \
-           get_upload_by_filename(alt_name, user_email=user_email, is_private=is_private)
+           get_upload_by_filename(alt_name, user_email=user_email, is_private=is_private) or \
+           get_upload_by_filename(clean_name) or \
+           get_upload_by_filename(alt_name)
     if meta and meta.get("file_path") and os.path.exists(meta["file_path"]):
         return clean_name, meta["file_path"]
 
@@ -2164,25 +2184,33 @@ def get_sanitized_upload_file_path(raw_filename: str, user_email: Optional[str] 
     if os.path.exists(repo_alt):
         return alt_name, repo_alt
 
-    # 4. Check root uploads/ path (legacy)
+    # 4. Check root uploads/ path
     root_path = os.path.join("uploads", clean_name)
     if os.path.exists(root_path):
         return clean_name, root_path
-        
     root_alt = os.path.join("uploads", alt_name)
     if os.path.exists(root_alt):
         return alt_name, root_alt
 
+    # 5. Recursive deep scan across uploads/ directory for exact or case-insensitive match
+    if os.path.exists("uploads"):
+        for root, _, files in os.walk("uploads"):
+            for f in files:
+                if f.lower() == clean_name.lower() or f.lower() == alt_name.lower():
+                    matched = os.path.join(root, f)
+                    return f, matched
+
     return clean_name, root_path
 
-@app.get("/view/{filename}")
+@app.get("/view/{filename:path}")
 def view_file_route(filename: str, user_email: Optional[str] = None, is_private: Optional[int] = None):
     clean_name, file_path = get_sanitized_upload_file_path(filename, user_email=user_email, is_private=is_private)
     if not os.path.exists(file_path):
-        raise HTTPException(status_code=404, detail=f"File '{filename}' not found.")
+        raise HTTPException(status_code=404, detail=f"File '{filename}' not found on server.")
     
     meta = get_upload_by_filename(clean_name, user_email=user_email, is_private=is_private) or \
-           get_upload_by_filename(filename, user_email=user_email, is_private=is_private)
+           get_upload_by_filename(filename, user_email=user_email, is_private=is_private) or \
+           get_upload_by_filename(clean_name)
     if meta and meta.get("user_email"):
         uploader_email = meta["user_email"]
         if uploader_email and uploader_email != "anonymous@college.edu":
@@ -2200,14 +2228,14 @@ def view_file_route(filename: str, user_email: Optional[str] = None, is_private:
         headers={"Content-Disposition": f'inline; filename="{quote(clean_name)}"'}
     )
 
-@app.get("/files/{filename}")
+@app.get("/files/{filename:path}")
 def get_file(filename: str, user_email: Optional[str] = None, is_private: Optional[int] = None):
     clean_name, file_path = get_sanitized_upload_file_path(filename, user_email=user_email, is_private=is_private)
     if not os.path.exists(file_path):
-        raise HTTPException(status_code=404, detail="File not found.")
+        raise HTTPException(status_code=404, detail=f"File '{filename}' not found on server.")
     
-    # Award +2 contribution points to original uploader
-    meta = get_upload_by_filename(clean_name, user_email=user_email, is_private=is_private)
+    meta = get_upload_by_filename(clean_name, user_email=user_email, is_private=is_private) or \
+           get_upload_by_filename(clean_name)
     if meta and meta.get("user_email"):
         uploader_email = meta["user_email"]
         if uploader_email and uploader_email != "anonymous@college.edu":
@@ -2219,8 +2247,8 @@ def get_file(filename: str, user_email: Optional[str] = None, is_private: Option
         headers={"Content-Disposition": f'inline; filename="{quote(clean_name)}"'}
     )
 
-@app.get("/download/{filename}")
-@app.get("/api/download/{filename}")
+@app.get("/download/{filename:path}")
+@app.get("/api/download/{filename:path}")
 def download_file_route(filename: str, disposition: Optional[str] = "attachment", user_email: Optional[str] = None, is_private: Optional[int] = None):
     try:
         clean_filename, file_path = get_sanitized_upload_file_path(filename, user_email=user_email, is_private=is_private)
@@ -2230,7 +2258,8 @@ def download_file_route(filename: str, disposition: Optional[str] = "attachment"
 
         # Award contribution points (non-blocking)
         try:
-            meta = get_upload_by_filename(clean_filename, user_email=user_email, is_private=is_private)
+            meta = get_upload_by_filename(clean_filename, user_email=user_email, is_private=is_private) or \
+                   get_upload_by_filename(clean_filename)
             if meta and meta.get("user_email"):
                 uploader_email = meta["user_email"]
                 if uploader_email and uploader_email not in ("anonymous@college.edu", "student@college.edu"):

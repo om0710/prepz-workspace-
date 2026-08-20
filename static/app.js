@@ -5800,8 +5800,10 @@ async function openAdminUserDrilldown(encodedEmail, btnElement = null) {
                         <div style="flex: 1; overflow: hidden;">
                             <div style="font-weight: 700; color: #ffffff; font-size: 13px; text-overflow: ellipsis; overflow: hidden; white-space: nowrap;">${up.filename}</div>
                             <div style="font-size: 11.5px; color: #94a3b8; margin-top: 2px;">${up.subject} &bull; ${up.semester} &bull; ${up.file_type} (${Math.round((up.size_bytes || 0) / 1024)} KB)</div>
+                        <div style="display: flex; gap: 6px; align-items: center;">
+                            <a href="/view/${encodeURIComponent(up.filename)}?is_private=${up.is_private ? 1 : 0}&user_email=${encodeURIComponent(prof.email || '')}" target="_blank" class="btn-inspect-user" style="text-decoration:none;">View ↗</a>
+                            <a href="/download/${encodeURIComponent(up.filename)}?disposition=attachment&is_private=${up.is_private ? 1 : 0}&user_email=${encodeURIComponent(prof.email || '')}" target="_blank" class="btn-inspect-user" style="text-decoration:none; background: rgba(255, 255, 255, 0.08); border-color: rgba(255, 255, 255, 0.15);">⤓</a>
                         </div>
-                        <a href="/uploads/${encodeURIComponent(up.filename)}" target="_blank" class="btn-inspect-user" style="text-decoration:none;">View ↗</a>
                     </div>
                 `).join("");
             }
