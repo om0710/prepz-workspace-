@@ -3950,52 +3950,71 @@ function initializeDocPilotApp() {
 
     window.deleteUploadedFile = window.deleteUploadedDocument;
 
-    function initSidebarToggle() {
-        const btnCollapseSidebar = document.querySelector(".sidebar-collapse-btn");
-        const btnExpandSidebar = document.getElementById("btn-expand-sidebar");
+    window.setSidebarState = function(collapsed) {
         const appSidebar = document.querySelector(".app-sidebar");
+        const btnExpandSidebar = document.getElementById("btn-expand-sidebar");
+        const sidebarBackdrop = document.getElementById("sidebar-backdrop");
+        if (!appSidebar) return;
+
+        if (collapsed) {
+            appSidebar.classList.add("sidebar-collapsed");
+            if (btnExpandSidebar) {
+                btnExpandSidebar.classList.remove("hidden");
+                btnExpandSidebar.style.setProperty("display", "flex", "important");
+            }
+            if (sidebarBackdrop) {
+                sidebarBackdrop.classList.add("hidden");
+                sidebarBackdrop.style.setProperty("display", "none", "important");
+            }
+            try { localStorage.setItem("sidebar-collapsed", "true"); } catch(e){}
+        } else {
+            appSidebar.classList.remove("sidebar-collapsed");
+            if (btnExpandSidebar) {
+                btnExpandSidebar.classList.add("hidden");
+                btnExpandSidebar.style.setProperty("display", "none", "important");
+            }
+            if (window.innerWidth <= 768 && sidebarBackdrop) {
+                sidebarBackdrop.classList.remove("hidden");
+                sidebarBackdrop.style.setProperty("display", "block", "important");
+            } else if (sidebarBackdrop) {
+                sidebarBackdrop.classList.add("hidden");
+                sidebarBackdrop.style.setProperty("display", "none", "important");
+            }
+            try { localStorage.setItem("sidebar-collapsed", "false"); } catch(e){}
+        }
+    };
+
+    window.toggleSidebar = function(e) {
+        if (e && typeof e.stopPropagation === "function") {
+            e.stopPropagation();
+        }
+        const appSidebar = document.querySelector(".app-sidebar");
+        if (!appSidebar) return;
+        const isCurrentlyCollapsed = appSidebar.classList.contains("sidebar-collapsed");
+        window.setSidebarState(!isCurrentlyCollapsed);
+    };
+
+    function initSidebarToggle() {
+        const btnCollapseSidebar = document.querySelector(".sidebar-collapse-btn") || document.getElementById("btn-collapse-sidebar");
+        const btnExpandSidebar = document.getElementById("btn-expand-sidebar");
         const sidebarBackdrop = document.getElementById("sidebar-backdrop");
 
-        function setSidebarState(collapsed) {
-            if (!appSidebar) return;
-            if (collapsed) {
-                appSidebar.classList.add("sidebar-collapsed");
-                if (btnExpandSidebar) btnExpandSidebar.classList.remove("hidden");
-                if (sidebarBackdrop) {
-                    sidebarBackdrop.classList.add("hidden");
-                    sidebarBackdrop.style.display = "none";
-                }
-                localStorage.setItem("sidebar-collapsed", "true");
-            } else {
-                appSidebar.classList.remove("sidebar-collapsed");
-                if (btnExpandSidebar) btnExpandSidebar.classList.add("hidden");
-                // ONLY show backdrop overlay on mobile screens (<= 768px)
-                if (window.innerWidth <= 768 && sidebarBackdrop) {
-                    sidebarBackdrop.classList.remove("hidden");
-                    sidebarBackdrop.style.display = "block";
-                } else if (sidebarBackdrop) {
-                    sidebarBackdrop.classList.add("hidden");
-                    sidebarBackdrop.style.display = "none";
-                }
-                localStorage.setItem("sidebar-collapsed", "false");
-            }
-        }
-
         if (btnCollapseSidebar) {
-            btnCollapseSidebar.addEventListener("click", () => setSidebarState(true));
+            btnCollapseSidebar.onclick = (e) => window.toggleSidebar(e);
         }
         if (btnExpandSidebar) {
-            btnExpandSidebar.addEventListener("click", () => setSidebarState(false));
+            btnExpandSidebar.onclick = (e) => window.toggleSidebar(e);
         }
         if (sidebarBackdrop) {
-            sidebarBackdrop.addEventListener("click", () => setSidebarState(true));
+            sidebarBackdrop.onclick = () => window.setSidebarState(true);
         }
 
-        // DEFAULT TO OFF / COLLAPSED on mobile screens (<= 768px) or unless explicitly opened
+        // Default state: Mobile screens default to collapsed; Desktop defaults to OPEN (unless explicitly collapsed)
         const isMobileScreen = window.innerWidth <= 768;
-        const savedState = localStorage.getItem("sidebar-collapsed");
-        const isCollapsed = isMobileScreen || savedState !== "false";
-        setSidebarState(isCollapsed);
+        let savedState = null;
+        try { savedState = localStorage.getItem("sidebar-collapsed"); } catch(e){}
+        const isCollapsed = isMobileScreen ? (savedState !== "false") : (savedState === "true");
+        window.setSidebarState(isCollapsed);
 
         // Auto-close sidebar on mobile when clicking any sidebar navigation link or button
         document.querySelectorAll(".app-sidebar nav a, .app-sidebar nav button, .app-sidebar .sidebar-link, .app-sidebar .btn-sidebar-new-chat, .app-sidebar .thread-item").forEach(el => {
