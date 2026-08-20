@@ -2056,31 +2056,86 @@ function initializeDocPilotApp() {
         if (cleanMd.startsWith("```")) cleanMd = cleanMd.slice(3).trim();
         if (cleanMd.endsWith("```")) cleanMd = cleanMd.slice(0, -3).trim();
 
-        // 2. Parse Markdown with marked.js
+        // 2. Remove backslash escapes like \* and \_
+        cleanMd = cleanMd.replace(/\\([*_`\[\]\(\)])/g, "$1");
+
+        // 3. Ensure double newlines before and after every markdown table block so parser recognizes it
+        cleanMd = cleanMd.replace(/([^\n])\n(\|[^\n]+\|\n\|[\s\-:]+\|\n)/g, "$1\n\n$2");
+        cleanMd = cleanMd.replace(/(\|[^\n]+\|)\n([^\n\|])/g, "$1\n\n$2");
+
+        // 4. Parse Markdown with marked.js
         let html = "";
-        if (typeof marked !== "undefined" && typeof marked.parse === "function") {
-            html = marked.parse(cleanMd);
-        } else {
-            // Fallback manual parser
-            html = cleanMd
-                .replace(/^### (.*$)/gim, '<h3>$1</h3>')
-                .replace(/^## (.*$)/gim, '<h2>$1</h2>')
-                .replace(/^# (.*$)/gim, '<h1>$1</h1>')
-                .replace(/^---$/gim, '<hr>')
-                .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-                .replace(/\*(.*?)\*/g, '<em>$1</em>')
-                .replace(/^\s*[\-\*]\s+(.*$)/gim, '<ul><li>$1</li></ul>')
-                .replace(/<\/ul>\s*<ul>/g, '')
-                .replace(/\n\n/g, '</p><p>')
-                .replace(/\n/g, '<br>');
-            html = `<p>${html}</p>`;
+        try {
+            if (typeof marked !== "undefined") {
+                if (typeof marked.setOptions === "function") {
+                    marked.setOptions({ gfm: true, breaks: false });
+                }
+                if (typeof marked.parse === "function") {
+                    html = marked.parse(cleanMd);
+                } else if (typeof marked === "function") {
+                    html = marked(cleanMd);
+                }
+            }
+        } catch (e) {
+            console.warn("Marked parse warning:", e);
         }
 
-        // 3. Format Frequency & Probability tags as sleek exam badges
-        html = html.replace(/\[\s*Frequency:\s*([^\]]+)\]/gi, '<span class="exam-freq-chip">🎯 Frequency: $1</span>');
+        // Fallback manual table converter if raw pipe table remained unparsed
+        if (!html || (!html.includes("<table") && cleanMd.includes("|---"))) {
+            const lines = cleanMd.split("\n");
+            let inTable = false;
+            let tableHtml = "";
+            let processedLines = [];
+
+            for (let i = 0; i < lines.length; i++) {
+                const line = lines[i].trim();
+                if (line.startsWith("|") && line.endsWith("|")) {
+                    if (!inTable) {
+                        inTable = true;
+                        tableHtml = '<div class="table-responsive"><table class="exam-insights-table"><thead><tr>';
+                        const headers = line.split("|").filter((_, idx, arr) => idx > 0 && idx < arr.length - 1);
+                        headers.forEach(h => { tableHtml += `<th>${h.trim()}</th>`; });
+                        tableHtml += '</tr></thead><tbody>';
+                        i++; // Skip delimiter row |:---|:---|
+                        continue;
+                    } else {
+                        const cells = line.split("|").filter((_, idx, arr) => idx > 0 && idx < arr.length - 1);
+                        tableHtml += '<tr>';
+                        cells.forEach((c, cIdx) => {
+                            let cContent = c.trim();
+                            if (cIdx === 1) cContent = `<strong>${cContent}</strong>`;
+                            else if (cIdx === 2) cContent = `<span class="exam-prob-chip" style="margin:0;">⚡ ${cContent}</span>`;
+                            tableHtml += `<td>${cContent}</td>`;
+                        });
+                        tableHtml += '</tr>';
+                    }
+                } else {
+                    if (inTable) {
+                        inTable = false;
+                        tableHtml += '</tbody></table></div>';
+                        processedLines.push(tableHtml);
+                    }
+                    processedLines.push(line);
+                }
+            }
+            if (inTable) {
+                tableHtml += '</tbody></table></div>';
+                processedLines.push(tableHtml);
+            }
+            cleanMd = processedLines.join("\n\n");
+            if (typeof marked !== "undefined" && typeof marked.parse === "function") {
+                html = marked.parse(cleanMd);
+            }
+        }
+
+        // 5. Format Frequency, Probability & Marks Badges into Clean UI Chips
+        html = html.replace(/\[\s*Frequency:\s*([^\]]+)\]/gi, '<div class="exam-badge-row"><span class="exam-freq-chip">🎯 Frequency: $1</span></div>');
         html = html.replace(/\[\s*Probability:\s*([^\]]+)\]/gi, '<span class="exam-prob-chip">⚡ Probability: $1</span>');
         html = html.replace(/`\[(\d+)\s*Marks?\]`/gi, '<span class="exam-marks-badge">[$1 Marks]</span>');
         html = html.replace(/\[(\d+)\s*Marks?\]/gi, '<span class="exam-marks-badge">[$1 Marks]</span>');
+
+        // Style questions Q1, Q2, etc.
+        html = html.replace(/<strong>\[?(Q\d+)\]?<\/strong>/gi, '<span class="exam-q-num">$1</span>');
 
         return html;
     }
