@@ -22,9 +22,34 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <!-- GIS loaded synchronously so it's ready before any user click -->
     <script src="https://accounts.google.com/gsi/client"></script>
-    <link rel="stylesheet" href="style.css?v=20260821_auth_v22">
+    <link rel="stylesheet" href="style.css?v=20260821_auth_v23">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <script>
+        // Instant early auth check before body rendering
+        (function() {
+            try {
+                var params = new URLSearchParams(window.location.search);
+                var authData = params.get("auth_data");
+                if (authData) {
+                    var u = JSON.parse(atob(authData));
+                    localStorage.setItem("docpilot-user", JSON.stringify(u));
+                    window.currentUser = u;
+                }
+                var cached = localStorage.getItem("docpilot-user");
+                if (cached) {
+                    var parsed = JSON.parse(cached);
+                    if (parsed && parsed.email) {
+                        window.currentUser = parsed;
+                        document.documentElement.classList.add("logged-in");
+                    }
+                }
+            } catch(e) {}
+        })();
+    </script>
+    <style>
+        html.logged-in #landing-page-view { display: none !important; }
+        html.logged-in #chatbot-app-view { display: flex !important; }
+    </style>
     <script>
         function switchAuthTab(tab) {
             var tabLogin = document.getElementById("tab-login");
@@ -1591,6 +1616,6 @@
     </div>
 
     <!-- Main JavaScript Link -->
-    <script src="app.js?v=20260821_auth_v22"></script>
+    <script src="app.js?v=20260821_auth_v23"></script>
 </body>
 </html>

@@ -188,6 +188,68 @@ try {
 // Google OAuth client ID
 var GOOGLE_CLIENT_ID = "585299422541-edqtcaaoljev3op2cffl98jfvr8asn56.apps.googleusercontent.com";
 
+// Top-Level Global Auth Controller & View Manager
+window.loginUser = function(user) {
+    if (!user || !user.email) return;
+    window.currentUser = user;
+    if (typeof window.syncAppCurrentUser === "function") {
+        window.syncAppCurrentUser(user);
+    }
+
+    // Persist user session to localStorage
+    const userData = JSON.stringify(user);
+    try {
+        localStorage.setItem("docpilot-user", userData);
+    } catch(e) {}
+
+    // Immediately apply logged-in class to html element
+    if (document.documentElement) {
+        document.documentElement.classList.add("logged-in");
+    }
+
+    const landingPageView = document.getElementById("landing-page-view");
+    const chatbotAppView = document.getElementById("chatbot-app-view");
+    const navPinnedLibrary = document.getElementById("nav-pinned-library");
+
+    const avatarUrl = user.avatar_url || user.picture || `https://api.dicebear.com/7.x/bottts/svg?seed=${encodeURIComponent(user.email || 'Student')}`;
+    const displayName = user.name || (user.email ? user.email.split("@")[0].replace(/[._-]/g, ' ').replace(/\b\w/g, c => c.toUpperCase()) : "Student User");
+    const displayEmail = user.email || "student@college.edu";
+
+    const userAvatarEls = document.querySelectorAll("#sidebar-user-avatar, .sidebar-user-avatar, #user-avatar, .header-user-avatar, #header-user-avatar, #dropdown-user-avatar");
+    const userNameEls = document.querySelectorAll("#sidebar-user-name, .sidebar-user-name, #user-name, .header-user-name, #header-user-name, #dropdown-user-name");
+    const userEmailEls = document.querySelectorAll("#sidebar-user-email, .sidebar-user-email, #user-email, .header-user-email, #header-user-email, #dropdown-user-email");
+
+    userAvatarEls.forEach(el => {
+        if (el.tagName === "IMG") {
+            el.src = avatarUrl;
+        } else {
+            el.style.backgroundImage = `url('${avatarUrl}')`;
+            el.innerHTML = "";
+        }
+    });
+
+    userNameEls.forEach(el => { el.textContent = displayName; });
+    userEmailEls.forEach(el => { el.textContent = displayEmail; });
+
+    if (navPinnedLibrary) navPinnedLibrary.style.display = "flex";
+
+    // EXPLICIT VIEW SWITCH TO WORKSPACE DASHBOARD
+    if (landingPageView) {
+        landingPageView.classList.add("hidden");
+        landingPageView.setAttribute("style", "display: none !important;");
+    }
+    if (chatbotAppView) {
+        chatbotAppView.classList.remove("hidden");
+        chatbotAppView.setAttribute("style", "display: flex !important;");
+    }
+
+    if (typeof fetchThreads === "function") fetchThreads();
+    if (typeof fetchIndexedFiles === "function") fetchIndexedFiles();
+    if (typeof fetchUserStats === "function") fetchUserStats();
+    if (typeof checkAndEnableAdminUI === "function") checkAndEnableAdminUI();
+    if (typeof startHeartbeatDaemon === "function") startHeartbeatDaemon();
+};
+
 // Check for auth_data on page load (from backend Google OAuth callback)
 (function() {
     try {
@@ -272,77 +334,12 @@ window.handleGuestLogin = function(e) {
     window.loginUser(demoUser);
 };
 
-// Top-Level Global Auth Controller & View Manager
-window.loginUser = function(user) {
-    if (!user || !user.email) return;
-    window.currentUser = user;
-    if (typeof window.syncAppCurrentUser === "function") {
-        window.syncAppCurrentUser(user);
-    }
-
-    // Persist user session to localStorage
-    const userData = JSON.stringify(user);
-    try {
-        localStorage.setItem("docpilot-user", userData);
-    } catch(e) {}
-
-    const landingPageView = document.getElementById("landing-page-view");
-    const chatbotAppView = document.getElementById("chatbot-app-view");
-    const navPinnedLibrary = document.getElementById("nav-pinned-library");
-
-    const avatarUrl = user.avatar_url || user.picture || `https://api.dicebear.com/7.x/bottts/svg?seed=${encodeURIComponent(user.email || 'Student')}`;
-    const displayName = user.name || (user.email ? user.email.split("@")[0].replace(/[._-]/g, ' ').replace(/\b\w/g, c => c.toUpperCase()) : "Student User");
-    const displayEmail = user.email || "student@college.edu";
-
-    const userAvatarEls = document.querySelectorAll("#sidebar-user-avatar, .sidebar-user-avatar, #user-avatar, .header-user-avatar, #header-user-avatar, #dropdown-user-avatar");
-    const userNameEls = document.querySelectorAll("#sidebar-user-name, .sidebar-user-name, #user-name, .header-user-name, #header-user-name, #dropdown-user-name");
-    const userEmailEls = document.querySelectorAll("#sidebar-user-email, .sidebar-user-email, #user-email, .header-user-email, #header-user-email, #dropdown-user-email");
-
-    userAvatarEls.forEach(el => {
-        if (el.tagName === "IMG") {
-            el.src = avatarUrl;
-        } else {
-            el.style.backgroundImage = `url('${avatarUrl}')`;
-            el.innerHTML = "";
-        }
-    });
-
-    userNameEls.forEach(el => { el.textContent = displayName; });
-    userEmailEls.forEach(el => { el.textContent = displayEmail; });
-
-    if (navPinnedLibrary) navPinnedLibrary.style.display = "flex";
-
-    // EXPLICIT VIEW SWITCH TO WORKSPACE DASHBOARD
-    if (landingPageView) {
-        landingPageView.classList.add("hidden");
-        landingPageView.setAttribute("style", "display: none !important;");
-    }
-    if (chatbotAppView) {
-        chatbotAppView.classList.remove("hidden");
-        chatbotAppView.setAttribute("style", "display: flex !important;");
-    }
-
-    if (typeof fetchThreads === "function") fetchThreads();
-    if (typeof fetchIndexedFiles === "function") fetchIndexedFiles();
-    if (typeof fetchUserStats === "function") fetchUserStats();
-    if (typeof checkAndEnableAdminUI === "function") checkAndEnableAdminUI();
-    if (typeof startHeartbeatDaemon === "function") startHeartbeatDaemon();
-
-    // Check if new user should be shown the interactive feature tour
-    setTimeout(function() {
-        var userEmail = (user && user.email) ? user.email.toLowerCase() : "guest";
-        var hasSeenTour = localStorage.getItem("bu_prepz_tour_seen_" + userEmail);
-        if (!user.has_seen_onboarding && !hasSeenTour) {
-            if (typeof window.openProductTour === "function") {
-                window.openProductTour();
-            }
-        }
-    }, 600);
-};
-
 window.showLoginScreen = function() {
     console.log("[AUTH] showLoginScreen() called");
     window.currentUser = null;
+    if (document.documentElement) {
+        document.documentElement.classList.remove("logged-in");
+    }
     const landingPageView = document.getElementById("landing-page-view");
     const chatbotAppView = document.getElementById("chatbot-app-view");
     const navPinnedLibrary = document.getElementById("nav-pinned-library");
