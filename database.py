@@ -408,6 +408,37 @@ def init_user_db():
     """)
 
     cursor.execute("""
+        CREATE TABLE IF NOT EXISTS user_sessions (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_email TEXT NOT NULL,
+            user_name TEXT,
+            session_id TEXT NOT NULL,
+            session_start TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            last_ping TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            duration_seconds INTEGER DEFAULT 30,
+            ip_address TEXT,
+            is_active INTEGER DEFAULT 1
+        )
+    """)
+
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS user_activity_logs (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_email TEXT NOT NULL,
+            user_name TEXT,
+            action_type TEXT NOT NULL,
+            action_details TEXT,
+            timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    """)
+
+    try:
+        cursor.execute("CREATE INDEX IF NOT EXISTS idx_user_sessions_lookup ON user_sessions(lower(user_email), session_id, last_ping)")
+        cursor.execute("CREATE INDEX IF NOT EXISTS idx_user_activity_lookup ON user_activity_logs(lower(user_email), timestamp)")
+    except Exception:
+        pass
+
+    cursor.execute("""
         DELETE FROM users 
         WHERE provider = 'seeded' 
            OR lower(email) IN (
@@ -2618,6 +2649,390 @@ def delete_upload_record(filename: str, user_email: Optional[str] = None, is_pri
             c.commit()
         _save_uploads_metadata_backup()
     db_retry(_do)
+
+# ── Admin & Creator Analytics Functions ────────────────────────────────────────
+
+ADMIN_EMAILS = {
+    "ombansal221@gmail.com",
+    "s24cseu1694@bennett.edu.in",
+    "om0710@gmail.com",
+    "om.bansal@bennett.edu.in",
+    "admin@prepz.ai"
+}
+
+def is_admin_user(email: Optional[str]) -> bool:
+    if not email:
+        return False
+    e = email.strip().lower()
+    if e in ADMIN_EMAILS:
+        return True
+    env_admins = os.environ.get("ADMIN_EMAILS", "")
+    if env_admins:
+        allowed = [x.strip().lower() for x in env_admins.split(",") if x.strip()]
+        if e in allowed:
+            return True
+    return False
+
+def record_session_heartbeat(user_email: str, user_name: str = "", session_id: str = "", ip_address: str = "") -> dict:
+    if not user_email:
+        return {"success": False, "message": "Email required"}
+    clean_email = user_email.strip().lower()
+    clean_name = (user_name or clean_email.split("@")[0].replace(".", " ")).strip().title()
+    clean_session = (session_id or f"sess_{int(time.time())}_{clean_email}").strip()
+    now_iso = datetime.now().isoformat()
+    today_str = datetime.now().strftime("%Y-%m-%d")
+
+    def _do():
+        with get_db() as c:
+            cur = c.cursor()
+            # 1. Check if session exists
+            cur.execute("""
+                SELECT id, last_ping, duration_seconds 
+                FROM user_sessions 
+                WHERE session_id = ? AND lower(user_email) = ?
+                ORDER BY id DESC LIMIT 1
+            """, (clean_session, clean_email))
+            row = cur.fetchone()
+
+            if row:
+                sess_id, last_p, dur = row
+                try:
+                    last_dt = datetime.fromisoformat(last_p)
+                    diff_sec = int((datetime.now() - last_dt).total_seconds())
+                    increment = min(max(diff_sec, 5), 60)
+                except Exception:
+                    increment = 30
+                new_dur = (dur or 0) + increment
+                cur.execute("""
+                    UPDATE user_sessions 
+                    SET last_ping = ?, duration_seconds = ?, is_active = 1 
+                    WHERE id = ?
+                """, (now_iso, new_dur, sess_id))
+            else:
+                cur.execute("""
+                    INSERT INTO user_sessions (user_email, user_name, session_id, session_start, last_ping, duration_seconds, ip_address, is_active)
+                    VALUES (?, ?, ?, ?, ?, 30, ?, 1)
+                """, (clean_email, clean_name, clean_session, now_iso, now_iso, ip_address))
+
+            # 2. Update users table last active & login
+            cur.execute("""
+                UPDATE users 
+                SET last_active_date = ?, last_login = ? 
+                WHERE lower(email) = ?
+            """, (today_str, now_iso, clean_email))
+
+            c.commit()
+            return {"success": True, "session_id": clean_session}
+    return db_retry(_do)
+
+def log_user_activity(user_email: str, user_name: str = "", action_type: str = "GENERAL", action_details: str = "") -> None:
+    if not user_email:
+        return
+    clean_email = user_email.strip().lower()
+    clean_name = (user_name or clean_email.split("@")[0].replace(".", " ")).strip().title()
+    now_iso = datetime.now().isoformat()
+
+    def _do():
+        with get_db() as c:
+            cur = c.cursor()
+            cur.execute("""
+                INSERT INTO user_activity_logs (user_email, user_name, action_type, action_details, timestamp)
+                VALUES (?, ?, ?, ?, ?)
+            """, (clean_email, clean_name, action_type.strip().upper(), action_details, now_iso))
+            c.commit()
+    try:
+        db_retry(_do)
+    except Exception as e:
+        print(f"[LOG ACTIVITY NOTICE] {e}")
+
+def get_admin_dashboard_stats(admin_email: str) -> dict:
+    if not is_admin_user(admin_email):
+        return {"success": False, "error": "Unauthorized Access. Admin privileges required."}
+
+    def _do():
+        with get_db() as c:
+            cur = c.cursor()
+            today_str = datetime.now().strftime("%Y-%m-%d")
+            # 1. Total Registered Users
+            cur.execute("SELECT COUNT(*) FROM users WHERE provider != 'seeded'")
+            total_users = cur.fetchone()[0]
+
+            # 2. All-Time Platform Dwell Time in Seconds
+            cur.execute("SELECT COALESCE(SUM(duration_seconds), 0) FROM user_sessions")
+            total_dwell_sec = cur.fetchone()[0]
+
+            # 3. Today Dwell Time in Seconds
+            cur.execute("SELECT COALESCE(SUM(duration_seconds), 0) FROM user_sessions WHERE date(last_ping) = date('now') OR date(session_start) = date('now')")
+            today_dwell_sec = cur.fetchone()[0]
+
+            # 4. Total Uploads
+            cur.execute("SELECT COUNT(*) FROM user_uploads")
+            total_uploads = cur.fetchone()[0]
+
+            # 5. Total Actions
+            cur.execute("SELECT COUNT(*) FROM user_activity_logs")
+            total_actions = cur.fetchone()[0]
+
+            # 6. Active Users Today (Unique emails from sessions or logs today)
+            cur.execute("""
+                SELECT COUNT(DISTINCT lower(user_email)) FROM (
+                    SELECT lower(user_email) AS user_email FROM user_sessions WHERE date(last_ping) = date('now') OR date(session_start) = date('now')
+                    UNION
+                    SELECT lower(user_email) AS user_email FROM user_activity_logs WHERE date(timestamp) = date('now')
+                    UNION
+                    SELECT lower(email) AS user_email FROM users WHERE last_active_date = date('now')
+                )
+            """)
+            active_today = cur.fetchone()[0]
+
+            # 7. Online Now Users (Pings within last 90 seconds)
+            cur.execute("""
+                SELECT DISTINCT lower(user_email) FROM user_sessions 
+                WHERE strftime('%s', 'now') - strftime('%s', last_ping) <= 90
+            """)
+            online_emails = set([r[0] for r in cur.fetchall() if r[0]])
+            online_now_count = len(online_emails)
+
+            # 8. All Users Directory with Dwell Times & Uploads
+            cur.execute("""
+                SELECT id, name, email, avatar_url, provider, created_at, 
+                       COALESCE(contribution_score, 0), COALESCE(current_streak, 0), last_active_date, last_login
+                FROM users 
+                WHERE provider != 'seeded'
+                ORDER BY id DESC
+            """)
+            user_rows = cur.fetchall()
+
+            # Pre-fetch user dwell times
+            cur.execute("""
+                SELECT lower(user_email), 
+                       SUM(duration_seconds) AS total_sec,
+                       SUM(CASE WHEN date(last_ping) = date('now') OR date(session_start) = date('now') THEN duration_seconds ELSE 0 END) AS today_sec,
+                       MAX(last_ping) AS max_ping
+                FROM user_sessions 
+                GROUP BY lower(user_email)
+            """)
+            sess_map = {}
+            for r in cur.fetchall():
+                sess_map[r[0]] = {"total_sec": r[1] or 0, "today_sec": r[2] or 0, "max_ping": r[3]}
+
+            # Pre-fetch user uploads
+            cur.execute("""
+                SELECT id, filename, lower(user_email), user_name, uploaded_at, size_bytes, 
+                       subject, semester, file_type, exam_type, is_private 
+                FROM user_uploads 
+                ORDER BY id DESC
+            """)
+            uploads_map = {}
+            for r in cur.fetchall():
+                u_em = (r[2] or "").strip().lower()
+                if u_em not in uploads_map:
+                    uploads_map[u_em] = []
+                uploads_map[u_em].append({
+                    "id": r[0],
+                    "filename": r[1],
+                    "uploaded_at": r[4],
+                    "size_bytes": r[5] or 0,
+                    "subject": r[6] or "General Engineering",
+                    "semester": r[7] or "Semester 1",
+                    "file_type": r[8] or "Notes",
+                    "exam_type": r[9] or "Other",
+                    "is_private": r[10] or 0
+                })
+
+            # Pre-fetch user activity counts
+            cur.execute("SELECT lower(user_email), COUNT(*) FROM user_activity_logs GROUP BY lower(user_email)")
+            act_counts = dict(cur.fetchall())
+
+            users_list = []
+            for u in user_rows:
+                u_email = (u[2] or "").strip().lower()
+                s_data = sess_map.get(u_email, {"total_sec": 0, "today_sec": 0, "max_ping": None})
+                u_uploads = uploads_map.get(u_email, [])
+                is_on = u_email in online_emails
+
+                # Determine last active timestamp
+                last_act = s_data["max_ping"] or u[9] or u[8] or u[5]
+
+                users_list.append({
+                    "id": u[0],
+                    "name": (u[1] or u_email.split("@")[0]).title(),
+                    "email": u_email,
+                    "avatar_url": u[3] or f"https://api.dicebear.com/7.x/bottts/svg?seed={u_email}",
+                    "provider": u[4] or "email",
+                    "created_at": u[5],
+                    "contribution_score": u[6],
+                    "current_streak": max(u[7], 1),
+                    "is_online": is_on,
+                    "last_active": last_act,
+                    "today_duration_seconds": s_data["today_sec"],
+                    "total_duration_seconds": s_data["total_sec"],
+                    "uploads_count": len(u_uploads),
+                    "uploads": u_uploads,
+                    "actions_count": act_counts.get(u_email, 0)
+                })
+
+            # Sort users: Online users first, then by today's time spent, then by total uploads
+            users_list.sort(key=lambda x: (1 if x["is_online"] else 0, x["today_duration_seconds"], x["total_duration_seconds"], x["uploads_count"]), reverse=True)
+
+            # 9. Recent Activity Stream (Last 50 actions)
+            cur.execute("""
+                SELECT id, user_email, user_name, action_type, action_details, timestamp 
+                FROM user_activity_logs 
+                ORDER BY id DESC LIMIT 50
+            """)
+            recent_logs = []
+            for r in cur.fetchall():
+                recent_logs.append({
+                    "id": r[0],
+                    "user_email": r[1],
+                    "user_name": r[2] or r[1].split("@")[0].title(),
+                    "action_type": r[3],
+                    "action_details": r[4],
+                    "timestamp": r[5]
+                })
+
+            return {
+                "success": True,
+                "kpis": {
+                    "total_registered_users": total_users,
+                    "active_today": active_today,
+                    "online_now": online_now_count,
+                    "total_platform_dwell_time_seconds": total_dwell_sec,
+                    "today_platform_dwell_time_seconds": today_dwell_sec,
+                    "total_uploads": total_uploads,
+                    "total_actions": total_actions
+                },
+                "users": users_list,
+                "recent_activity": recent_logs
+            }
+    return db_retry(_do)
+
+def get_admin_user_drilldown(admin_email: str, target_user_email: str) -> dict:
+    if not is_admin_user(admin_email):
+        return {"success": False, "error": "Unauthorized Access."}
+    if not target_user_email:
+        return {"success": False, "error": "Target user email required"}
+    clean_target = target_user_email.strip().lower()
+
+    def _do():
+        with get_db() as c:
+            cur = c.cursor()
+            # User profile
+            cur.execute("""
+                SELECT id, name, email, avatar_url, provider, created_at, contribution_score, current_streak, last_active_date, last_login 
+                FROM users WHERE lower(email) = ?
+            """, (clean_target,))
+            u_row = cur.fetchone()
+            if not u_row:
+                user_prof = {
+                    "name": clean_target.split("@")[0].title(),
+                    "email": clean_target,
+                    "avatar_url": f"https://api.dicebear.com/7.x/bottts/svg?seed={clean_target}",
+                    "provider": "email",
+                    "created_at": None,
+                    "contribution_score": 0,
+                    "current_streak": 1
+                }
+            else:
+                user_prof = {
+                    "id": u_row[0],
+                    "name": u_row[1] or clean_target.split("@")[0].title(),
+                    "email": u_row[2],
+                    "avatar_url": u_row[3] or f"https://api.dicebear.com/7.x/bottts/svg?seed={clean_target}",
+                    "provider": u_row[4],
+                    "created_at": u_row[5],
+                    "contribution_score": u_row[6] or 0,
+                    "current_streak": max(u_row[7] or 1, 1),
+                    "last_active_date": u_row[8],
+                    "last_login": u_row[9]
+                }
+
+            # Sessions
+            cur.execute("""
+                SELECT id, session_id, session_start, last_ping, duration_seconds, ip_address 
+                FROM user_sessions 
+                WHERE lower(user_email) = ? 
+                ORDER BY id DESC LIMIT 50
+            """, (clean_target,))
+            sessions = []
+            for r in cur.fetchall():
+                sessions.append({
+                    "id": r[0],
+                    "session_id": r[1],
+                    "session_start": r[2],
+                    "last_ping": r[3],
+                    "duration_seconds": r[4] or 0,
+                    "ip_address": r[5]
+                })
+
+            # Uploads
+            cur.execute("""
+                SELECT id, filename, uploaded_at, size_bytes, subject, semester, file_type, exam_type, is_private, file_path 
+                FROM user_uploads 
+                WHERE lower(user_email) = ? 
+                ORDER BY id DESC
+            """, (clean_target,))
+            uploads = []
+            for r in cur.fetchall():
+                uploads.append({
+                    "id": r[0],
+                    "filename": r[1],
+                    "uploaded_at": r[2],
+                    "size_bytes": r[3] or 0,
+                    "subject": r[4] or "General",
+                    "semester": r[5] or "Semester 1",
+                    "file_type": r[6] or "Notes",
+                    "exam_type": r[7] or "Other",
+                    "is_private": r[8] or 0,
+                    "file_path": r[9]
+                })
+
+            # Activity logs
+            cur.execute("""
+                SELECT id, action_type, action_details, timestamp 
+                FROM user_activity_logs 
+                WHERE lower(user_email) = ? 
+                ORDER BY id DESC LIMIT 100
+            """, (clean_target,))
+            logs = []
+            for r in cur.fetchall():
+                logs.append({
+                    "id": r[0],
+                    "action_type": r[1],
+                    "action_details": r[2],
+                    "timestamp": r[3]
+                })
+
+            # Weakness profile
+            cur.execute("""
+                SELECT concept_name, subject, mastery_percentage, impact_score, confusion_contexts, last_confused_at 
+                FROM concept_weakness 
+                WHERE lower(user_email) = ? 
+                ORDER BY id DESC LIMIT 20
+            """, (clean_target,))
+            weaknesses = []
+            for r in cur.fetchall():
+                weaknesses.append({
+                    "concept": r[0],
+                    "subject": r[1] or "General",
+                    "mastery_percentage": r[2] or 0.0,
+                    "impact_score": r[3] or 0.0,
+                    "confusion_contexts": r[4] or "[]",
+                    "recorded_at": r[5]
+                })
+
+            total_sec = sum(s["duration_seconds"] for s in sessions)
+            return {
+                "success": True,
+                "profile": user_prof,
+                "total_duration_seconds": total_sec,
+                "sessions": sessions,
+                "uploads": uploads,
+                "activity_logs": logs,
+                "concept_weaknesses": weaknesses
+            }
+    return db_retry(_do)
 
 def _row_to_upload_dict(row):
     if not row:

@@ -885,6 +885,36 @@ async def seed_channels_endpoint(admin_token: Optional[str] = None):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+class HeartbeatRequest(BaseModel):
+    session_id: Optional[str] = None
+    user_email: str
+    user_name: Optional[str] = ""
+
+@app.post("/api/analytics/heartbeat")
+async def record_heartbeat_endpoint(req: HeartbeatRequest, request: Request):
+    """Receive periodic client heartbeat and compute active screen engagement / dwell time."""
+    ip = request.client.host if request.client else ""
+    return record_session_heartbeat(
+        user_email=req.user_email,
+        user_name=req.user_name or "",
+        session_id=req.session_id or "",
+        ip_address=ip
+    )
+
+@app.get("/api/admin/dashboard")
+async def get_admin_dashboard_endpoint(admin_email: str):
+    """Retrieve full creator / super-admin platform intelligence dashboard."""
+    if not is_admin_user(admin_email):
+        raise HTTPException(status_code=403, detail="Unauthorized Access. Only verified creator/admins can view this dashboard.")
+    return get_admin_dashboard_stats(admin_email)
+
+@app.get("/api/admin/user-drilldown")
+async def get_admin_user_drilldown_endpoint(admin_email: str, user_email: str):
+    """Retrieve individual student activity timeline, sessions, uploads, and queries."""
+    if not is_admin_user(admin_email):
+        raise HTTPException(status_code=403, detail="Unauthorized Access.")
+    return get_admin_user_drilldown(admin_email, user_email)
+
 @app.get("/api/admin/users")
 async def get_admin_users_analytics_endpoint():
     """Retrieve list and total count of all registered / logged in students."""
@@ -998,6 +1028,9 @@ Return ONLY valid JSON. No markdown code blocks, no preamble, no backticks."""
                 )
             except Exception as dbe:
                 print(f"[RECORD WEAKNESS ERROR] {dbe}")
+
+        if req.user_email:
+            log_user_activity(req.user_email, "", "CONCEPT_ANALYSIS", f"Diagnosed concept '{raw_text[:60]}' under {req.subject or 'General'}")
 
         return {"success": True, "analysis": data}
     except Exception as e:
@@ -1182,7 +1215,8 @@ from database import (
     get_concept_dependency_graph, detect_concept_weakness, record_concept_weakness,
     create_weakness_profile, generate_adaptive_practice, submit_practice_answer,
     complete_practice_session, verify_user_ownership, encrypt_sensitive, decrypt_sensitive,
-    get_users_admin_analytics
+    get_users_admin_analytics, record_session_heartbeat, log_user_activity,
+    get_admin_dashboard_stats, get_admin_user_drilldown, is_admin_user
 )
 from fastapi import Form
 from typing import Optional
@@ -1935,6 +1969,14 @@ async def upload_pdf(
         if user_email and user_email != "anonymous@college.edu":
             add_contribution_points(user_email, 10)
             update_user_activity(user_email)
+
+        scope_lbl = "Private Workspace" if is_priv_int == 1 else "Course Repo"
+        log_user_activity(
+            user_email=user_email,
+            user_name=user_name,
+            action_type="UPLOAD_DOC",
+            action_details=f"Uploaded '{filename_clean}' [{scope_lbl}] ({file_type}) for {subject} - {semester}"
+        )
 
         return {
             "status": "success",
@@ -2734,6 +2776,14 @@ Format the entire output in clean, professional Markdown with clear section head
         if req.user_email and req.user_email != "anonymous@college.edu":
             add_contribution_points(req.user_email, 5)
             update_user_activity(req.user_email)
+
+        if req.user_email:
+            log_user_activity(
+                user_email=req.user_email,
+                user_name="",
+                action_type="PREDICT_PAPER",
+                action_details=f"Generated Predicted Paper for {subject} ({semester}) [{exam_type}]"
+            )
 
         return {
             "success": True,

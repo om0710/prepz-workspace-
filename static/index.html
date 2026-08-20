@@ -381,6 +381,10 @@
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="3"/><line x1="12" y1="2" x2="12" y2="5"/><line x1="12" y1="19" x2="12" y2="22"/><line x1="2" y1="12" x2="5" y2="12"/><line x1="19" y1="12" x2="22" y2="12"/></svg>
                     <span>Concept Profiler</span>
                 </button>
+                <button id="nav-creator-dashboard-btn" class="sidebar-link hidden" title="Creator & Super-Admin Control Hub" onclick="showCreatorDashboardState()" style="display: none; border-left: 3px solid #ff5722;">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#ff5722" stroke-width="2.5"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+                    <span style="color: #ff8a65; font-weight: 700;">⚡ Creator Hub</span>
+                </button>
                 <button id="nav-new-chat-btn" class="sidebar-link" title="Knowledge Builder" onclick="if(window.showChatState){window.showChatState();}">
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14" stroke-linecap="round"/></svg>
                     <span>Knowledge Builder</span>
@@ -932,6 +936,135 @@
                         </div>
                     </div>
 
+                    <!-- Creator & Super-Admin Analytics Control Hub -->
+                    <div id="creator-dashboard-container" class="creator-dashboard-container hidden" style="display: none;">
+                        <div class="creator-header-banner">
+                            <div class="creator-header-left">
+                                <div class="creator-badge-pill">
+                                    <span class="pulse-indicator"></span>
+                                    <span id="creator-live-status-text">LIVE PLATFORM TELEMETRY &amp; ENGAGEMENT</span>
+                                </div>
+                                <h2>⚡ Creator Intelligence &amp; User Control Hub</h2>
+                                <p>Real-time telemetry tracking active student dwell times, daily logins, uploads, AI paper predictions, and deep user activity inspection.</p>
+                            </div>
+                            <div class="creator-header-actions">
+                                <button type="button" id="btn-creator-refresh" class="btn-creator-action" onclick="fetchAndRenderAdminDashboard()">
+                                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M23 4v6h-6M1 20v-6h6M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
+                                    <span>Live Refresh</span>
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- 4 Core Metric KPI Cards -->
+                        <div class="creator-kpi-grid">
+                            <div class="creator-kpi-card card-online">
+                                <div class="kpi-icon-wrap icon-neon-green">
+                                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
+                                </div>
+                                <div class="kpi-info">
+                                    <span class="kpi-label">Online Right Now</span>
+                                    <div class="kpi-value-row">
+                                        <h3 id="kpi-online-now">0</h3>
+                                        <span class="live-dot-pulse"></span>
+                                    </div>
+                                    <span class="kpi-subtext">Active in last 90s</span>
+                                </div>
+                            </div>
+
+                            <div class="creator-kpi-card card-active-today">
+                                <div class="kpi-icon-wrap icon-neon-amber">
+                                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="2.5"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+                                </div>
+                                <div class="kpi-info">
+                                    <span class="kpi-label">Active Students Today</span>
+                                    <h3 id="kpi-active-today">0</h3>
+                                    <span class="kpi-subtext" id="kpi-total-registered-sub">Total: 0 registered</span>
+                                </div>
+                            </div>
+
+                            <div class="creator-kpi-card card-dwell-time">
+                                <div class="kpi-icon-wrap icon-neon-cyan">
+                                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#06b6d4" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                                </div>
+                                <div class="kpi-info">
+                                    <span class="kpi-label">Platform Dwell Time</span>
+                                    <h3 id="kpi-dwell-time">0h 0m</h3>
+                                    <span class="kpi-subtext" id="kpi-today-dwell-sub">Today: 0m engagement</span>
+                                </div>
+                            </div>
+
+                            <div class="creator-kpi-card card-uploads">
+                                <div class="kpi-icon-wrap icon-neon-purple">
+                                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#a855f7" stroke-width="2.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><line x1="9" y1="15" x2="15" y2="15"/></svg>
+                                </div>
+                                <div class="kpi-info">
+                                    <span class="kpi-label">Total Documents</span>
+                                    <h3 id="kpi-total-uploads">0</h3>
+                                    <span class="kpi-subtext" id="kpi-total-actions-sub">0 total platform actions</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Main Split Grid: Student Directory + Live Stream -->
+                        <div class="creator-body-grid">
+                            <!-- Left: User Directory Table -->
+                            <div class="creator-users-section">
+                                <div class="creator-section-header">
+                                    <div class="section-title-wrap">
+                                        <h3>👥 Registered Student Directory &amp; Engagement</h3>
+                                        <span id="creator-users-count-badge" class="count-badge">0 Students</span>
+                                    </div>
+                                    <div class="creator-search-filter-wrap">
+                                        <div class="creator-search-box">
+                                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                                            <input type="text" id="admin-user-search-input" placeholder="Search by name or email..." oninput="filterAdminUserTable()">
+                                        </div>
+                                        <div class="filter-pills-row">
+                                            <button type="button" class="filter-pill active" onclick="setAdminUserFilter('all', this)">All</button>
+                                            <button type="button" class="filter-pill" onclick="setAdminUserFilter('online', this)">🟢 Online</button>
+                                            <button type="button" class="filter-pill" onclick="setAdminUserFilter('uploads', this)">📁 Has Uploads</button>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="creator-table-card">
+                                    <div class="creator-table-responsive">
+                                        <table class="creator-table">
+                                            <thead>
+                                                <tr>
+                                                    <th>Student</th>
+                                                    <th style="text-align: center;">Live Status</th>
+                                                    <th style="text-align: right;">Today's Time</th>
+                                                    <th style="text-align: right;">Total Time</th>
+                                                    <th style="text-align: center;">Uploads</th>
+                                                    <th style="text-align: right;">Actions</th>
+                                                    <th style="text-align: center;">Inspect</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody id="creator-users-tbody">
+                                                <!-- Dynamic rows loaded by JS -->
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Right: Live Activity Stream Card -->
+                            <div class="creator-activity-stream-section">
+                                <div class="stream-card-header">
+                                    <div style="display: flex; align-items: center; gap: 8px;">
+                                        <span class="stream-live-beacon"></span>
+                                        <h4>Live Platform Activity</h4>
+                                    </div>
+                                    <span style="font-size: 11px; color: #8a8f98; font-family: var(--font-mono);">REAL-TIME</span>
+                                </div>
+                                <div id="creator-activity-stream-list" class="activity-stream-list">
+                                    <!-- Activity items loaded by JS -->
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
                 </div>
             </main>
         </div>
@@ -1389,9 +1522,73 @@
                 <span class="yt-player-tip" style="font-size: 12px; color: #94a3b8;">💡 In-App Player: Watching inside BU Prepz AI. Click ✕ or press ESC to close.</span>
             </div>
         </div>
+    <!-- Admin User Deep Drilldown Drawer Modal -->
+    <div id="admin-user-drawer-modal" class="modal-overlay hidden" style="display: none;">
+        <div class="admin-drawer-card">
+            <div class="admin-drawer-header">
+                <div class="drawer-user-meta">
+                    <img id="drawer-user-avatar" src="https://api.dicebear.com/7.x/bottts/svg?seed=Student" class="drawer-avatar" alt="Avatar">
+                    <div>
+                        <h3 id="drawer-user-name">Student Name</h3>
+                        <span id="drawer-user-email">student@college.edu</span>
+                    </div>
+                </div>
+                <button type="button" class="btn-close-modal" onclick="closeModalById('admin-user-drawer-modal')">&times;</button>
+            </div>
+            
+            <div class="admin-drawer-body">
+                <!-- User Summary Stats Grid -->
+                <div class="drawer-stats-grid">
+                    <div class="drawer-stat-item">
+                        <span class="ds-label">Total Time Spent</span>
+                        <h4 id="drawer-stat-total-time">0m</h4>
+                    </div>
+                    <div class="drawer-stat-item">
+                        <span class="ds-label">Total Uploads</span>
+                        <h4 id="drawer-stat-uploads">0</h4>
+                    </div>
+                    <div class="drawer-stat-item">
+                        <span class="ds-label">Study Streak</span>
+                        <h4 id="drawer-stat-streak">1 Day</h4>
+                    </div>
+                    <div class="drawer-stat-item">
+                        <span class="ds-label">Contribution Points</span>
+                        <h4 id="drawer-stat-points">0</h4>
+                    </div>
+                </div>
+
+                <!-- Tabs: Uploads / Activity Timeline / Concept Weaknesses -->
+                <div class="drawer-tabs-row">
+                    <button type="button" id="tab-drawer-uploads" class="drawer-tab-btn active" onclick="switchDrawerTab('uploads')">📁 Uploaded Documents (<span id="drawer-uploads-count">0</span>)</button>
+                    <button type="button" id="tab-drawer-timeline" class="drawer-tab-btn" onclick="switchDrawerTab('timeline')">⚡ Activity Timeline (<span id="drawer-activity-count">0</span>)</button>
+                    <button type="button" id="tab-drawer-weaknesses" class="drawer-tab-btn" onclick="switchDrawerTab('weaknesses')">🎯 Concept Diagnostics</button>
+                </div>
+
+                <!-- Tab 1: Uploads List -->
+                <div id="drawer-view-uploads" class="drawer-tab-content">
+                    <div id="drawer-uploads-list" class="drawer-items-list">
+                        <!-- Dynamic upload cards -->
+                    </div>
+                </div>
+
+                <!-- Tab 2: Activity Timeline -->
+                <div id="drawer-view-timeline" class="drawer-tab-content hidden" style="display: none;">
+                    <div id="drawer-timeline-list" class="drawer-timeline-stream">
+                        <!-- Dynamic timeline items -->
+                    </div>
+                </div>
+
+                <!-- Tab 3: Concept Weaknesses -->
+                <div id="drawer-view-weaknesses" class="drawer-tab-content hidden" style="display: none;">
+                    <div id="drawer-weaknesses-list" class="drawer-items-list">
+                        <!-- Dynamic weakness cards -->
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
 
     <!-- Main JavaScript Link -->
-    <script src="app.js?v=20260820_predictor_resilience_v8"></script>
+    <script src="app.js?v=20260820_creator_dashboard_v9"></script>
 </body>
 </html>

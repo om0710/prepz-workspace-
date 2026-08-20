@@ -4,7 +4,7 @@ from typing import Optional
 from datetime import timedelta, datetime
 import logging
 
-from database import get_user_by_email, create_user, update_user_activity, get_email_logs
+from database import get_user_by_email, create_user, update_user_activity, get_email_logs, log_user_activity
 from services.google_auth_service import google_auth_service
 from services.email_service import email_service
 from services.jwt_service import jwt_service
@@ -85,6 +85,15 @@ async def google_login(request: GoogleLoginRequest):
             },
             expires_delta=access_token_expires
         )
+        try:
+            log_user_activity(
+                user_email=user["email"],
+                user_name=user["name"],
+                action_type="LOGIN",
+                action_details="Signed in via Google Authentication"
+            )
+        except Exception:
+            pass
 
         return GoogleLoginResponse(
             status="success",

@@ -180,6 +180,8 @@ window.loginUser = function(user) {
     if (typeof fetchThreads === "function") fetchThreads();
     if (typeof fetchIndexedFiles === "function") fetchIndexedFiles();
     if (typeof fetchUserStats === "function") fetchUserStats();
+    if (typeof checkAndEnableAdminUI === "function") checkAndEnableAdminUI();
+    if (typeof startHeartbeatDaemon === "function") startHeartbeatDaemon();
 
     // Check if new user should be shown the interactive feature tour
     setTimeout(function() {
@@ -1309,6 +1311,8 @@ function initializeDocPilotApp() {
         if (browseContainer) { browseContainer.classList.add("hidden"); browseContainer.style.display = "none"; }
         if (predictorContainer) { predictorContainer.classList.add("hidden"); predictorContainer.style.display = "none"; }
         if (leaderboardContainer) { leaderboardContainer.classList.add("hidden"); leaderboardContainer.style.display = "none"; }
+        const creatorContainer = document.getElementById("creator-dashboard-container");
+        if (creatorContainer) { creatorContainer.classList.add("hidden"); creatorContainer.style.display = "none"; }
         if (inputPanelWrapper) { inputPanelWrapper.classList.add("hidden"); inputPanelWrapper.style.display = "none"; }
 
         const devFooter = document.querySelector(".landing-footer-nexa");
@@ -1321,6 +1325,8 @@ function initializeDocPilotApp() {
         if (navBrowseDocuments) navBrowseDocuments.classList.remove("active");
         if (navExamPredictor) navExamPredictor.classList.remove("active");
         if (navLeaderboard) navLeaderboard.classList.remove("active");
+        const navCreator = document.getElementById("nav-creator-dashboard-btn");
+        if (navCreator) navCreator.classList.remove("active");
     }
 
     function updateHeaderTitle(titleText, icon = "✨") {
@@ -1468,6 +1474,34 @@ function initializeDocPilotApp() {
         window._leaderboardInterval = setInterval(fetchLeaderboard, 12000);
     }
 
+    function showCreatorDashboardState() {
+        if (typeof window.ensureUserSession === "function") window.ensureUserSession();
+        resetViewModes();
+        updateHeaderTitle("Creator Intelligence Hub", "⚡");
+        const contentWrapper = document.querySelector(".content-wrapper");
+        if (contentWrapper) contentWrapper.classList.add("creator-mode");
+
+        const creatorContainer = document.getElementById("creator-dashboard-container");
+        if (creatorContainer) {
+            creatorContainer.classList.remove("hidden");
+            creatorContainer.style.display = "flex";
+        }
+        if (inputPanelWrapper) {
+            inputPanelWrapper.classList.add("hidden");
+            inputPanelWrapper.style.display = "none";
+        }
+        const navCreator = document.getElementById("nav-creator-dashboard-btn");
+        if (navCreator) navCreator.classList.add("active");
+
+        if (typeof fetchAndRenderAdminDashboard === "function") {
+            fetchAndRenderAdminDashboard();
+        }
+        if (window._creatorDashboardInterval) clearInterval(window._creatorDashboardInterval);
+        window._creatorDashboardInterval = setInterval(() => {
+            if (typeof fetchAndRenderAdminDashboard === "function") fetchAndRenderAdminDashboard();
+        }, 15000);
+    }
+
     // Expose view-switching functions to global window for inline onclick handlers and direct card clicks
     window.showChatState = showChatState;
     window.showLandingState = showLandingState;
@@ -1475,6 +1509,7 @@ function initializeDocPilotApp() {
     window.showBrowseState = showBrowseState;
     window.showPredictorState = showPredictorState;
     window.showLeaderboardState = showLeaderboardState;
+    window.showCreatorDashboardState = showCreatorDashboardState;
 
     // Direct event listener binding for landing feature cards to guarantee 100% clickability
     const cardBindings = [
@@ -5393,4 +5428,404 @@ async function finishPracticeSession() {
         console.error("Error completing practice session:", err);
     }
 }
+
+// ==========================================================================
+// 7. Creator & Super-Admin Intelligence Dashboard + Live Heartbeat Telemetry
+// ==========================================================================
+
+const CREATOR_ADMIN_EMAILS = [
+    "ombansal221@gmail.com",
+    "s24cseu1694@bennett.edu.in",
+    "om0710@gmail.com",
+    "om.bansal@bennett.edu.in",
+    "admin@prepz.ai"
+];
+
+let adminDashboardCache = null;
+let adminTableFilter = 'all';
+let heartbeatIntervalId = null;
+
+// Unique session ID per browser tab lifetime
+const prepzSessionId = `sess_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+
+function isCurrentCreatorAdmin() {
+    try {
+        const u = window.currentUser || JSON.parse(localStorage.getItem("docpilot-user") || "{}");
+        const email = (u.email || "").toLowerCase().trim();
+        return CREATOR_ADMIN_EMAILS.includes(email);
+    } catch (e) {
+        return false;
+    }
+}
+
+function checkAndEnableAdminUI() {
+    const navCreator = document.getElementById("nav-creator-dashboard-btn");
+    if (!navCreator) return;
+    if (isCurrentCreatorAdmin()) {
+        navCreator.classList.remove("hidden");
+        navCreator.style.removeProperty("display");
+        navCreator.style.display = "flex";
+    } else {
+        navCreator.classList.add("hidden");
+        navCreator.style.display = "none";
+    }
+}
+window.checkAndEnableAdminUI = checkAndEnableAdminUI;
+
+// Heartbeat Daemon (Sends ping every 30s when tab is active and visible)
+function startHeartbeatDaemon() {
+    if (heartbeatIntervalId) clearInterval(heartbeatIntervalId);
+
+    async function sendHeartbeat() {
+        if (document.visibilityState === 'hidden') return;
+        try {
+            const u = window.currentUser || JSON.parse(localStorage.getItem("docpilot-user") || "{}");
+            const email = u.email || "";
+            if (!email || email === "anonymous@college.edu") return;
+            const name = u.name || "";
+
+            await fetch("/api/analytics/heartbeat", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    session_id: prepzSessionId,
+                    user_email: email,
+                    user_name: name
+                })
+            });
+        } catch (e) {
+            // Background telemetry notice
+        }
+    }
+
+    // Immediate ping on start
+    sendHeartbeat();
+    heartbeatIntervalId = setInterval(sendHeartbeat, 30000);
+
+    // Send ping immediately when switching back to tab
+    document.addEventListener("visibilitychange", () => {
+        if (document.visibilityState === "visible") {
+            sendHeartbeat();
+        }
+    });
+}
+window.startHeartbeatDaemon = startHeartbeatDaemon;
+
+function formatDwellTime(seconds) {
+    const s = parseInt(seconds || 0, 10);
+    if (s < 60) return `${s}s`;
+    const mins = Math.floor(s / 60);
+    if (mins < 60) return `${mins}m`;
+    const hrs = Math.floor(mins / 60);
+    const remMins = mins % 60;
+    return `${hrs}h ${remMins}m`;
+}
+
+function formatRelativeTime(isoStr) {
+    if (!isoStr) return "Never";
+    try {
+        const d = new Date(isoStr.endsWith("Z") ? isoStr : isoStr + "Z");
+        const diffMs = Date.now() - d.getTime();
+        const diffSec = Math.max(0, Math.floor(diffMs / 1000));
+        if (diffSec < 45) return "Just now";
+        if (diffSec < 90) return "1 min ago";
+        const diffMin = Math.floor(diffSec / 60);
+        if (diffMin < 60) return `${diffMin}m ago`;
+        const diffHr = Math.floor(diffMin / 60);
+        if (diffHr < 24) return `${diffHr}h ago`;
+        const diffDay = Math.floor(diffHr / 24);
+        return `${diffDay}d ago`;
+    } catch (e) {
+        return isoStr.split("T")[0] || isoStr;
+    }
+}
+
+// Fetch and render creator admin dashboard
+async function fetchAndRenderAdminDashboard() {
+    if (!isCurrentCreatorAdmin()) {
+        console.warn("Creator Dashboard is restricted to authorized creators.");
+        return;
+    }
+
+    const u = window.currentUser || JSON.parse(localStorage.getItem("docpilot-user") || "{}");
+    const adminEmail = u.email || "";
+
+    try {
+        const res = await fetch(`/api/admin/dashboard?admin_email=${encodeURIComponent(adminEmail)}`);
+        if (!res.ok) {
+            throw new Error(`Admin dashboard error: ${res.statusText}`);
+        }
+        const data = await res.json();
+        adminDashboardCache = data;
+
+        // 1. Render KPIs
+        const kpis = data.kpis || {};
+        const kpiOnline = document.getElementById("kpi-online-now");
+        const kpiActiveToday = document.getElementById("kpi-active-today");
+        const kpiDwellTime = document.getElementById("kpi-dwell-time");
+        const kpiUploads = document.getElementById("kpi-total-uploads");
+
+        if (kpiOnline) kpiOnline.textContent = kpis.online_now || 0;
+        if (kpiActiveToday) kpiActiveToday.textContent = kpis.active_today || 0;
+        if (kpiDwellTime) kpiDwellTime.textContent = formatDwellTime(kpis.total_platform_dwell_time_seconds);
+        if (kpiUploads) kpiUploads.textContent = kpis.total_uploads || 0;
+
+        const subReg = document.getElementById("kpi-total-registered-sub");
+        if (subReg) subReg.textContent = `Total: ${kpis.total_registered_users || 0} registered`;
+
+        const subTodayDwell = document.getElementById("kpi-today-dwell-sub");
+        if (subTodayDwell) subTodayDwell.textContent = `Today: ${formatDwellTime(kpis.today_platform_dwell_time_seconds)} engagement`;
+
+        const subActions = document.getElementById("kpi-total-actions-sub");
+        if (subActions) subActions.textContent = `${kpis.total_actions || 0} total platform actions`;
+
+        // 2. Render Users Table
+        renderAdminUserTable(data.users || []);
+
+        // 3. Render Recent Activity Stream
+        renderAdminActivityStream(data.recent_activity || []);
+
+    } catch (err) {
+        console.error("Error fetching creator dashboard:", err);
+    }
+}
+window.fetchAndRenderAdminDashboard = fetchAndRenderAdminDashboard;
+
+function renderAdminUserTable(users) {
+    const tbody = document.getElementById("creator-users-tbody");
+    const countBadge = document.getElementById("creator-users-count-badge");
+    if (countBadge) countBadge.textContent = `${users.length} Students`;
+    if (!tbody) return;
+
+    if (!users || users.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="7" style="text-align: center; color: #8a8f98; padding: 24px;">No students match criteria.</td></tr>`;
+        return;
+    }
+
+    tbody.innerHTML = users.map(user => {
+        const isOnline = user.is_online;
+        let statusBadge = `<span class="status-chip offline">⚪ Offline</span>`;
+        if (isOnline) {
+            statusBadge = `<span class="status-chip online"><span class="live-dot-pulse" style="width:6px;height:6px;"></span> Online Now</span>`;
+        } else if (user.today_duration_seconds > 0) {
+            statusBadge = `<span class="status-chip recent">⚡ Active Today</span>`;
+        }
+
+        const avatar = user.avatar_url || `https://api.dicebear.com/7.x/bottts/svg?seed=${user.email}`;
+
+        return `
+            <tr>
+                <td>
+                    <div class="student-meta-cell">
+                        <img src="${avatar}" class="student-table-avatar" alt="Avatar" onerror="this.src='https://api.dicebear.com/7.x/bottts/svg?seed=BU'">
+                        <div class="student-name-stack">
+                            <span class="student-table-name">${user.name || "Student"}</span>
+                            <span class="student-table-email">${user.email}</span>
+                        </div>
+                    </div>
+                </td>
+                <td style="text-align: center;">${statusBadge}</td>
+                <td style="text-align: right; font-family: var(--font-mono); font-weight: 700; color: #ff8a65;">${formatDwellTime(user.today_duration_seconds)}</td>
+                <td style="text-align: right; font-family: var(--font-mono); color: #94a3b8;">${formatDwellTime(user.total_duration_seconds)}</td>
+                <td style="text-align: center;">
+                    <span style="display: inline-block; background: rgba(255, 255, 255, 0.06); padding: 2px 8px; border-radius: 6px; font-weight: 700;">${user.uploads_count || 0}</span>
+                </td>
+                <td style="text-align: right; font-family: var(--font-mono); color: #cbd5e1;">${user.actions_count || 0}</td>
+                <td style="text-align: center;">
+                    <button type="button" class="btn-inspect-user" onclick="openAdminUserDrilldown('${encodeURIComponent(user.email)}')">Inspect ↗</button>
+                </td>
+            </tr>
+        `;
+    }).join("");
+}
+
+function filterAdminUserTable() {
+    if (!adminDashboardCache) return;
+    const searchVal = (document.getElementById("admin-user-search-input")?.value || "").toLowerCase().trim();
+    let filtered = adminDashboardCache.users || [];
+
+    if (searchVal) {
+        filtered = filtered.filter(u => 
+            (u.name || "").toLowerCase().includes(searchVal) || 
+            (u.email || "").toLowerCase().includes(searchVal)
+        );
+    }
+
+    if (adminTableFilter === 'online') {
+        filtered = filtered.filter(u => u.is_online);
+    } else if (adminTableFilter === 'uploads') {
+        filtered = filtered.filter(u => u.uploads_count > 0);
+    }
+
+    renderAdminUserTable(filtered);
+}
+window.filterAdminUserTable = filterAdminUserTable;
+
+function setAdminUserFilter(filterType, btnEl) {
+    adminTableFilter = filterType;
+    document.querySelectorAll(".filter-pills-row .filter-pill").forEach(p => p.classList.remove("active"));
+    if (btnEl) btnEl.classList.add("active");
+    filterAdminUserTable();
+}
+window.setAdminUserFilter = setAdminUserFilter;
+
+function renderAdminActivityStream(activities) {
+    const list = document.getElementById("creator-activity-stream-list");
+    if (!list) return;
+
+    if (!activities || activities.length === 0) {
+        list.innerHTML = `<div style="text-align:center;color:#64748b;padding:18px;font-size:12px;">No activity logged yet today.</div>`;
+        return;
+    }
+
+    list.innerHTML = activities.map(act => {
+        let badgeClass = "badge-login";
+        const t = (act.action_type || "").toUpperCase();
+        if (t.includes("UPLOAD")) badgeClass = "badge-upload";
+        else if (t.includes("PREDICT")) badgeClass = "badge-predict";
+        else if (t.includes("CONCEPT") || t.includes("WEAKNESS")) badgeClass = "badge-concept";
+
+        return `
+            <div class="stream-item">
+                <div class="stream-item-top">
+                    <span class="stream-action-badge ${badgeClass}">${act.action_type}</span>
+                    <span class="stream-time">${formatRelativeTime(act.timestamp)}</span>
+                </div>
+                <div class="stream-user">${act.user_name || act.user_email}</div>
+                <div class="stream-details">${act.action_details || "Action recorded"}</div>
+            </div>
+        `;
+    }).join("");
+}
+
+// Deep User Drilldown Modal Handler
+async function openAdminUserDrilldown(encodedEmail) {
+    const targetEmail = decodeURIComponent(encodedEmail);
+    const u = window.currentUser || JSON.parse(localStorage.getItem("docpilot-user") || "{}");
+    const adminEmail = u.email || "";
+
+    try {
+        const res = await fetch(`/api/admin/user-drilldown?admin_email=${encodeURIComponent(adminEmail)}&user_email=${encodeURIComponent(targetEmail)}`);
+        if (!res.ok) throw new Error("Failed to load user details");
+        const data = await res.json();
+
+        // Populate drawer
+        const prof = data.profile || {};
+        const drawerAvatar = document.getElementById("drawer-user-avatar");
+        const drawerName = document.getElementById("drawer-user-name");
+        const drawerEmail = document.getElementById("drawer-user-email");
+
+        if (drawerAvatar) drawerAvatar.src = prof.avatar_url || `https://api.dicebear.com/7.x/bottts/svg?seed=${prof.email}`;
+        if (drawerName) drawerName.textContent = prof.name || targetEmail.split("@")[0];
+        if (drawerEmail) drawerEmail.textContent = prof.email || targetEmail;
+
+        const statTime = document.getElementById("drawer-stat-total-time");
+        const statUploads = document.getElementById("drawer-stat-uploads");
+        const statStreak = document.getElementById("drawer-stat-streak");
+        const statPoints = document.getElementById("drawer-stat-points");
+
+        if (statTime) statTime.textContent = formatDwellTime(data.total_duration_seconds);
+        if (statUploads) statUploads.textContent = (data.uploads || []).length;
+        if (statStreak) statStreak.textContent = `${prof.current_streak || 1} Days`;
+        if (statPoints) statPoints.textContent = prof.contribution_score || 0;
+
+        // Render Uploads
+        const uploadsCount = document.getElementById("drawer-uploads-count");
+        if (uploadsCount) uploadsCount.textContent = (data.uploads || []).length;
+        const uploadsList = document.getElementById("drawer-uploads-list");
+        if (uploadsList) {
+            if (!data.uploads || data.uploads.length === 0) {
+                uploadsList.innerHTML = `<div style="text-align: center; color: #8a8f98; padding: 20px;">No files uploaded yet.</div>`;
+            } else {
+                uploadsList.innerHTML = data.uploads.map(up => `
+                    <div class="drawer-item-card">
+                        <div>
+                            <div style="font-weight: 700; color: #ffffff; font-size: 13px;">${up.filename}</div>
+                            <div style="font-size: 11.5px; color: #94a3b8;">${up.subject} &bull; ${up.semester} &bull; ${up.file_type} (${Math.round((up.size_bytes || 0) / 1024)} KB)</div>
+                        </div>
+                        <a href="/uploads/${encodeURIComponent(up.filename)}" target="_blank" class="btn-inspect-user" style="text-decoration:none;">View ↗</a>
+                    </div>
+                `).join("");
+            }
+        }
+
+        // Render Timeline
+        const actCount = document.getElementById("drawer-activity-count");
+        if (actCount) actCount.textContent = (data.activity_logs || []).length;
+        const timelineList = document.getElementById("drawer-timeline-list");
+        if (timelineList) {
+            if (!data.activity_logs || data.activity_logs.length === 0) {
+                timelineList.innerHTML = `<div style="color: #8a8f98; padding: 14px;">No logged events for this user.</div>`;
+            } else {
+                timelineList.innerHTML = data.activity_logs.map(log => `
+                    <div class="drawer-timeline-item">
+                        <div style="display:flex; justify-content:space-between; font-size: 11.5px; font-weight:700; color:#ff8a65;">
+                            <span>${log.action_type}</span>
+                            <span style="color:#64748b; font-family:var(--font-mono);">${formatRelativeTime(log.timestamp)}</span>
+                        </div>
+                        <div style="font-size: 12px; color: #cbd5e1;">${log.action_details || "Recorded action"}</div>
+                    </div>
+                `).join("");
+            }
+        }
+
+        // Render Weaknesses
+        const weaknessesList = document.getElementById("drawer-weaknesses-list");
+        if (weaknessesList) {
+            if (!data.concept_weaknesses || data.concept_weaknesses.length === 0) {
+                weaknessesList.innerHTML = `<div style="text-align: center; color: #8a8f98; padding: 20px;">No concept weaknesses flagged.</div>`;
+            } else {
+                weaknessesList.innerHTML = data.concept_weaknesses.map(w => `
+                    <div class="drawer-item-card">
+                        <div>
+                            <div style="font-weight: 700; color: #ffffff; font-size: 13px;">${w.concept}</div>
+                            <div style="font-size: 11.5px; color: #f43f5e;">Subject: ${w.subject} &bull; Mastery: ${Math.round(w.mastery_percentage || 0)}%</div>
+                        </div>
+                        <span style="font-size: 11px; color: #8a8f98; font-family: var(--font-mono);">${formatRelativeTime(w.recorded_at)}</span>
+                    </div>
+                `).join("");
+            }
+        }
+
+        // Open modal
+        switchDrawerTab('uploads');
+        if (window.openModalById) window.openModalById("admin-user-drawer-modal");
+
+    } catch (err) {
+        console.error("Error loading user drilldown:", err);
+    }
+}
+window.openAdminUserDrilldown = openAdminUserDrilldown;
+
+function switchDrawerTab(tabName) {
+    document.querySelectorAll(".drawer-tabs-row .drawer-tab-btn").forEach(b => b.classList.remove("active"));
+    const activeBtn = document.getElementById(`tab-drawer-${tabName}`);
+    if (activeBtn) activeBtn.classList.add("active");
+
+    const vUploads = document.getElementById("drawer-view-uploads");
+    const vTimeline = document.getElementById("drawer-view-timeline");
+    const vWeaknesses = document.getElementById("drawer-view-weaknesses");
+
+    if (vUploads) { vUploads.classList.add("hidden"); vUploads.style.display = "none"; }
+    if (vTimeline) { vTimeline.classList.add("hidden"); vTimeline.style.display = "none"; }
+    if (vWeaknesses) { vWeaknesses.classList.add("hidden"); vWeaknesses.style.display = "none"; }
+
+    const targetView = document.getElementById(`drawer-view-${tabName}`);
+    if (targetView) {
+        targetView.classList.remove("hidden");
+        targetView.style.display = "block";
+    }
+}
+window.switchDrawerTab = switchDrawerTab;
+
+// Auto-run admin check and heartbeat on initialization
+document.addEventListener("DOMContentLoaded", () => {
+    checkAndEnableAdminUI();
+    startHeartbeatDaemon();
+});
+
+// Also trigger admin check whenever user session is updated
+window.addEventListener("storage", () => {
+    checkAndEnableAdminUI();
+});
 
