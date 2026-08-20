@@ -1,0 +1,72 @@
+[
+  {
+    "id": 1,
+    "filename": "F44.pdf",
+    "user_email": "ombansal221@gmail.com",
+    "user_name": "Ombansal221",
+    "uploaded_at": "2026-08-19T23:30:00.000000",
+    "size_bytes": 218112,
+    "subject": "Probability & Statistics",
+    "semester": "Semester 3",
+    "file_type": "PYQ",
+    "exam_type": "End-Sem",
+    "is_private": 0,
+    "file_path": "uploads/course_repo/F44.pdf"
+  },
+  {
+    "id": 2,
+    "filename": "CBSC204_Statistics+and+Probability.pdf",
+    "user_email": "ombansal221@gmail.com",
+    "user_name": "Ombansal221",
+    "uploaded_at": "2026-08-19T23:35:00.000000",
+    "size_bytes": 311296,
+    "subject": "Probability & Statistics",
+    "semester": "Semester 3",
+    "file_type": "PYQ",
+    "exam_type": "End-Sem",
+    "is_private": 0,
+    "file_path": "uploads/course_repo/CBSC204_Statistics+and+Probability.pdf"
+  },
+  {
+    "id": 3,
+    "filename": "AIML_Lab_Week6 (1).docx",
+    "user_email": "ombansal221@gmail.com",
+    "user_name": "om",
+    "uploaded_at": "2026-08-01T01:30:05.064725",
+    "size_bytes": 734006,
+    "subject": "Introduction to Electricals & Electronics",
+    "semester": "Semester 2",
+    "file_type": "PYQ",
+    "exam_type": "Mid-Sem",
+    "is_private": 0,
+    "file_path": "uploads/course_repo/AIML_Lab_Week6 (1).docx"
+  },
+  {
+    "id": 4,
+    "filename": "cn certificate .pdf",
+    "user_email": "s24cseu1694@bennett.edu.in",
+    "user_name": "om bansal",
+    "uploaded_at": "2026-07-23T00:36:30.650275",
+    "size_bytes": 293420,
+    "subject": "Operating Systems",
+    "semester": "Semester 1",
+    "file_type": "PYQ",
+    "exam_type": "Other",
+    "is_private": 0,
+    "file_path": "uploads/course_repo/cn certificate .pdf"
+  },
+  {
+    "id": 5,
+    "filename": "Tutorial Assignment 1 Solution.pdf",
+    "user_email": "s24cseu1694@bennett.edu.in",
+    "user_name": "om bansal",
+    "uploaded_at": "2026-07-23T00:35:42.342716",
+    "size_bytes": 161702,
+    "subject": "Data Structures & Algorithms",
+    "semester": "Semester 4",
+    "file_type": "PYQ",
+    "exam_type": "Other",
+    "is_private": 0,
+    "file_path": "uploads/course_repo/Tutorial Assignment 1 Solution.pdf"
+  }
+]

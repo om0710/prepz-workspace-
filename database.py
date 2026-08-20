@@ -18,8 +18,6 @@ def get_db():
     c.execute("PRAGMA busy_timeout=60000;")
     return c
 
-conn = get_db()
-
 def db_retry(func, *args, **kwargs):
     max_retries = 5
     for attempt in range(max_retries):
@@ -31,13 +29,8 @@ def db_retry(func, *args, **kwargs):
                 continue
             raise e
 
-
-
-import hashlib
-import secrets
-from datetime import datetime
-
 def init_user_db():
+    conn = get_db()
     cursor = conn.cursor()
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS users (
@@ -424,10 +417,159 @@ def init_user_db():
                 'harsh.v@bennett.edu.in', 'ritik.s@bennett.edu.in', 'tanvi.s@bennett.edu.in'
            )
     """)
-
     conn.commit()
+    conn.close()
+
+UPLOADS_BACKUP_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "uploads_metadata_backup.json")
+
+def _save_uploads_metadata_backup():
+    """Save all current uploads metadata to JSON backup file for persistent multi-deploy syncing."""
+    try:
+        with get_db() as c:
+            cur = c.cursor()
+            cur.execute("""
+                SELECT id, filename, user_email, user_name, uploaded_at, size_bytes, 
+                       subject, semester, file_type, exam_type, is_private, file_path 
+                FROM user_uploads 
+                ORDER BY id ASC
+            """)
+            rows = cur.fetchall()
+            records = []
+            for r in rows:
+                records.append({
+                    "id": r[0],
+                    "filename": r[1],
+                    "user_email": r[2] or "anonymous@college.edu",
+                    "user_name": r[3] or "Student Contributor",
+                    "uploaded_at": r[4],
+                    "size_bytes": r[5] or 0,
+                    "subject": r[6] or "General Engineering",
+                    "semester": r[7] or "Semester 1",
+                    "file_type": r[8] or "Notes",
+                    "exam_type": r[9] or "Other",
+                    "is_private": r[10] if r[10] is not None else 0,
+                    "file_path": r[11]
+                })
+            
+            tmp_path = UPLOADS_BACKUP_PATH + ".tmp"
+            with open(tmp_path, "w", encoding="utf-8") as f:
+                _json.dump(records, f, indent=2, ensure_ascii=False)
+            os.replace(tmp_path, UPLOADS_BACKUP_PATH)
+    except Exception as e:
+        print(f"[SAVE UPLOADS BACKUP NOTICE] {e}")
+
+def _restore_uploads_from_backup():
+    """Restore all uploads metadata from JSON backup file so records never disappear on container restarts."""
+    if not os.path.exists(UPLOADS_BACKUP_PATH):
+        return
+    try:
+        with open(UPLOADS_BACKUP_PATH, "r", encoding="utf-8") as f:
+            records = _json.load(f)
+        if not records or not isinstance(records, list):
+            return
+        
+        with get_db() as c:
+            cur = c.cursor()
+            for item in records:
+                fn = item.get("filename")
+                if not fn:
+                    continue
+                ue = item.get("user_email", "anonymous@college.edu")
+                is_priv = 1 if int(item.get("is_private", 0)) == 1 else 0
+                
+                if is_priv == 1:
+                    cur.execute("SELECT id FROM user_uploads WHERE lower(filename) = lower(?) AND is_private = 1 AND lower(user_email) = lower(?)", (fn, ue.lower()))
+                else:
+                    cur.execute("SELECT id FROM user_uploads WHERE lower(filename) = lower(?) AND is_private = 0", (fn,))
+                
+                if not cur.fetchone():
+                    cur.execute("""
+                        INSERT INTO user_uploads (filename, user_email, user_name, uploaded_at, file_path, size_bytes, subject, semester, file_type, exam_type, is_private)
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    """, (
+                        fn,
+                        ue,
+                        item.get("user_name", "Student Contributor"),
+                        item.get("uploaded_at") or _dt.now().isoformat(),
+                        item.get("file_path"),
+                        item.get("size_bytes", 0),
+                        item.get("subject", "General Engineering"),
+                        item.get("semester", "Semester 1"),
+                        item.get("file_type", "Notes"),
+                        item.get("exam_type", "Other"),
+                        is_priv
+                    ))
+            c.commit()
+    except Exception as e:
+        print(f"[RESTORE UPLOADS BACKUP NOTICE] {e}")
+
+def auto_sync_disk_uploads_to_db():
+    """Scan uploads directory to ensure any physical file present on disk is mapped in DB."""
+    if not os.path.exists("uploads"):
+        return
+    try:
+        with get_db() as c:
+            cur = c.cursor()
+            for root, _, files in os.walk("uploads"):
+                for fname in files:
+                    if fname.startswith(".") or fname.endswith(".tmp"):
+                        continue
+                    full_path = os.path.join(root, fname)
+                    if not os.path.isfile(full_path):
+                        continue
+                    
+                    norm_path = full_path.replace("\\", "/")
+                    is_priv = 1 if "/workspace/" in norm_path else 0
+                    user_email = "anonymous@college.edu"
+                    if is_priv == 1:
+                        parts = norm_path.split("/workspace/")
+                        if len(parts) > 1:
+                            user_email = parts[1].split("/")[0]
+                    
+                    fname_lower = fname.lower()
+                    guessed_subject = "General Engineering"
+                    if "statistic" in fname_lower or "probab" in fname_lower:
+                        guessed_subject = "Probability & Statistics"
+                    elif "operating" in fname_lower or "os" in fname_lower:
+                        guessed_subject = "Operating Systems"
+                    elif "data struct" in fname_lower or "dsa" in fname_lower:
+                        guessed_subject = "Data Structures & Algorithms"
+                    elif "electric" in fname_lower or "beee" in fname_lower or "aiml" in fname_lower:
+                        guessed_subject = "Introduction to Electricals & Electronics"
+
+                    guessed_type = "PYQ" if ("pyq" in fname_lower or "paper" in fname_lower or "exam" in fname_lower or fname_lower.startswith("f44") or "cbsc" in fname_lower) else "Notes"
+                    guessed_exam = "End-Sem" if "end" in fname_lower else ("Mid-Sem" if "mid" in fname_lower else "Other")
+                    guessed_sem = "Semester 3" if ("sem3" in fname_lower or "statistics" in fname_lower or "f44" in fname_lower) else "Semester 1"
+
+                    if is_priv == 1:
+                        cur.execute("SELECT id FROM user_uploads WHERE lower(filename) = lower(?) AND is_private = 1 AND lower(user_email) = lower(?)", (fname, user_email.lower()))
+                    else:
+                        cur.execute("SELECT id FROM user_uploads WHERE lower(filename) = lower(?) AND is_private = 0", (fname,))
+                    
+                    if not cur.fetchone():
+                        cur.execute("""
+                            INSERT INTO user_uploads (filename, user_email, user_name, uploaded_at, file_path, size_bytes, subject, semester, file_type, exam_type, is_private)
+                            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                        """, (
+                            fname,
+                            user_email,
+                            "Student Contributor",
+                            _dt.now().isoformat(),
+                            full_path,
+                            os.path.getsize(full_path) if os.path.exists(full_path) else 0,
+                            guessed_subject,
+                            guessed_sem,
+                            guessed_type,
+                            guessed_exam,
+                            is_priv
+                        ))
+            c.commit()
+    except Exception as e:
+        print(f"[AUTO SYNC DISK UPLOADS NOTICE] {e}")
 
 init_user_db()
+_restore_uploads_from_backup()
+auto_sync_disk_uploads_to_db()
 
 # ── Bennett University Pre-Seeded Channels ─────────────────────────────────────
 
@@ -1023,55 +1165,56 @@ BENNETT_CHANNELS = [
 def seed_bennett_channels_if_needed():
     """Populate database with Bennett University recommended channels, ensuring exact 4 electrical/electronics courses exist."""
     def _do():
-        cursor = conn.cursor()
-        cursor.execute("""
-            CREATE TABLE IF NOT EXISTS youtube_playlist (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                channel_name TEXT NOT NULL,
-                instructor TEXT NOT NULL,
-                subject TEXT NOT NULL,
-                topic TEXT NOT NULL,
-                playlist_url TEXT NOT NULL,
-                difficulty TEXT DEFAULT 'Beginner',
-                university TEXT DEFAULT 'Bennett University',
-                semester INTEGER DEFAULT 1,
-                helpfulness_score REAL DEFAULT 4.5,
-                total_ratings INTEGER DEFAULT 12,
-                helpful_count INTEGER DEFAULT 11,
-                total_videos INTEGER DEFAULT 35,
-                avg_duration INTEGER DEFAULT 22,
-                best_for TEXT DEFAULT '["exam prep", "foundation"]',
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-            )
-        """)
-        # Clean up obsolete rows
-        cursor.execute("DELETE FROM youtube_playlist WHERE channel_name = 'Love You Science'")
-        cursor.execute("DELETE FROM youtube_playlist WHERE playlist_url LIKE '%PLmXKhU9FNesR1rSES7oLdJaNFgmuj0SYV%'")
-        cursor.execute("DELETE FROM youtube_playlist WHERE playlist_url LIKE '%PLU6SqdYcYsfLRq3tu-g_hvkHDcorrtcBK%'")
-        
-        for ch in BENNETT_CHANNELS:
-            existing = cursor.execute(
-                "SELECT id FROM youtube_playlist WHERE playlist_url = ? OR (channel_name = ? AND topic = ?)",
-                (ch["playlist_url"], ch["channel_name"], ch["topic"])
-            ).fetchone()
-            if not existing:
-                cursor.execute("""
-                    INSERT INTO youtube_playlist (
-                        channel_name, instructor, subject, topic, playlist_url,
-                        difficulty, university, semester, helpfulness_score,
-                        total_ratings, helpful_count, total_videos, avg_duration, best_for
-                    ) VALUES (?, ?, ?, ?, ?, ?, 'Bennett University', ?, ?, ?, ?, ?, ?, ?)
-                """, (
-                    ch["channel_name"], ch["instructor"], ch["subject"], ch["topic"], ch["playlist_url"],
-                    ch["difficulty"], ch.get("semester", 1), ch.get("helpfulness_score", 4.8), ch.get("total_ratings", 50),
-                    ch.get("helpful_count", 48), ch.get("total_videos", 40), ch.get("avg_duration", 20),
-                    _json.dumps(ch.get("best_for", ["exam prep", "foundation"]))
-                ))
-            else:
-                cursor.execute("""
-                    UPDATE youtube_playlist SET playlist_url = ?, instructor = ?, subject = ?, topic = ? WHERE id = ?
-                """, (ch["playlist_url"], ch["instructor"], ch["subject"], ch["topic"], existing[0]))
-        conn.commit()
+        with get_db() as conn:
+            cursor = conn.cursor()
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS youtube_playlist (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    channel_name TEXT NOT NULL,
+                    instructor TEXT NOT NULL,
+                    subject TEXT NOT NULL,
+                    topic TEXT NOT NULL,
+                    playlist_url TEXT NOT NULL,
+                    difficulty TEXT DEFAULT 'Beginner',
+                    university TEXT DEFAULT 'Bennett University',
+                    semester INTEGER DEFAULT 1,
+                    helpfulness_score REAL DEFAULT 4.5,
+                    total_ratings INTEGER DEFAULT 12,
+                    helpful_count INTEGER DEFAULT 11,
+                    total_videos INTEGER DEFAULT 35,
+                    avg_duration INTEGER DEFAULT 22,
+                    best_for TEXT DEFAULT '["exam prep", "foundation"]',
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )
+            """)
+            # Clean up obsolete rows
+            cursor.execute("DELETE FROM youtube_playlist WHERE channel_name = 'Love You Science'")
+            cursor.execute("DELETE FROM youtube_playlist WHERE playlist_url LIKE '%PLmXKhU9FNesR1rSES7oLdJaNFgmuj0SYV%'")
+            cursor.execute("DELETE FROM youtube_playlist WHERE playlist_url LIKE '%PLU6SqdYcYsfLRq3tu-g_hvkHDcorrtcBK%'")
+            
+            for ch in BENNETT_CHANNELS:
+                existing = cursor.execute(
+                    "SELECT id FROM youtube_playlist WHERE playlist_url = ? OR (channel_name = ? AND topic = ?)",
+                    (ch["playlist_url"], ch["channel_name"], ch["topic"])
+                ).fetchone()
+                if not existing:
+                    cursor.execute("""
+                        INSERT INTO youtube_playlist (
+                            channel_name, instructor, subject, topic, playlist_url,
+                            difficulty, university, semester, helpfulness_score,
+                            total_ratings, helpful_count, total_videos, avg_duration, best_for
+                        ) VALUES (?, ?, ?, ?, ?, ?, 'Bennett University', ?, ?, ?, ?, ?, ?, ?)
+                    """, (
+                        ch["channel_name"], ch["instructor"], ch["subject"], ch["topic"], ch["playlist_url"],
+                        ch["difficulty"], ch.get("semester", 1), ch.get("helpfulness_score", 4.8), ch.get("total_ratings", 50),
+                        ch.get("helpful_count", 48), ch.get("total_videos", 40), ch.get("avg_duration", 20),
+                        _json.dumps(ch.get("best_for", ["exam prep", "foundation"]))
+                    ))
+                else:
+                    cursor.execute("""
+                        UPDATE youtube_playlist SET playlist_url = ?, instructor = ?, subject = ?, topic = ? WHERE id = ?
+                    """, (ch["playlist_url"], ch["instructor"], ch["subject"], ch["topic"], existing[0]))
+            conn.commit()
         print(f"[SEED] Seeded & synced {len(BENNETT_CHANNELS)} Bennett University channels.")
     db_retry(_do)
 
@@ -2382,6 +2525,7 @@ def record_upload(filename: str, user_email: str, user_name: str, file_path: str
                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """, (clean_fn, user_email, user_name, datetime.now().isoformat(), file_path, size_bytes, subject, semester, file_type, exam_type, is_priv))
             c.commit()
+        _save_uploads_metadata_backup()
     db_retry(_do)
 
 def get_all_uploads(user_email: Optional[str] = None):
@@ -2472,6 +2616,7 @@ def delete_upload_record(filename: str, user_email: Optional[str] = None, is_pri
                     WHERE lower(filename) = lower(?) OR lower(filename) = lower(?)
                 """, (clean, raw))
             c.commit()
+        _save_uploads_metadata_backup()
     db_retry(_do)
 
 def _row_to_upload_dict(row):
