@@ -219,7 +219,7 @@ window.handleGoogleSignIn = function(e) {
         if (typeof e.preventDefault === "function") e.preventDefault();
         if (typeof e.stopPropagation === "function") e.stopPropagation();
     }
-    console.log("[AUTH] Google Sign-In button clicked");
+    console.log("[AUTH] Google Sign-In initiated");
 
     const authErrBox = document.getElementById("auth-error-msg");
     if (authErrBox) {
@@ -227,62 +227,31 @@ window.handleGoogleSignIn = function(e) {
         authErrBox.classList.add("hidden");
     }
 
-    // 1. Try Google Identity Services (GIS) OAuth Token Client popup
-    try {
-        if (window.google && window.google.accounts && window.google.accounts.oauth2) {
-            const tokenClient = window.google.accounts.oauth2.initTokenClient({
-                client_id: GOOGLE_CLIENT_ID,
-                scope: "email profile openid",
-                callback: async function(resp) {
-                    if (resp && resp.access_token) {
-                        try {
-                            const res = await fetch("/api/auth/google-token", {
-                                method: "POST",
-                                headers: { "Content-Type": "application/json" },
-                                body: JSON.stringify({ access_token: resp.access_token })
-                            });
-                            const data = await res.json();
-                            if (data && data.user) {
-                                window.loginUser(data.user);
-                                return;
-                            }
-                        } catch(err) {
-                            console.warn("GIS token exchange error:", err);
-                        }
-                    }
-                }
-            });
-            tokenClient.requestAccessToken();
-            return;
-        }
-    } catch(gisErr) {
-        console.warn("GIS init error:", gisErr);
-    }
-
-    // 2. Try Supabase OAuth
-    try {
-        if (typeof supabaseClient !== "undefined" && supabaseClient && supabaseClient.auth) {
-            supabaseClient.auth.signInWithOAuth({
-                provider: 'google',
-                options: { redirectTo: window.location.origin }
-            });
-            return;
-        }
-    } catch(supaErr) {
-        console.warn("Supabase auth error:", supaErr);
-    }
-
-    // 3. Check if running inside Hugging Face embed iframe
     var isInIframe = false;
     try { isInIframe = (window.self !== window.top); } catch(err2) { isInIframe = true; }
+
     if (isInIframe) {
-        window.open("https://om123bansal-prepz-app.hf.space", "_blank", "noopener,noreferrer");
-        return;
+        // If embedded in Hugging Face iframe, redirect top window or open direct tab
+        try {
+            window.top.location.href = "https://om123bansal-prepz-app.hf.space/api/auth/google";
+            return;
+        } catch(frameErr) {
+            window.open("https://om123bansal-prepz-app.hf.space/api/auth/google", "_blank", "noopener,noreferrer");
+            return;
+        }
     }
 
-    // 4. Fallback to backend Google OAuth redirect
+    // Direct official Google OAuth 2.0 backend redirect
     window.location.href = "/api/auth/google";
 };
+
+// Global click event delegation for Google Sign-In button
+document.addEventListener("click", function(e) {
+    const btn = e.target && e.target.closest ? e.target.closest("#btn-google-login") : null;
+    if (btn) {
+        window.handleGoogleSignIn(e);
+    }
+});
 
 
 window.handleGuestLogin = function(e) {
