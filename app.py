@@ -206,54 +206,66 @@ def check_ip_rate_limit(client_ip: str, endpoint_key: str, max_requests: int, wi
     RATE_LIMIT_WINDOWS[key].append(now)
     return True
 
+def get_client_ip(request: Request) -> str:
+    forwarded = request.headers.get("x-forwarded-for")
+    if forwarded:
+        return forwarded.split(",")[0].strip()
+    cf_ip = request.headers.get("cf-connecting-ip")
+    if cf_ip:
+        return cf_ip.strip()
+    real_ip = request.headers.get("x-real-ip")
+    if real_ip:
+        return real_ip.strip()
+    return request.client.host if request.client else "127.0.0.1"
+
 @app.middleware("http")
 async def rate_limit_middleware(request: Request, call_next):
-    client_ip = request.client.host if request.client else "127.0.0.1"
+    client_ip = get_client_ip(request)
     path = request.url.path
     
     if path == "/chat" and request.method == "POST":
-        if not check_ip_rate_limit(client_ip, "chat", max_requests=30, window_seconds=60):
+        if not check_ip_rate_limit(client_ip, "chat", max_requests=60, window_seconds=60):
             return StreamingResponse(
-                iter([json.dumps({"error": "Rate limit exceeded. Maximum 30 chat queries per minute allowed."}).encode()]),
+                iter([json.dumps({"error": "Rate limit exceeded. Maximum 60 chat queries per minute allowed."}).encode()]),
                 status_code=429,
                 media_type="application/json"
             )
             
     elif path == "/upload" and request.method == "POST":
-        if not check_ip_rate_limit(client_ip, "upload", max_requests=10, window_seconds=60):
+        if not check_ip_rate_limit(client_ip, "upload", max_requests=25, window_seconds=60):
             return StreamingResponse(
-                iter([json.dumps({"detail": "Rate limit exceeded. Maximum 10 file uploads per minute allowed."}).encode()]),
+                iter([json.dumps({"detail": "Rate limit exceeded. Maximum 25 file uploads per minute allowed."}).encode()]),
                 status_code=429,
                 media_type="application/json"
             )
             
     elif path.startswith("/api/login") and request.method == "POST":
-        if not check_ip_rate_limit(client_ip, "login", max_requests=5, window_seconds=60):
+        if not check_ip_rate_limit(client_ip, "login", max_requests=30, window_seconds=60):
             return StreamingResponse(
-                iter([json.dumps({"detail": "Rate limit exceeded. Maximum 5 login attempts per minute allowed."}).encode()]),
+                iter([json.dumps({"detail": "Rate limit exceeded. Please wait a minute before trying again."}).encode()]),
                 status_code=429,
                 media_type="application/json"
             )
             
     elif path.startswith("/api/practice/generate"):
-        if not check_ip_rate_limit(client_ip, "practice_gen", max_requests=25, window_seconds=60):
+        if not check_ip_rate_limit(client_ip, "practice_gen", max_requests=50, window_seconds=60):
             return StreamingResponse(
-                iter([json.dumps({"detail": "Rate limit exceeded. Maximum 25 adaptive practice generations per minute allowed."}).encode()]),
+                iter([json.dumps({"detail": "Rate limit exceeded. Maximum 50 adaptive practice generations per minute allowed."}).encode()]),
                 status_code=429,
                 media_type="application/json"
             )
 
     elif path.startswith("/api/practice/") and "/answer" in path and request.method == "POST":
-        if not check_ip_rate_limit(client_ip, "practice_ans", max_requests=60, window_seconds=60):
+        if not check_ip_rate_limit(client_ip, "practice_ans", max_requests=120, window_seconds=60):
             return StreamingResponse(
-                iter([json.dumps({"detail": "Rate limit exceeded. Maximum 60 answer submissions per minute allowed."}).encode()]),
+                iter([json.dumps({"detail": "Rate limit exceeded."}).encode()]),
                 status_code=429,
                 media_type="application/json"
             )
 
-    elif path.startswith("/api/") and not check_ip_rate_limit(client_ip, "api_general", max_requests=120, window_seconds=60):
+    elif path.startswith("/api/") and not path.startswith("/api/analytics/heartbeat") and not check_ip_rate_limit(client_ip, "api_general", max_requests=300, window_seconds=60):
         return StreamingResponse(
-            iter([json.dumps({"detail": "Too many requests. API rate limit exceeded (120 requests/min)."}).encode()]),
+            iter([json.dumps({"detail": "Too many requests. Please slow down."}).encode()]),
             status_code=429,
             media_type="application/json"
         )

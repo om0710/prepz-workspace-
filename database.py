@@ -1,11 +1,13 @@
 import sqlite3
 import os
+import hashlib
+import random
 import re as _re
 import json as _json
 import secrets as _secrets
 import time
 from typing import Optional, List, Dict, Any
-from datetime import datetime as _dt, datetime
+from datetime import datetime as _dt, datetime, timedelta
 try:
     from dotenv import load_dotenv
     load_dotenv()
@@ -1259,84 +1261,87 @@ def get_or_create_conversation(user_id: int = 1, session_id: str = None, subject
         session_id = _secrets.token_urlsafe(16)
     
     def _do():
-        cursor = conn.cursor()
-        row = cursor.execute(
-            "SELECT id, user_id, session_id, subject, messages, topics_discussed, topic_attempts, understanding_level FROM conversation_context WHERE session_id = ?",
-            (session_id,)
-        ).fetchone()
-        
-        if row:
+        with get_db() as conn:
+            cursor = conn.cursor()
+            row = cursor.execute(
+                "SELECT id, user_id, session_id, subject, messages, topics_discussed, topic_attempts, understanding_level FROM conversation_context WHERE session_id = ?",
+                (session_id,)
+            ).fetchone()
+            
+            if row:
+                return {
+                    "id": row[0],
+                    "user_id": row[1],
+                    "session_id": row[2],
+                    "subject": row[3],
+                    "messages": _json.loads(row[4] or "[]"),
+                    "topics_discussed": _json.loads(row[5] or "[]"),
+                    "topic_attempts": _json.loads(row[6] or "{}"),
+                    "understanding_level": row[7] or "beginner"
+                }
+            
+            # Create new
+            now = _dt.now().isoformat()
+            cursor.execute(
+                "INSERT INTO conversation_context (user_id, session_id, subject, messages, topics_discussed, topic_attempts, understanding_level, created_at, last_activity) VALUES (?, ?, ?, '[]', '[]', '{}', 'beginner', ?, ?)",
+                (user_id or 1, session_id, subject, now, now)
+            )
+            conn.commit()
+            new_id = cursor.lastrowid
             return {
-                "id": row[0],
-                "user_id": row[1],
-                "session_id": row[2],
-                "subject": row[3],
-                "messages": _json.loads(row[4] or "[]"),
-                "topics_discussed": _json.loads(row[5] or "[]"),
-                "topic_attempts": _json.loads(row[6] or "{}"),
-                "understanding_level": row[7] or "beginner"
+                "id": new_id,
+                "user_id": user_id or 1,
+                "session_id": session_id,
+                "subject": subject,
+                "messages": [],
+                "topics_discussed": [],
+                "topic_attempts": {},
+                "understanding_level": "beginner"
             }
-        
-        # Create new
-        now = _dt.now().isoformat()
-        cursor.execute(
-            "INSERT INTO conversation_context (user_id, session_id, subject, messages, topics_discussed, topic_attempts, understanding_level, created_at, last_activity) VALUES (?, ?, ?, '[]', '[]', '{}', 'beginner', ?, ?)",
-            (user_id or 1, session_id, subject, now, now)
-        )
-        conn.commit()
-        new_id = cursor.lastrowid
-        return {
-            "id": new_id,
-            "user_id": user_id or 1,
-            "session_id": session_id,
-            "subject": subject,
-            "messages": [],
-            "topics_discussed": [],
-            "topic_attempts": {},
-            "understanding_level": "beginner"
-        }
     return db_retry(_do)
 
 def update_conversation_context_record(session_id: str, user_message: str, ai_message: str, topic: str, topic_attempts: int, intent: str = "initial", strength: str = "none"):
     """Safely append messages and update topic attempts in conversation_context."""
     def _do():
-        cursor = conn.cursor()
-        row = cursor.execute("SELECT messages, topics_discussed, topic_attempts FROM conversation_context WHERE session_id = ?", (session_id,)).fetchone()
-        if row:
-            msgs = _json.loads(row[0] or "[]")
-            topics = _json.loads(row[1] or "[]")
-            t_attempts = _json.loads(row[2] or "{}")
-        else:
-            msgs, topics, t_attempts = [], [], {}
+        with get_db() as conn:
+            cursor = conn.cursor()
+            row = cursor.execute("SELECT messages, topics_discussed, topic_attempts FROM conversation_context WHERE session_id = ?", (session_id,)).fetchone()
+            if row:
+                msgs = _json.loads(row[0] or "[]")
+                topics = _json.loads(row[1] or "[]")
+                t_attempts = _json.loads(row[2] or "{}")
+            else:
+                msgs, topics, t_attempts = [], [], {}
 
-        msgs.append({
-            "user": user_message,
-            "ai": ai_message[:500] if ai_message else "",
-            "timestamp": _dt.now().isoformat(),
-            "intent": intent,
-            "recommendation_strength": strength
-        })
-        if topic and topic not in topics:
-            topics.append(topic)
-        t_attempts[topic] = topic_attempts
+            msgs.append({
+                "user": user_message,
+                "ai": ai_message[:500] if ai_message else "",
+                "timestamp": _dt.now().isoformat(),
+                "intent": intent,
+                "recommendation_strength": strength
+            })
+            if topic and topic not in topics:
+                topics.append(topic)
+            t_attempts[topic] = topic_attempts
 
-        cursor.execute("""
-            UPDATE conversation_context
-            SET messages = ?, topics_discussed = ?, topic_attempts = ?, last_activity = ?
-            WHERE session_id = ?
-        """, (_json.dumps(msgs[-20:]), _json.dumps(topics), _json.dumps(t_attempts), _dt.now().isoformat(), session_id))
-        conn.commit()
+            cursor.execute("""
+                UPDATE conversation_context
+                SET messages = ?, topics_discussed = ?, topic_attempts = ?, last_activity = ?
+                WHERE session_id = ?
+            """, (_json.dumps(msgs[-20:]), _json.dumps(topics), _json.dumps(t_attempts), _dt.now().isoformat(), session_id))
+            conn.commit()
     db_retry(_do)
 
 def get_recent_messages(conversation_id: int, limit: int = 10) -> list:
     """Get recent messages from conversation"""
     try:
-        cursor = conn.cursor()
-        row = cursor.execute("SELECT messages FROM conversation_context WHERE id = ?", (conversation_id,)).fetchone()
-        if row and row[0]:
-            msgs = _json.loads(row[0])
-            return msgs[-limit:] if msgs else []
-        return []
+        with get_db() as conn:
+            cursor = conn.cursor()
+            row = cursor.execute("SELECT messages FROM conversation_context WHERE id = ?", (conversation_id,)).fetchone()
+            if row and row[0]:
+                msgs = _json.loads(row[0])
+                return msgs[-limit:] if msgs else []
+            return []
     except Exception as e:
         print(f"[CONTEXT] get_recent_messages error: {e}")
         return []
@@ -1754,15 +1759,16 @@ def get_recommended_videos(
 ) -> list:
     """Get best verified YouTube playlists tailored directly to the student's exact topic."""
     def _do():
-        cursor = conn.cursor()
-        
-        # 1. Fetch from youtube_playlist table
-        rows = cursor.execute("""
-            SELECT id, channel_name, instructor, subject, topic, playlist_url, difficulty,
-                   helpfulness_score, total_ratings, helpful_count, total_videos, avg_duration
-            FROM youtube_playlist
-            WHERE university = 'Bennett University'
-        """).fetchall()
+        with get_db() as conn:
+            cursor = conn.cursor()
+            
+            # 1. Fetch from youtube_playlist table
+            rows = cursor.execute("""
+                SELECT id, channel_name, instructor, subject, topic, playlist_url, difficulty,
+                       helpfulness_score, total_ratings, helpful_count, total_videos, avg_duration
+                FROM youtube_playlist
+                WHERE university = 'Bennett University'
+            """).fetchall()
 
         topic_clean = (topic or "").lower().strip()
         keywords = TOPIC_TO_FACULTY_MAP.get(topic_clean, [topic_clean])
@@ -1909,30 +1915,31 @@ def get_recommended_videos(
 def rate_playlist_record(playlist_id: int, user_id: int, rating: int, was_helpful: bool, watched_percentage: int = 30) -> dict:
     """Record user playlist rating and recompute helpfulness score."""
     def _do():
-        cursor = conn.cursor()
-        cursor.execute("""
-            INSERT INTO playlist_rating (user_id, playlist_id, rating, was_helpful, watched_percentage, timestamp)
-            VALUES (?, ?, ?, ?, ?, ?)
-        """, (user_id, playlist_id, rating, 1 if was_helpful else 0, watched_percentage, _dt.now().isoformat()))
+        with get_db() as conn:
+            cursor = conn.cursor()
+            cursor.execute("""
+                INSERT INTO playlist_rating (user_id, playlist_id, rating, was_helpful, watched_percentage, timestamp)
+                VALUES (?, ?, ?, ?, ?, ?)
+            """, (user_id, playlist_id, rating, 1 if was_helpful else 0, watched_percentage, _dt.now().isoformat()))
 
-        # Update totals in youtube_playlist
-        cursor.execute("""
-            UPDATE youtube_playlist
-            SET total_ratings = total_ratings + 1,
-                helpful_count = helpful_count + ?
-            WHERE id = ?
-        """, (1 if was_helpful else 0, playlist_id))
+            # Update totals in youtube_playlist
+            cursor.execute("""
+                UPDATE youtube_playlist
+                SET total_ratings = total_ratings + 1,
+                    helpful_count = helpful_count + ?
+                WHERE id = ?
+            """, (1 if was_helpful else 0, playlist_id))
 
-        # Recompute score
-        all_ratings = cursor.execute("SELECT rating FROM playlist_rating WHERE playlist_id = ?", (playlist_id,)).fetchall()
-        if all_ratings:
-            avg_score = sum(r[0] for r in all_ratings) / len(all_ratings)
-            cursor.execute("UPDATE youtube_playlist SET helpfulness_score = ? WHERE id = ?", (round(avg_score, 1), playlist_id))
-        else:
-            avg_score = 4.5
+            # Recompute score
+            all_ratings = cursor.execute("SELECT rating FROM playlist_rating WHERE playlist_id = ?", (playlist_id,)).fetchall()
+            if all_ratings:
+                avg_score = sum(r[0] for r in all_ratings) / len(all_ratings)
+                cursor.execute("UPDATE youtube_playlist SET helpfulness_score = ? WHERE id = ?", (round(avg_score, 1), playlist_id))
+            else:
+                avg_score = 4.5
 
-        conn.commit()
-        return {"avg_rating": round(avg_score, 1)}
+            conn.commit()
+            return {"avg_rating": round(avg_score, 1)}
     return db_retry(_do)
 
 def get_next_action_message(recommendation_strength: str, attempt_number: int) -> str:
@@ -2075,19 +2082,20 @@ def _extract_topic_nlp(query: str, last_topic: str = "", recent_queries: list = 
 # ── DB helpers ────────────────────────────────────────────────────────────────
 def get_conversation_context(thread_id: str) -> dict:
     try:
-        cursor = conn.cursor()
-        row = cursor.execute(
-            "SELECT total_messages, topic_attempts, recent_queries, last_topic FROM conversation_contexts WHERE thread_id = ?",
-            (thread_id,)
-        ).fetchone()
-        if row:
-            return {
-                "total_messages": row[0] or 0,
-                "topic_attempts": _json.loads(row[1] or "{}"),
-                "recent_queries":  _json.loads(row[2] or "[]"),
-                "last_topic":      row[3] or ""
-            }
-        return {"total_messages": 0, "topic_attempts": {}, "recent_queries": [], "last_topic": ""}
+        with get_db() as conn:
+            cursor = conn.cursor()
+            row = cursor.execute(
+                "SELECT total_messages, topic_attempts, recent_queries, last_topic FROM conversation_contexts WHERE thread_id = ?",
+                (thread_id,)
+            ).fetchone()
+            if row:
+                return {
+                    "total_messages": row[0] or 0,
+                    "topic_attempts": _json.loads(row[1] or "{}"),
+                    "recent_queries":  _json.loads(row[2] or "[]"),
+                    "last_topic":      row[3] or ""
+                }
+            return {"total_messages": 0, "topic_attempts": {}, "recent_queries": [], "last_topic": ""}
     except Exception as e:
         print(f"[CONTEXT] get error: {e}")
         return {"total_messages": 0, "topic_attempts": {}, "recent_queries": [], "last_topic": ""}
@@ -2095,36 +2103,37 @@ def get_conversation_context(thread_id: str) -> dict:
 def update_conversation_context(thread_id: str, user_email: str, topic: str, query: str = ""):
     """Update message count, topic attempts, recent queries and last_topic for a thread."""
     def _do():
-        cursor = conn.cursor()
-        existing = cursor.execute(
-            "SELECT total_messages, topic_attempts, recent_queries, last_topic FROM conversation_contexts WHERE thread_id = ?",
-            (thread_id,)
-        ).fetchone()
-        now = _dt.now().isoformat()
-        if existing:
-            total    = (existing[0] or 0) + 1
-            attempts = _json.loads(existing[1] or "{}")
-            recent   = _json.loads(existing[2] or "[]")
-            if topic and topic != "general":
-                attempts[topic] = attempts.get(topic, 0) + 1
-                active_topic = topic
+        with get_db() as conn:
+            cursor = conn.cursor()
+            existing = cursor.execute(
+                "SELECT total_messages, topic_attempts, recent_queries, last_topic FROM conversation_contexts WHERE thread_id = ?",
+                (thread_id,)
+            ).fetchone()
+            now = _dt.now().isoformat()
+            if existing:
+                total    = (existing[0] or 0) + 1
+                attempts = _json.loads(existing[1] or "{}")
+                recent   = _json.loads(existing[2] or "[]")
+                if topic and topic != "general":
+                    attempts[topic] = attempts.get(topic, 0) + 1
+                    active_topic = topic
+                else:
+                    active_topic = existing[3] or topic
+                if query:
+                    recent.append(query)
+                    recent = recent[-6:]  # keep last 6 queries
+                cursor.execute(
+                    "UPDATE conversation_contexts SET total_messages=?, topic_attempts=?, recent_queries=?, last_topic=?, updated_at=? WHERE thread_id=?",
+                    (total, _json.dumps(attempts), _json.dumps(recent), active_topic, now, thread_id)
+                )
             else:
-                active_topic = existing[3] or topic
-            if query:
-                recent.append(query)
-                recent = recent[-6:]  # keep last 6 queries
-            cursor.execute(
-                "UPDATE conversation_contexts SET total_messages=?, topic_attempts=?, recent_queries=?, last_topic=?, updated_at=? WHERE thread_id=?",
-                (total, _json.dumps(attempts), _json.dumps(recent), active_topic, now, thread_id)
-            )
-        else:
-            attempts = {topic: 1} if (topic and topic != "general") else {}
-            recent   = [query] if query else []
-            cursor.execute(
-                "INSERT INTO conversation_contexts (thread_id, user_email, total_messages, topic_attempts, recent_queries, last_topic, created_at, updated_at) VALUES (?,?,1,?,?,?,?,?)",
-                (thread_id, user_email or "", _json.dumps(attempts), _json.dumps(recent), topic, now, now)
-            )
-        conn.commit()
+                attempts = {topic: 1} if (topic and topic != "general") else {}
+                recent   = [query] if query else []
+                cursor.execute(
+                    "INSERT INTO conversation_contexts (thread_id, user_email, total_messages, topic_attempts, recent_queries, last_topic, created_at, updated_at) VALUES (?,?,1,?,?,?,?,?)",
+                    (thread_id, user_email or "", _json.dumps(attempts), _json.dumps(recent), topic, now, now)
+                )
+            conn.commit()
     db_retry(_do)
 
 
@@ -2180,13 +2189,14 @@ def validate_password_strength(password: str) -> tuple[bool, str]:
 def check_login_lockout(email: str, max_attempts: int = 5, window_minutes: int = 15) -> bool:
     email = email.strip().lower()
     window_start = (datetime.utcnow() - timedelta(minutes=window_minutes)).strftime("%Y-%m-%d %H:%M:%S")
-    cursor = conn.cursor()
-    cursor.execute("""
-        SELECT COUNT(*) FROM auth_rate_limits
-        WHERE lower(identifier) = ? AND action_type = 'login_failed' AND attempt_time > ?
-    """, (email, window_start))
-    count = cursor.fetchone()[0]
-    return count >= max_attempts
+    with get_db() as conn:
+        cursor = conn.cursor()
+        cursor.execute("""
+            SELECT COUNT(*) FROM auth_rate_limits
+            WHERE lower(identifier) = ? AND action_type = 'login_failed' AND attempt_time > ?
+        """, (email, window_start))
+        count = cursor.fetchone()[0]
+        return count >= max_attempts
 
 def record_failed_login(email: str):
     email = email.strip().lower()
@@ -2214,42 +2224,46 @@ def create_user(name: str, email: str, password: str = None, provider: str = "lo
     
     today_date = datetime.now().strftime("%Y-%m-%d")
     verified_val = 1 if is_verified else 0
-    cursor = conn.cursor()
-    cursor.execute(
-        "INSERT INTO users (name, email, password_hash, provider, avatar_url, contribution_score, current_streak, last_active_date, has_seen_onboarding, is_verified) VALUES (?, ?, ?, ?, ?, 0, 1, ?, 0, ?)",
-        (name, email, pwd_hash, provider, avatar_url, today_date, verified_val)
-    )
-    conn.commit()
+    def _do():
+        with get_db() as conn:
+            cursor = conn.cursor()
+            cursor.execute(
+                "INSERT INTO users (name, email, password_hash, provider, avatar_url, contribution_score, current_streak, last_active_date, has_seen_onboarding, is_verified) VALUES (?, ?, ?, ?, ?, 0, 1, ?, 0, ?)",
+                (name, email, pwd_hash, provider, avatar_url, today_date, verified_val)
+            )
+            conn.commit()
+    db_retry(_do)
     return get_user_by_email(email)
 
 def get_user_by_email(email: str):
     if not email:
         return None
     email = email.strip().lower()
-    cursor = conn.cursor()
-    cursor.execute("""
-        SELECT id, name, email, password_hash, provider, avatar_url, created_at,
-               COALESCE(contribution_score, 0), COALESCE(current_streak, 0), last_active_date,
-               COALESCE(has_seen_onboarding, 0), COALESCE(is_verified, 1)
-        FROM users WHERE lower(email) = ?
-    """, (email,))
-    row = cursor.fetchone()
-    if row:
-        return {
-            "id": row[0],
-            "name": row[1],
-            "email": row[2],
-            "password_hash": row[3],
-            "provider": row[4],
-            "avatar_url": row[5],
-            "created_at": row[6],
-            "contribution_score": row[7],
-            "current_streak": row[8],
-            "last_active_date": row[9],
-            "has_seen_onboarding": bool(row[10]),
-            "is_verified": bool(row[11])
-        }
-    return None
+    with get_db() as conn:
+        cursor = conn.cursor()
+        cursor.execute("""
+            SELECT id, name, email, password_hash, provider, avatar_url, created_at,
+                   COALESCE(contribution_score, 0), COALESCE(current_streak, 0), last_active_date,
+                   COALESCE(has_seen_onboarding, 0), COALESCE(is_verified, 1)
+            FROM users WHERE lower(email) = ?
+        """, (email,))
+        row = cursor.fetchone()
+        if row:
+            return {
+                "id": row[0],
+                "name": row[1],
+                "email": row[2],
+                "password_hash": row[3],
+                "provider": row[4],
+                "avatar_url": row[5],
+                "created_at": row[6],
+                "contribution_score": row[7],
+                "current_streak": row[8],
+                "last_active_date": row[9],
+                "has_seen_onboarding": bool(row[10]),
+                "is_verified": bool(row[11])
+            }
+        return None
 
 def create_otp(email: str, otp_type: str = "forgot_password", expiry_minutes: int = 10) -> str:
     email = email.strip().lower()
@@ -2271,22 +2285,23 @@ def verify_otp_code(email: str, otp_code: str, otp_type: str = "forgot_password"
     otp_code = otp_code.strip()
     now_str = datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S")
     
-    cursor = conn.cursor()
-    cursor.execute("""
-        SELECT id FROM password_otps 
-        WHERE lower(email) = ? AND otp_code = ? AND otp_type = ? AND is_used = 0 AND expires_at > ?
-        ORDER BY id DESC LIMIT 1
-    """, (email, otp_code, otp_type, now_str))
-    row = cursor.fetchone()
-    if row:
-        otp_id = row[0]
-        def _do():
-            with get_db() as c:
-                c.execute("UPDATE password_otps SET is_used = 1 WHERE id = ?", (otp_id,))
-                c.commit()
-        db_retry(_do)
-        return True
-    return False
+    with get_db() as conn:
+        cursor = conn.cursor()
+        cursor.execute("""
+            SELECT id FROM password_otps 
+            WHERE lower(email) = ? AND otp_code = ? AND otp_type = ? AND is_used = 0 AND expires_at > ?
+            ORDER BY id DESC LIMIT 1
+        """, (email, otp_code, otp_type, now_str))
+        row = cursor.fetchone()
+        if row:
+            otp_id = row[0]
+            def _do():
+                with get_db() as c:
+                    c.execute("UPDATE password_otps SET is_used = 1 WHERE id = ?", (otp_id,))
+                    c.commit()
+            db_retry(_do)
+            return True
+        return False
 
 def update_user_password(email: str, new_password: str) -> bool:
     email = email.strip().lower()
@@ -2309,13 +2324,14 @@ def mark_user_verified(email: str):
 def check_rate_limit(identifier: str, action_type: str, max_attempts: int, window_minutes: int) -> bool:
     identifier = identifier.strip().lower()
     window_start = (datetime.utcnow() - timedelta(minutes=window_minutes)).strftime("%Y-%m-%d %H:%M:%S")
-    cursor = conn.cursor()
-    cursor.execute("""
-        SELECT COUNT(*) FROM auth_rate_limits
-        WHERE lower(identifier) = ? AND action_type = ? AND attempt_time > ?
-    """, (identifier, action_type, window_start))
-    count = cursor.fetchone()[0]
-    return count < max_attempts
+    with get_db() as conn:
+        cursor = conn.cursor()
+        cursor.execute("""
+            SELECT COUNT(*) FROM auth_rate_limits
+            WHERE lower(identifier) = ? AND action_type = ? AND attempt_time > ?
+        """, (identifier, action_type, window_start))
+        count = cursor.fetchone()[0]
+        return count < max_attempts
 
 def record_rate_limit_attempt(identifier: str, action_type: str):
     identifier = identifier.strip().lower()
@@ -4433,32 +4449,33 @@ def get_email_logs(recipient_email: Optional[str] = None) -> list:
 
 def get_users_admin_analytics():
     """Retrieve full analytics of all logged-in and registered users."""
-    cur = conn.cursor()
-    # Total users
-    cur.execute("SELECT COUNT(*) FROM users")
-    total_count = cur.fetchone()[0]
+    with get_db() as conn:
+        cur = conn.cursor()
+        # Total users
+        cur.execute("SELECT COUNT(*) FROM users")
+        total_count = cur.fetchone()[0]
 
-    # Google users
-    cur.execute("SELECT COUNT(*) FROM users WHERE lower(provider) IN ('google', 'google.com', 'firebase')")
-    google_count = cur.fetchone()[0]
+        # Google users
+        cur.execute("SELECT COUNT(*) FROM users WHERE lower(provider) IN ('google', 'google.com', 'firebase')")
+        google_count = cur.fetchone()[0]
 
-    # Email/Password users
-    cur.execute("SELECT COUNT(*) FROM users WHERE lower(provider) = 'local'")
-    local_count = cur.fetchone()[0]
+        # Email/Password users
+        cur.execute("SELECT COUNT(*) FROM users WHERE lower(provider) = 'local'")
+        local_count = cur.fetchone()[0]
 
-    # Active users (with activity date)
-    cur.execute("SELECT COUNT(*) FROM users WHERE last_active_date IS NOT NULL AND last_active_date != ''")
-    active_count = cur.fetchone()[0]
+        # Active users (with activity date)
+        cur.execute("SELECT COUNT(*) FROM users WHERE last_active_date IS NOT NULL AND last_active_date != ''")
+        active_count = cur.fetchone()[0]
 
-    # Detailed user list
-    cur.execute("""
-        SELECT u.id, u.name, u.email, u.provider, u.created_at, u.last_active_date, 
-               COALESCE(u.contribution_score, 0), COALESCE(u.current_streak, 0),
-               (SELECT COUNT(*) FROM user_uploads WHERE lower(user_email) = lower(u.email)) as upload_count
-        FROM users u
-        ORDER BY u.id DESC
-    """)
-    rows = cur.fetchall()
+        # Detailed user list
+        cur.execute("""
+            SELECT u.id, u.name, u.email, u.provider, u.created_at, u.last_active_date, 
+                   COALESCE(u.contribution_score, 0), COALESCE(u.current_streak, 0),
+                   (SELECT COUNT(*) FROM user_uploads WHERE lower(user_email) = lower(u.email)) as upload_count
+            FROM users u
+            ORDER BY u.id DESC
+        """)
+        rows = cur.fetchall()
 
     user_list = []
     for r in rows:

@@ -107,7 +107,8 @@ async def google_login(request: GoogleLoginRequest):
                 "provider": "google",
                 "is_new": is_new_user,
                 "contribution_score": user.get("contribution_score", 0),
-                "streak": user.get("streak", 1)
+                "streak": user.get("current_streak", user.get("streak", 1)),
+                "current_streak": user.get("current_streak", user.get("streak", 1))
             },
             email_sent=email_sent,
             message="Welcome to BU Prepz AI! Email notification dispatched." if email_sent else "Welcome to BU Prepz AI!"
