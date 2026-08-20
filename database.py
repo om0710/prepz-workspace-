@@ -2769,8 +2769,16 @@ def get_admin_dashboard_stats(admin_email: str) -> dict:
         with get_db() as c:
             cur = c.cursor()
             today_str = datetime.now().strftime("%Y-%m-%d")
-            # 1. Total Registered Users
-            cur.execute("SELECT COUNT(*) FROM users WHERE provider != 'seeded'")
+            # 1. Total Registered/Active Users
+            cur.execute("""
+                SELECT COUNT(DISTINCT lower(user_email)) FROM (
+                    SELECT lower(email) AS user_email FROM users WHERE provider != 'seeded'
+                    UNION
+                    SELECT lower(user_email) AS user_email FROM user_sessions
+                    UNION
+                    SELECT lower(user_email) AS user_email FROM user_uploads
+                )
+            """)
             total_users = cur.fetchone()[0]
 
             # 2. All-Time Platform Dwell Time in Seconds
@@ -2861,8 +2869,12 @@ def get_admin_dashboard_stats(admin_email: str) -> dict:
             act_counts = dict(cur.fetchall())
 
             users_list = []
+            known_emails = set()
             for u in user_rows:
                 u_email = (u[2] or "").strip().lower()
+                if not u_email:
+                    continue
+                known_emails.add(u_email)
                 s_data = sess_map.get(u_email, {"total_sec": 0, "today_sec": 0, "max_ping": None})
                 u_uploads = uploads_map.get(u_email, [])
                 is_on = u_email in online_emails
@@ -2887,6 +2899,33 @@ def get_admin_dashboard_stats(admin_email: str) -> dict:
                     "uploads": u_uploads,
                     "actions_count": act_counts.get(u_email, 0)
                 })
+
+            # Include any other active/uploader emails not in users table yet
+            all_extra_emails = set(list(sess_map.keys()) + list(uploads_map.keys()) + list(act_counts.keys()))
+            for extra_em in all_extra_emails:
+                if extra_em and extra_em not in known_emails:
+                    known_emails.add(extra_em)
+                    s_data = sess_map.get(extra_em, {"total_sec": 0, "today_sec": 0, "max_ping": None})
+                    u_uploads = uploads_map.get(extra_em, [])
+                    is_on = extra_em in online_emails
+                    extra_name = extra_em.split("@")[0].replace(".", " ").replace("_", " ").replace("-", " ").title()
+                    users_list.append({
+                        "id": 99000 + len(users_list),
+                        "name": extra_name or "Student",
+                        "email": extra_em,
+                        "avatar_url": f"https://api.dicebear.com/7.x/bottts/svg?seed={extra_em}",
+                        "provider": "student",
+                        "created_at": None,
+                        "contribution_score": 0,
+                        "current_streak": 1,
+                        "is_online": is_on,
+                        "last_active": s_data["max_ping"],
+                        "today_duration_seconds": s_data["today_sec"],
+                        "total_duration_seconds": s_data["total_sec"],
+                        "uploads_count": len(u_uploads),
+                        "uploads": u_uploads,
+                        "actions_count": act_counts.get(extra_em, 0)
+                    })
 
             # Sort users: Online users first, then by today's time spent, then by total uploads
             users_list.sort(key=lambda x: (1 if x["is_online"] else 0, x["today_duration_seconds"], x["total_duration_seconds"], x["uploads_count"]), reverse=True)

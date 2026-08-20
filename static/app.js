@@ -5540,15 +5540,58 @@ function formatRelativeTime(isoStr) {
     }
 }
 
+// Generic Modal Management Helpers
+window.openModalById = function(modalId) {
+    const el = document.getElementById(modalId);
+    if (!el) {
+        console.warn("[MODAL] Element not found:", modalId);
+        return;
+    }
+    el.classList.remove("hidden");
+    el.style.removeProperty("display");
+    el.style.display = "flex";
+    document.body.style.overflow = "hidden";
+};
+
+window.closeModalById = function(modalId) {
+    const el = document.getElementById(modalId);
+    if (!el) return;
+    el.classList.add("hidden");
+    el.style.display = "none";
+    document.body.style.overflow = "";
+};
+
+// Global ESC key listener to dismiss open modals
+document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape") {
+        const openModals = document.querySelectorAll(".modal-overlay:not(.hidden)");
+        openModals.forEach(m => {
+            m.classList.add("hidden");
+            m.style.display = "none";
+        });
+        document.body.style.overflow = "";
+    }
+});
+
 // Fetch and render creator admin dashboard
-async function fetchAndRenderAdminDashboard() {
+async function fetchAndRenderAdminDashboard(isManualClick = false) {
+    const u = window.currentUser || JSON.parse(localStorage.getItem("docpilot-user") || "{}");
+    const adminEmail = (u.email || "").toLowerCase().trim();
+
     if (!isCurrentCreatorAdmin()) {
         console.warn("Creator Dashboard is restricted to authorized creators.");
         return;
     }
 
-    const u = window.currentUser || JSON.parse(localStorage.getItem("docpilot-user") || "{}");
-    const adminEmail = u.email || "";
+    const refreshBtn = document.getElementById("btn-creator-refresh");
+    const refreshIcon = document.getElementById("creator-refresh-icon");
+    const refreshText = document.getElementById("creator-refresh-text");
+
+    if (isManualClick && refreshBtn) {
+        refreshBtn.disabled = true;
+        if (refreshIcon) refreshIcon.style.animation = "spin 0.7s linear infinite";
+        if (refreshText) refreshText.textContent = "Refreshing...";
+    }
 
     try {
         const res = await fetch(`/api/admin/dashboard?admin_email=${encodeURIComponent(adminEmail)}`);
@@ -5580,13 +5623,21 @@ async function fetchAndRenderAdminDashboard() {
         if (subActions) subActions.textContent = `${kpis.total_actions || 0} total platform actions`;
 
         // 2. Render Users Table
-        renderAdminUserTable(data.users || []);
+        filterAdminUserTable();
 
         // 3. Render Recent Activity Stream
         renderAdminActivityStream(data.recent_activity || []);
 
     } catch (err) {
         console.error("Error fetching creator dashboard:", err);
+    } finally {
+        if (isManualClick && refreshBtn) {
+            setTimeout(() => {
+                refreshBtn.disabled = false;
+                if (refreshIcon) refreshIcon.style.animation = "";
+                if (refreshText) refreshText.textContent = "Live Refresh";
+            }, 400);
+        }
     }
 }
 window.fetchAndRenderAdminDashboard = fetchAndRenderAdminDashboard;
@@ -5598,7 +5649,7 @@ function renderAdminUserTable(users) {
     if (!tbody) return;
 
     if (!users || users.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="7" style="text-align: center; color: #8a8f98; padding: 24px;">No students match criteria.</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="7" style="text-align: center; color: #8a8f98; padding: 28px; font-size: 13px;">No students match criteria.</td></tr>`;
         return;
     }
 
@@ -5611,10 +5662,11 @@ function renderAdminUserTable(users) {
             statusBadge = `<span class="status-chip recent">⚡ Active Today</span>`;
         }
 
-        const avatar = user.avatar_url || `https://api.dicebear.com/7.x/bottts/svg?seed=${user.email}`;
+        const avatar = user.avatar_url || `https://api.dicebear.com/7.x/bottts/svg?seed=${encodeURIComponent(user.email)}`;
+        const safeEmail = encodeURIComponent(user.email);
 
         return `
-            <tr>
+            <tr style="cursor: pointer;" onclick="if (!event.target.closest('.btn-inspect-user')) openAdminUserDrilldown('${safeEmail}')">
                 <td>
                     <div class="student-meta-cell">
                         <img src="${avatar}" class="student-table-avatar" alt="Avatar" onerror="this.src='https://api.dicebear.com/7.x/bottts/svg?seed=BU'">
@@ -5632,7 +5684,7 @@ function renderAdminUserTable(users) {
                 </td>
                 <td style="text-align: right; font-family: var(--font-mono); color: #cbd5e1;">${user.actions_count || 0}</td>
                 <td style="text-align: center;">
-                    <button type="button" class="btn-inspect-user" onclick="openAdminUserDrilldown('${encodeURIComponent(user.email)}')">Inspect ↗</button>
+                    <button type="button" class="btn-inspect-user" onclick="event.stopPropagation(); openAdminUserDrilldown('${safeEmail}', this)">Inspect ↗</button>
                 </td>
             </tr>
         `;
@@ -5674,7 +5726,7 @@ function renderAdminActivityStream(activities) {
     if (!list) return;
 
     if (!activities || activities.length === 0) {
-        list.innerHTML = `<div style="text-align:center;color:#64748b;padding:18px;font-size:12px;">No activity logged yet today.</div>`;
+        list.innerHTML = `<div style="text-align:center;color:#64748b;padding:24px;font-size:12px;">No activity logged yet today.</div>`;
         return;
     }
 
@@ -5699,10 +5751,16 @@ function renderAdminActivityStream(activities) {
 }
 
 // Deep User Drilldown Modal Handler
-async function openAdminUserDrilldown(encodedEmail) {
+async function openAdminUserDrilldown(encodedEmail, btnElement = null) {
     const targetEmail = decodeURIComponent(encodedEmail);
     const u = window.currentUser || JSON.parse(localStorage.getItem("docpilot-user") || "{}");
-    const adminEmail = u.email || "";
+    const adminEmail = (u.email || "").toLowerCase().trim();
+
+    const originalBtnHtml = btnElement ? btnElement.innerHTML : null;
+    if (btnElement) {
+        btnElement.disabled = true;
+        btnElement.innerHTML = `<span style="font-size: 11px;">Loading...</span>`;
+    }
 
     try {
         const res = await fetch(`/api/admin/user-drilldown?admin_email=${encodeURIComponent(adminEmail)}&user_email=${encodeURIComponent(targetEmail)}`);
@@ -5715,8 +5773,8 @@ async function openAdminUserDrilldown(encodedEmail) {
         const drawerName = document.getElementById("drawer-user-name");
         const drawerEmail = document.getElementById("drawer-user-email");
 
-        if (drawerAvatar) drawerAvatar.src = prof.avatar_url || `https://api.dicebear.com/7.x/bottts/svg?seed=${prof.email}`;
-        if (drawerName) drawerName.textContent = prof.name || targetEmail.split("@")[0];
+        if (drawerAvatar) drawerAvatar.src = prof.avatar_url || `https://api.dicebear.com/7.x/bottts/svg?seed=${encodeURIComponent(prof.email || targetEmail)}`;
+        if (drawerName) drawerName.textContent = prof.name || targetEmail.split("@")[0].replace(".", " ").replace("_", " ").title();
         if (drawerEmail) drawerEmail.textContent = prof.email || targetEmail;
 
         const statTime = document.getElementById("drawer-stat-total-time");
@@ -5735,13 +5793,13 @@ async function openAdminUserDrilldown(encodedEmail) {
         const uploadsList = document.getElementById("drawer-uploads-list");
         if (uploadsList) {
             if (!data.uploads || data.uploads.length === 0) {
-                uploadsList.innerHTML = `<div style="text-align: center; color: #8a8f98; padding: 20px;">No files uploaded yet.</div>`;
+                uploadsList.innerHTML = `<div style="text-align: center; color: #8a8f98; padding: 24px; font-size: 13px;">No files uploaded yet by this user.</div>`;
             } else {
                 uploadsList.innerHTML = data.uploads.map(up => `
                     <div class="drawer-item-card">
-                        <div>
-                            <div style="font-weight: 700; color: #ffffff; font-size: 13px;">${up.filename}</div>
-                            <div style="font-size: 11.5px; color: #94a3b8;">${up.subject} &bull; ${up.semester} &bull; ${up.file_type} (${Math.round((up.size_bytes || 0) / 1024)} KB)</div>
+                        <div style="flex: 1; overflow: hidden;">
+                            <div style="font-weight: 700; color: #ffffff; font-size: 13px; text-overflow: ellipsis; overflow: hidden; white-space: nowrap;">${up.filename}</div>
+                            <div style="font-size: 11.5px; color: #94a3b8; margin-top: 2px;">${up.subject} &bull; ${up.semester} &bull; ${up.file_type} (${Math.round((up.size_bytes || 0) / 1024)} KB)</div>
                         </div>
                         <a href="/uploads/${encodeURIComponent(up.filename)}" target="_blank" class="btn-inspect-user" style="text-decoration:none;">View ↗</a>
                     </div>
@@ -5755,15 +5813,15 @@ async function openAdminUserDrilldown(encodedEmail) {
         const timelineList = document.getElementById("drawer-timeline-list");
         if (timelineList) {
             if (!data.activity_logs || data.activity_logs.length === 0) {
-                timelineList.innerHTML = `<div style="color: #8a8f98; padding: 14px;">No logged events for this user.</div>`;
+                timelineList.innerHTML = `<div style="color: #8a8f98; padding: 24px; text-align: center; font-size: 13px;">No recorded events for this user yet.</div>`;
             } else {
                 timelineList.innerHTML = data.activity_logs.map(log => `
                     <div class="drawer-timeline-item">
                         <div style="display:flex; justify-content:space-between; font-size: 11.5px; font-weight:700; color:#ff8a65;">
                             <span>${log.action_type}</span>
-                            <span style="color:#64748b; font-family:var(--font-mono);">${formatRelativeTime(log.timestamp)}</span>
+                            <span style="color:#64748b; font-family:var(--font-mono); font-weight: 500;">${formatRelativeTime(log.timestamp)}</span>
                         </div>
-                        <div style="font-size: 12px; color: #cbd5e1;">${log.action_details || "Recorded action"}</div>
+                        <div style="font-size: 12px; color: #cbd5e1; margin-top: 3px;">${log.action_details || "Recorded action"}</div>
                     </div>
                 `).join("");
             }
@@ -5773,13 +5831,13 @@ async function openAdminUserDrilldown(encodedEmail) {
         const weaknessesList = document.getElementById("drawer-weaknesses-list");
         if (weaknessesList) {
             if (!data.concept_weaknesses || data.concept_weaknesses.length === 0) {
-                weaknessesList.innerHTML = `<div style="text-align: center; color: #8a8f98; padding: 20px;">No concept weaknesses flagged.</div>`;
+                weaknessesList.innerHTML = `<div style="text-align: center; color: #8a8f98; padding: 24px; font-size: 13px;">No concept weaknesses flagged yet.</div>`;
             } else {
                 weaknessesList.innerHTML = data.concept_weaknesses.map(w => `
                     <div class="drawer-item-card">
                         <div>
                             <div style="font-weight: 700; color: #ffffff; font-size: 13px;">${w.concept}</div>
-                            <div style="font-size: 11.5px; color: #f43f5e;">Subject: ${w.subject} &bull; Mastery: ${Math.round(w.mastery_percentage || 0)}%</div>
+                            <div style="font-size: 11.5px; color: #f43f5e; margin-top: 2px;">Subject: ${w.subject} &bull; Mastery: ${Math.round(w.mastery_percentage || 0)}%</div>
                         </div>
                         <span style="font-size: 11px; color: #8a8f98; font-family: var(--font-mono);">${formatRelativeTime(w.recorded_at)}</span>
                     </div>
@@ -5789,10 +5847,15 @@ async function openAdminUserDrilldown(encodedEmail) {
 
         // Open modal
         switchDrawerTab('uploads');
-        if (window.openModalById) window.openModalById("admin-user-drawer-modal");
+        window.openModalById("admin-user-drawer-modal");
 
     } catch (err) {
         console.error("Error loading user drilldown:", err);
+    } finally {
+        if (btnElement && originalBtnHtml) {
+            btnElement.disabled = false;
+            btnElement.innerHTML = originalBtnHtml;
+        }
     }
 }
 window.openAdminUserDrilldown = openAdminUserDrilldown;

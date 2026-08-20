@@ -948,9 +948,9 @@
                                 <p>Real-time telemetry tracking active student dwell times, daily logins, uploads, AI paper predictions, and deep user activity inspection.</p>
                             </div>
                             <div class="creator-header-actions">
-                                <button type="button" id="btn-creator-refresh" class="btn-creator-action" onclick="fetchAndRenderAdminDashboard()">
-                                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M23 4v6h-6M1 20v-6h6M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
-                                    <span>Live Refresh</span>
+                                <button type="button" id="btn-creator-refresh" class="btn-creator-action" onclick="fetchAndRenderAdminDashboard(true)">
+                                    <svg id="creator-refresh-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M23 4v6h-6M1 20v-6h6M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
+                                    <span id="creator-refresh-text">Live Refresh</span>
                                 </button>
                             </div>
                         </div>
@@ -1522,8 +1522,10 @@
                 <span class="yt-player-tip" style="font-size: 12px; color: #94a3b8;">💡 In-App Player: Watching inside BU Prepz AI. Click ✕ or press ESC to close.</span>
             </div>
         </div>
+    </div>
+
     <!-- Admin User Deep Drilldown Drawer Modal -->
-    <div id="admin-user-drawer-modal" class="modal-overlay hidden" style="display: none;">
+    <div id="admin-user-drawer-modal" class="modal-overlay hidden" style="display: none;" onclick="if(event.target === this) closeModalById('admin-user-drawer-modal')">
         <div class="admin-drawer-card">
             <div class="admin-drawer-header">
                 <div class="drawer-user-meta">
@@ -1533,7 +1535,7 @@
                         <span id="drawer-user-email">student@college.edu</span>
                     </div>
                 </div>
-                <button type="button" class="btn-close-modal" onclick="closeModalById('admin-user-drawer-modal')">&times;</button>
+                <button type="button" class="btn-close-modal" onclick="closeModalById('admin-user-drawer-modal')" aria-label="Close">&times;</button>
             </div>
             
             <div class="admin-drawer-body">
@@ -1589,6 +1591,6 @@
     </div>
 
     <!-- Main JavaScript Link -->
-    <script src="app.js?v=20260820_creator_dashboard_v9"></script>
+    <script src="app.js?v=20260820_creator_dashboard_v10"></script>
 </body>
 </html>
