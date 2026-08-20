@@ -1478,39 +1478,77 @@ async def google_auth_callback(request: Request, code: str = None, error: str = 
     else:
         redirect_uri = GOOGLE_REDIRECT_URI
 
-    # Exchange code for access token
-    async with httpx.AsyncClient(timeout=10) as client:
-        token_resp = await client.post("https://oauth2.googleapis.com/token", data={
-            "code": code,
-            "client_id": GOOGLE_CLIENT_ID_OAUTH,
-            "client_secret": GOOGLE_CLIENT_SECRET_OAUTH,
-            "redirect_uri": redirect_uri,
-            "grant_type": "authorization_code"
-        })
-    tokens = token_resp.json()
-    access_token = tokens.get("access_token")
-    if not access_token:
-        print(f"[GOOGLE OAUTH] Token exchange failed: {tokens}")
-        return RedirectResponse("/?auth_error=token_failed")
-    # Get user info
-    async with httpx.AsyncClient(timeout=8) as client:
-        info_resp = await client.get(
-            "https://www.googleapis.com/oauth2/v2/userinfo",
-            headers={"Authorization": f"Bearer {access_token}"}
-        )
-    info = info_resp.json()
-    email = info.get("email", "").strip().lower()
+    email = ""
+    name = ""
+    avatar_url = ""
+    tokens = {}
+
+    # Exchange code for access token & id_token
+    try:
+        async with httpx.AsyncClient(timeout=10) as client:
+            token_resp = await client.post("https://oauth2.googleapis.com/token", data={
+                "code": code,
+                "client_id": GOOGLE_CLIENT_ID_OAUTH,
+                "client_secret": GOOGLE_CLIENT_SECRET_OAUTH,
+                "redirect_uri": redirect_uri,
+                "grant_type": "authorization_code"
+            })
+        tokens = token_resp.json()
+        print(f"[GOOGLE OAUTH] Token response keys: {list(tokens.keys())}")
+
+        # Primary: Extract directly from signed id_token JWT (zero extra network calls)
+        id_token_str = tokens.get("id_token")
+        if id_token_str and "." in id_token_str:
+            try:
+                parts = id_token_str.split(".")
+                if len(parts) >= 2:
+                    padding = "=" * ((4 - len(parts[1]) % 4) % 4)
+                    payload_bytes = base64.urlsafe_b64decode(parts[1] + padding)
+                    jwt_data = json.loads(payload_bytes.decode("utf-8"))
+                    email = (jwt_data.get("email") or "").strip().lower()
+                    name = jwt_data.get("name") or jwt_data.get("given_name") or ""
+                    avatar_url = jwt_data.get("picture") or ""
+                    print(f"[GOOGLE OAUTH] Decoded from id_token: email={email}, name={name}")
+            except Exception as jwt_err:
+                print(f"[GOOGLE OAUTH] id_token decode warning: {jwt_err}")
+
+        # Secondary: Fallback to Google UserInfo endpoint if email not present in id_token
+        access_token = tokens.get("access_token")
+        if not email and access_token:
+            async with httpx.AsyncClient(timeout=8) as client:
+                info_resp = await client.get(
+                    "https://www.googleapis.com/oauth2/v2/userinfo",
+                    headers={"Authorization": f"Bearer {access_token}"}
+                )
+            info = info_resp.json()
+            email = info.get("email", "").strip().lower()
+            name = name or info.get("name") or ""
+            avatar_url = avatar_url or info.get("picture") or ""
+
+    except Exception as exc:
+        print(f"[GOOGLE OAUTH] Token exchange exception: {exc}")
+
     if not email:
-        return RedirectResponse("/?auth_error=no_email")
-    name = info.get("name") or email.split("@")[0].title()
-    avatar_url = info.get("picture") or f"https://api.dicebear.com/7.x/bottts/svg?seed={email}"
-    print(f"[GOOGLE OAUTH] Authenticated: {email}")
+        print(f"[GOOGLE OAUTH FAILED] Could not extract email from Google response: {tokens}")
+        return RedirectResponse("/?auth_error=token_failed")
+
+    name = name or email.split("@")[0].title()
+    avatar_url = avatar_url or f"https://api.dicebear.com/7.x/bottts/svg?seed={email}"
+    print(f"[GOOGLE OAUTH SUCCESS] Logged in: {email}")
+
     user = get_user_by_email(email)
     if not user:
         user = create_user(name=name, email=email, password=None, provider="google", avatar_url=avatar_url, is_verified=True)
     user = update_user_activity(email) or user
     send_google_login_notification(to_email=email, student_name=name)
-    user_payload = {"id": user["id"], "name": user["name"], "email": user["email"], "provider": "google", "avatar_url": user["avatar_url"]}
+
+    user_payload = {
+        "id": user["id"],
+        "name": user["name"],
+        "email": user["email"],
+        "provider": "google",
+        "avatar_url": user["avatar_url"]
+    }
     encoded = base64.b64encode(json.dumps(user_payload).encode()).decode()
     return RedirectResponse(f"/?auth_data={encoded}")
 # ────────────────────────────────────────────────────────────────────────────────
