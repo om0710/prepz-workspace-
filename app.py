@@ -2452,29 +2452,6 @@ def list_files(user_email: Optional[str] = None):
             result_files.append(f_copy)
             known_set.add((f["filename"].lower(), f["is_private"]))
 
-        # Also incorporate any legacy unrecorded files directly in uploads/ as public Course Repo files
-        from backend_rag import get_uploaded_files
-        raw_filenames = get_uploaded_files()
-        for fname in raw_filenames:
-            if (fname.lower(), 0) not in known_set:
-                file_p = os.path.join(UPLOADS_DIR, fname)
-                size_b = os.path.getsize(file_p) if os.path.exists(file_p) else 0
-                result_files.append({
-                    "id": None,
-                    "filename": fname,
-                    "user_email": "system@prepz.edu",
-                    "user_name": "Faculty Contributor",
-                    "uploaded_at": None,
-                    "size_bytes": size_b,
-                    "subject": "General Engineering",
-                    "semester": "Semester 1",
-                    "file_type": "Notes",
-                    "exam_type": "Other",
-                    "is_private": 0,
-                    "file_path": file_p
-                })
-                known_set.add((fname.lower(), 0))
-                
         return {"files": result_files}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))

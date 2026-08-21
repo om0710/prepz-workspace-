@@ -4134,30 +4134,27 @@ function initializeDocPilotApp() {
         }
     };
 
-    window.downloadDocumentFile = async function(filename, isPrivate = null) {
+    window.downloadDocumentFile = function(filename, isPrivate = null) {
         if (!filename) return;
         try {
             const activeUser = currentUser || window.currentUser || JSON.parse(localStorage.getItem("docpilot-user") || "{}");
             const emailParam = activeUser && activeUser.email ? `&user_email=${encodeURIComponent(activeUser.email)}` : "";
             const privParam = isPrivate !== null ? `&is_private=${isPrivate}` : "";
             const downloadUrl = `/download/${encodeURIComponent(filename)}?disposition=attachment${emailParam}${privParam}`;
-            const res = await fetch(downloadUrl);
-            if (!res.ok) {
-                // Fallback to /files/
-                const altRes = await fetch(`/files/${encodeURIComponent(filename)}?${emailParam.replace('&', '')}${privParam}`);
-                if (altRes.ok) {
-                    const blob = await altRes.blob();
-                    window.triggerBlobDownload(blob, filename);
-                    return;
+
+            const a = document.createElement('a');
+            a.style.display = 'none';
+            a.href = downloadUrl;
+            a.setAttribute('download', filename);
+            document.body.appendChild(a);
+            a.click();
+            setTimeout(() => {
+                if (document.body.contains(a)) {
+                    document.body.removeChild(a);
                 }
-                // Direct new tab open fallback
-                window.open(downloadUrl, '_blank');
-                return;
-            }
-            const blob = await res.blob();
-            window.triggerBlobDownload(blob, filename);
+            }, 1000);
         } catch (err) {
-            console.warn("[DOWNLOAD BLOB FALLBACK]", err);
+            console.warn("[DOWNLOAD FALLBACK]", err);
             window.open(`/download/${encodeURIComponent(filename)}?disposition=attachment`, '_blank');
         }
     };

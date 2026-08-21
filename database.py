@@ -620,48 +620,31 @@ def auto_sync_disk_uploads_to_db():
                     
                     norm_path = full_path.replace("\\", "/")
                     is_priv = 1 if "/workspace/" in norm_path else 0
-                    user_email = "anonymous@college.edu"
-                    if is_priv == 1:
-                        parts = norm_path.split("/workspace/")
-                        if len(parts) > 1:
-                            user_email = parts[1].split("/")[0]
-                    
-                    fname_lower = fname.lower()
-                    guessed_subject = "General Engineering"
-                    if "statistic" in fname_lower or "probab" in fname_lower:
-                        guessed_subject = "Probability & Statistics"
-                    elif "operating" in fname_lower or "os" in fname_lower:
-                        guessed_subject = "Operating Systems"
-                    elif "data struct" in fname_lower or "dsa" in fname_lower:
-                        guessed_subject = "Data Structures & Algorithms"
-                    elif "electric" in fname_lower or "beee" in fname_lower or "aiml" in fname_lower:
-                        guessed_subject = "Introduction to Electricals & Electronics"
+                    if is_priv == 0:
+                        # Do NOT auto-inject unrecorded disk files into Course Repo
+                        continue
 
-                    guessed_type = "PYQ" if ("pyq" in fname_lower or "paper" in fname_lower or "exam" in fname_lower or fname_lower.startswith("f44") or "cbsc" in fname_lower) else "Notes"
-                    guessed_exam = "End-Sem" if "end" in fname_lower else ("Mid-Sem" if "mid" in fname_lower else "Other")
-                    guessed_sem = "Semester 3" if ("sem3" in fname_lower or "statistics" in fname_lower or "f44" in fname_lower) else "Semester 1"
+                    parts = norm_path.split("/workspace/")
+                    user_email = parts[1].split("/")[0] if len(parts) > 1 else ""
+                    if not user_email or user_email.lower() == "anonymous@college.edu":
+                        continue
 
-                    if is_priv == 1:
-                        cur.execute("SELECT id FROM user_uploads WHERE lower(filename) = lower(?) AND is_private = 1 AND lower(user_email) = lower(?)", (fname, user_email.lower()))
-                    else:
-                        cur.execute("SELECT id FROM user_uploads WHERE lower(filename) = lower(?) AND is_private = 0", (fname,))
-                    
+                    cur.execute("SELECT id FROM user_uploads WHERE lower(filename) = lower(?) AND is_private = 1 AND lower(user_email) = lower(?)", (fname, user_email.lower()))
                     if not cur.fetchone():
                         cur.execute("""
                             INSERT INTO user_uploads (filename, user_email, user_name, uploaded_at, file_path, size_bytes, subject, semester, file_type, exam_type, is_private)
-                            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1)
                         """, (
                             fname,
                             user_email,
-                            "Student Contributor",
+                            "User",
                             _dt.utcnow().isoformat(),
                             full_path,
                             os.path.getsize(full_path) if os.path.exists(full_path) else 0,
-                            guessed_subject,
-                            guessed_sem,
-                            guessed_type,
-                            guessed_exam,
-                            is_priv
+                            "General Engineering",
+                            "Semester 1",
+                            "Notes",
+                            "Other"
                         ))
             c.commit()
     except Exception as e:
