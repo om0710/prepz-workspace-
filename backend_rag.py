@@ -197,6 +197,41 @@ def reset_bm25_cache():
     _cached_bm25 = None
     _cached_doc_count = 0
 
+_cached_source_map = None
+_cached_source_map_doc_count = -1
+
+def get_indexed_source_map():
+    """Maps lowercased basename -> list of actual full `source` paths currently indexed
+    in the vector store. Uploaded files live under uploads/course_repo/<name> or
+    uploads/workspace/<user>/<name> (not flat uploads/<name>), so callers must resolve
+    a bare filename to its real stored source path(s) before filtering by metadata --
+    Chroma's `where` filter only does exact matches."""
+    global _cached_source_map, _cached_source_map_doc_count
+    try:
+        count = vectorstore._collection.count()
+        if _cached_source_map is not None and count == _cached_source_map_doc_count:
+            return _cached_source_map
+
+        source_map = {}
+        batch_size = 1000
+        for offset in range(0, count, batch_size):
+            batch = vectorstore._collection.get(limit=batch_size, offset=offset, include=["metadatas"])
+            for meta in batch.get("metadatas", []):
+                if not meta:
+                    continue
+                src = meta.get("source")
+                if not src:
+                    continue
+                source_map.setdefault(os.path.basename(src).lower(), set()).add(src)
+
+        source_map = {k: list(v) for k, v in source_map.items()}
+        _cached_source_map = source_map
+        _cached_source_map_doc_count = count
+        return source_map
+    except Exception as e:
+        print(f"Error building indexed source map: {e}")
+        return _cached_source_map or {}
+
 
 def get_uploaded_files():
     import os
@@ -320,12 +355,19 @@ def rag_tool(query: str):
         if uploaded_files:
             relevant_files = route_query_to_files(query, uploaded_files)
             if relevant_files:
-                filter_sources = [f"uploads/{f}" for f in relevant_files]
-                if len(filter_sources) == 1:
-                    filter_dict = {"source": filter_sources[0]}
+                source_map = get_indexed_source_map()
+                filter_sources = []
+                for f in relevant_files:
+                    filter_sources.extend(source_map.get(f.lower(), []))
+                if filter_sources:
+                    if len(filter_sources) == 1:
+                        filter_dict = {"source": filter_sources[0]}
+                    else:
+                        filter_dict = {"source": {"$in": filter_sources}}
+                    print(f"Routing query '{query}' to files: {relevant_files} -> sources: {filter_sources}")
                 else:
-                    filter_dict = {"source": {"$in": filter_sources}}
-                print(f"Routing query '{query}' to files: {relevant_files}")
+                    filter_sources = None
+                    print(f"Routing query '{query}' matched filenames {relevant_files} but no indexed source path was found for them; falling back to unfiltered search")
     except Exception as e:
         print(f"Error routing query to files: {e}")
 
