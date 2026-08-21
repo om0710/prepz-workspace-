@@ -245,38 +245,18 @@ def route_query_to_files(query: str, uploaded_files: list[str]) -> list[str]:
     if len(uploaded_files) == 1:
         return uploaded_files
     
-    files_list_str = "\n".join([f"- {f}" for f in uploaded_files])
-    prompt = f"""System: You are an expert routing assistant. Given a user search query and a list of uploaded documents (.pdf, .docx, .doc), identify which files are likely to contain the answer to the query.
-- Be highly selective: if the query mentions a specific name, subject, or keyword (e.g. 'kanak'), do NOT select files that do not match or contain that name/keyword (e.g. 'OM_BANSAL'), even if they share common document suffixes or extensions.
-- If the query references 'my resume', 'my cv', or 'my certificate', and the query does not contain another name, select the primary user resume (e.g., matching 'OM_BANSAL' or user name).
-- If the query is general, chit-chat, or it is unclear which file is relevant, select ALL files.
-
-Output ONLY the exact filenames, one per line. Do not include any other text, explanation, list symbols, or markdown.
-
-Uploaded Files:
-{files_list_str}
-
-User Query: {query}
-
-Relevant Files:"""
-    try:
-        response = llm.invoke(prompt)
-        selected = [line.strip() for line in response.content.split("\n") if line.strip()]
-        cleaned = []
-        for s in selected:
-            s_clean = s
-            if s_clean.startswith(("- ", "* ", "• ")):
-                s_clean = s_clean[2:]
-            elif s_clean.strip() and s_clean.strip()[0].isdigit() and s_clean.strip()[1:].startswith((". ", ") ")):
-                parts = s_clean.split(None, 1)
-                if len(parts) > 1:
-                    s_clean = parts[1]
-            s_clean = s_clean.strip()
-            if s_clean in uploaded_files:
-                cleaned.append(s_clean)
-        return cleaned if cleaned else uploaded_files
-    except Exception:
-        return uploaded_files
+    q_lower = query.lower()
+    matched = []
+    for f in uploaded_files:
+        f_base = os.path.splitext(f)[0].lower().replace("_", " ").replace("-", " ")
+        # Check if full filename or significant keywords from filename are in query
+        if f.lower() in q_lower or f_base in q_lower:
+            matched.append(f)
+        else:
+            words = [w for w in f_base.split() if len(w) > 3 and w not in ["assignment", "micro", "lab", "notes", "test", "final"]]
+            if words and any(w in q_lower for w in words):
+                matched.append(f)
+    return matched if matched else uploaded_files
 
 def get_bm25_retriever(filter_sources: list[str] = None):
     global _cached_bm25, _cached_doc_count
@@ -395,31 +375,10 @@ def rag_tool(query: str):
             seen_contents.add(content_key)
             combined_docs.append(doc)
 
-    is_general = is_general_knowledge_query(query)
-    
-    # 3. Document Grading (CRAG)
-    relevant_docs = []
-    if filter_dict:
-        # If filtered to specific target files, keep all retrieved chunks
-        relevant_docs = combined_docs
+    if combined_docs:
+        context_list = [f"[Document Chunk {i+1}]: {doc.page_content}" for i, doc in enumerate(combined_docs[:4])]
     else:
-        for doc in combined_docs:
-            score = grade_document(query, doc.page_content)
-            if score == "yes" or len(combined_docs) <= 1:
-                relevant_docs.append(doc)
-
-    context_list = [doc.page_content for doc in relevant_docs]
-    
-    # 4. Fallback Search / Error mitigation if no relevant docs found
-    if not relevant_docs:
-        if is_general:
-            try:
-                search_result = wikipedia_search.invoke(query)
-                context_list.append(f"[Corrective Search Fallback Context] {search_result}")
-            except Exception:
-                pass
-        else:
-            context_list.append("[No relevant information found in the uploaded documents. Do not attempt to guess or use web search for local document questions.]")
+        context_list = ["[No relevant local document chunks found. Answer based on general knowledge or state that information is not available in the uploaded files.]"]
 
     context = "\n\n".join(context_list)
     return context
@@ -576,27 +535,6 @@ def chat_node(state: ChatState, config = None):
         return {
             "messages": [response]
         }
-
-    # If this is a final response (no tool calls generated) and we just ran a RAG tool search,
-    # let's run the Groundedness and Relevance check to prevent hallucinations
-    last_message = pruned[-1] if pruned else None
-    if (
-        isinstance(last_message, ToolMessage)
-        and last_message.name == "rag_tool"
-    ):
-        context = last_message.content
-        user_query = ""
-        # Find the user's corresponding query
-        for msg in reversed(pruned):
-            if isinstance(msg, HumanMessage):
-                user_query = msg.content
-                break
-        
-        if user_query:
-            is_valid = check_groundedness_and_relevance(user_query, context, response.content)
-            if is_valid == "no":
-                # Self-correction loop: regenerate response strictly grounded in context
-                response = regenerate_grounded_response(user_query, context, thread_id)
 
     return {
         "messages": [response]
