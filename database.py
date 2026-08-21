@@ -1492,7 +1492,7 @@ def classify_intent_with_llm(query: str, last_topic: str = "", conversation_hist
         import ssl
         ctx = ssl._create_unverified_context()
         payload = _json.dumps({
-            "model": "llama-3.1-8b-instant",
+            "model": "openai/gpt-oss-120b",
             "messages": [
                 {"role": "system", "content": system_prompt},
                 {"role": "user", "content": f"Previous active topic: \"{last_topic}\"{history_str}\nCurrent student message: \"{query}\""}
@@ -2121,7 +2121,7 @@ def _extract_topic_nlp(query: str, last_topic: str = "", recent_queries: list = 
         if client:
             context_hint = f"Previous active academic topic was: '{last_topic}'. " if last_topic else ""
             resp = client.chat.completions.create(
-                model="llama-3.3-70b-versatile",
+                model="openai/gpt-oss-120b",
                 messages=[{
                     "role": "system",
                     "content": (
@@ -3756,7 +3756,7 @@ def extract_concepts_from_message(message: str) -> list:
             import urllib.request, ssl
             ctx = ssl._create_unverified_context()
             payload = _json.dumps({
-                "model": "llama-3.1-8b-instant",
+                "model": "openai/gpt-oss-120b",
                 "messages": [
                     {
                         "role": "system",
@@ -3771,7 +3771,11 @@ def extract_concepts_from_message(message: str) -> list:
             req = urllib.request.Request(
                 "https://api.groq.com/openai/v1/chat/completions",
                 data=payload,
-                headers={"Authorization": f"Bearer {groq_key}", "Content-Type": "application/json"}
+                headers={
+                    "Authorization": f"Bearer {groq_key}",
+                    "Content-Type": "application/json",
+                    "User-Agent": "Mozilla/5.0"
+                }
             )
             with urllib.request.urlopen(req, context=ctx, timeout=2.5) as resp:
                 data = _json.loads(resp.read().decode("utf-8"))
@@ -4049,7 +4053,7 @@ def generate_questions_with_llm(concept: str, difficulty: str = "easy", count: i
         import urllib.request, ssl
         ctx = ssl._create_unverified_context()
         payload = _json.dumps({
-            "model": "llama-3.3-70b-versatile",
+            "model": "openai/gpt-oss-120b",
             "messages": [{"role": "user", "content": prompt}],
             "temperature": 0.2
         }).encode("utf-8")
@@ -4057,7 +4061,11 @@ def generate_questions_with_llm(concept: str, difficulty: str = "easy", count: i
         req = urllib.request.Request(
             "https://api.groq.com/openai/v1/chat/completions",
             data=payload,
-            headers={"Authorization": f"Bearer {groq_key}", "Content-Type": "application/json"}
+            headers={
+                "Authorization": f"Bearer {groq_key}",
+                "Content-Type": "application/json",
+                "User-Agent": "Mozilla/5.0"
+            }
         )
         with urllib.request.urlopen(req, context=ctx, timeout=6.0) as resp:
             data = _json.loads(resp.read().decode("utf-8"))
