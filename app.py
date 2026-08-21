@@ -5,6 +5,7 @@ import shutil
 import re
 import html
 import threading
+import secrets
 from datetime import datetime
 from urllib.parse import unquote, quote
 from typing import Optional
@@ -1240,7 +1241,8 @@ from database import (
     create_weakness_profile, generate_adaptive_practice, submit_practice_answer,
     complete_practice_session, verify_user_ownership, encrypt_sensitive, decrypt_sensitive,
     get_users_admin_analytics, record_session_heartbeat, log_user_activity,
-    get_admin_dashboard_stats, get_admin_user_drilldown, is_admin_user
+    get_admin_dashboard_stats, get_admin_user_drilldown, is_admin_user,
+    get_db, db_retry
 )
 from fastapi import Form
 from typing import Optional
@@ -1453,8 +1455,11 @@ class FirebaseSyncRequest(BaseModel):
     avatar_url: Optional[str] = None
 
 # ── BACKEND GOOGLE OAUTH2 ── pure server-side, no CSP issues ─────────────────
-GOOGLE_CLIENT_ID_OAUTH = "585299422541-edqtcaaoljev3op2cffl98jfvr8asn56.apps.googleusercontent.com"
-GOOGLE_CLIENT_SECRET_OAUTH = "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"
+# Reads from env first so a Space secret (GOOGLE_CLIENT_ID / GOOGLE_CLIENT_SECRET)
+# overrides these without a code change -- set real secrets in your Hugging Face
+# Space settings once you rotate the values below, since they've been public in git history.
+GOOGLE_CLIENT_ID_OAUTH = os.environ.get("GOOGLE_CLIENT_ID") or "585299422541-edqtcaaoljev3op2cffl98jfvr8asn56.apps.googleusercontent.com"
+GOOGLE_CLIENT_SECRET_OAUTH = os.environ.get("GOOGLE_CLIENT_SECRET") or "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"
 GOOGLE_REDIRECT_URI = "https://om123bansal-prepz-app.hf.space/api/auth/google/callback"
 
 def get_google_redirect_uri(request: Request) -> str:

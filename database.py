@@ -14,6 +14,26 @@ try:
 except Exception:
     pass
 
+_groq_client = None
+
+def _get_groq():
+    """Lazily build a Groq SDK client for zero-shot topic extraction. Returns None
+    (caller already falls back to keyword matching) if no GROQ_API_KEY is set or
+    the groq package is unavailable."""
+    global _groq_client
+    if _groq_client is not None:
+        return _groq_client
+    api_key = os.environ.get("GROQ_API_KEY")
+    if not api_key:
+        return None
+    try:
+        from groq import Groq
+        _groq_client = Groq(api_key=api_key)
+        return _groq_client
+    except Exception as e:
+        print(f"[NLP] Groq client init failed: {e}")
+        return None
+
 def get_db():
     c = sqlite3.connect(database='chatbot.db', timeout=60.0, check_same_thread=False)
     c.execute("PRAGMA journal_mode=WAL;")
