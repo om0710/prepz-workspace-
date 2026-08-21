@@ -599,8 +599,14 @@ async def chat_stream(request: ChatRequest):
 
     async def run_workflow():
         try:
-            res = await run_in_threadpool(workflow.invoke, state, config=config)
-            
+            try:
+                res = await asyncio.wait_for(
+                    run_in_threadpool(workflow.invoke, state, config=config),
+                    timeout=60
+                )
+            except asyncio.TimeoutError:
+                raise Exception("The AI took too long to respond. Please try again — this usually means the Groq API is slow or unreachable right now.")
+
             # Save message & update context
             try:
                 ai_text = ""
@@ -759,7 +765,13 @@ async def exam_chat_api(request: ApiChatRequest):
         prompt_text = f"[SYSTEM: {prompt_instruction}] {request.message}"
         config = {"configurable": {"thread_id": session_id}}
         state = {"messages": [HumanMessage(content=prompt_text)]}
-        res = await run_in_threadpool(workflow.invoke, state, config=config)
+        try:
+            res = await asyncio.wait_for(
+                run_in_threadpool(workflow.invoke, state, config=config),
+                timeout=60
+            )
+        except asyncio.TimeoutError:
+            raise HTTPException(status_code=504, detail="The AI took too long to respond. Please try again.")
         explanation = str(res["messages"][-1].content) if (res and "messages" in res and res["messages"]) else f"Explanation for {topic}."
 
         # Video recommendations
