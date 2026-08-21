@@ -22,7 +22,10 @@ window.fetch = function (url, options = {}) {
             url = API_BASE_URL + urlStr;
         }
     }
-    
+
+    return originalFetch(url, options);
+};
+
 // ── GLOBAL LAYOUT & WINDOW CONTROLLERS ─────────────────────────
 window.setSidebarState = function(collapsed) {
     const appSidebar = document.querySelector(".app-sidebar");
@@ -459,8 +462,8 @@ window.ensureUserSession = function() {
 window.logoutUser = async function() {
     console.log("[AUTH] logoutUser() called");
     try {
-        if (typeof firebaseAuth !== "undefined" && firebaseAuth) {
-            await firebaseAuth.signOut();
+        if (typeof supabaseClient !== "undefined" && supabaseClient && supabaseClient.auth) {
+            await supabaseClient.auth.signOut();
         }
     } catch(e) {}
     window.currentUser = null;
@@ -855,23 +858,27 @@ window.handleForgotPasswordSubmit = async function(e) {
         return;
     }
 
-    if (!firebaseAuth) {
-        if (errEl) {
-            errEl.textContent = "Firebase SDK not ready. Please refresh the page.";
-            errEl.classList.remove("hidden");
-            errEl.style.display = "block";
-        }
-        return;
-    }
-
     try {
-        await firebaseAuth.sendPasswordResetEmail(email);
-        window.closeForgotPasswordModal();
-        showAuthErrorMsg("Password reset email sent to " + email + ". Please check your inbox for the link!", "success");
+        const res = await fetch("/api/forgot-password/request-otp", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ email })
+        });
+        const data = await res.json();
+        if (res.ok && data.status === "success") {
+            window.closeForgotPasswordModal();
+            window.openOtpModal(email, "forgot_password");
+        } else {
+            if (errEl) {
+                errEl.textContent = data.detail || "Could not send OTP. Please try again.";
+                errEl.classList.remove("hidden");
+                errEl.style.display = "block";
+            }
+        }
     } catch (error) {
-        console.error("[FIREBASE FORGOT PASSWORD ERROR]", error);
+        console.error("[AUTH CLIENT] Forgot password OTP request error:", error);
         if (errEl) {
-            errEl.textContent = window.mapFirebaseError(error.code, error.message);
+            errEl.textContent = "Connection error. Please try again.";
             errEl.classList.remove("hidden");
             errEl.style.display = "block";
         }
@@ -1178,8 +1185,8 @@ function initializeDocPilotApp() {
     }
 
     function logoutUser() {
-        if (typeof firebaseAuth !== "undefined" && firebaseAuth) {
-            firebaseAuth.signOut().catch(err => console.error("Firebase signOut error:", err));
+        if (typeof supabaseClient !== "undefined" && supabaseClient && supabaseClient.auth) {
+            supabaseClient.auth.signOut().catch(err => console.error("[SUPABASE] signOut error:", err));
         }
         currentUser = null;
         if (navPinnedLibrary) navPinnedLibrary.style.display = "none";
