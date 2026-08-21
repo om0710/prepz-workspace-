@@ -14,6 +14,8 @@ try:
 except Exception:
     pass
 
+from paths import DB_PATH, UPLOADS_DIR
+
 _groq_client = None
 
 def _get_groq():
@@ -35,7 +37,7 @@ def _get_groq():
         return None
 
 def get_db():
-    c = sqlite3.connect(database='chatbot.db', timeout=60.0, check_same_thread=False)
+    c = sqlite3.connect(database=DB_PATH, timeout=60.0, check_same_thread=False)
     c.execute("PRAGMA journal_mode=WAL;")
     c.execute("PRAGMA busy_timeout=60000;")
     return c
@@ -513,6 +515,22 @@ def _save_uploads_metadata_backup():
 
 UPLOADS_BUNDLE_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "uploads_data_bundle.json")
 
+def _remap_upload_path(p):
+    """The committed bundle/metadata-backup snapshots were captured back when uploads
+    lived flat at "uploads/<file>", before the app started nesting them under
+    uploads/course_repo/... or uploads/workspace/<user>/.... Redirect that legacy
+    relative prefix onto the current UPLOADS_DIR (which may now be Persistent
+    Storage under /data) so restored files land where the rest of the app -- and
+    the vector-store re-indexer -- actually look for them."""
+    if not p:
+        return p
+    norm = p.replace("\\", "/")
+    if norm == "uploads":
+        return UPLOADS_DIR
+    if norm.startswith("uploads/"):
+        return os.path.join(UPLOADS_DIR, norm[len("uploads/"):])
+    return p
+
 def _restore_physical_files_from_bundle():
     """Ensure all seed files and user uploads exist on disk by decoding the JSON bundle."""
     if not os.path.exists(UPLOADS_BUNDLE_PATH):
@@ -523,18 +541,19 @@ def _restore_physical_files_from_bundle():
             bundle = _json.load(f)
         if not bundle or not isinstance(bundle, dict):
             return
-        
+
         for rel_p, b64_content in bundle.items():
+            target_p = _remap_upload_path(rel_p)
             try:
-                if not os.path.exists(rel_p) or os.path.getsize(rel_p) == 0:
-                    dir_name = os.path.dirname(rel_p)
+                if not os.path.exists(target_p) or os.path.getsize(target_p) == 0:
+                    dir_name = os.path.dirname(target_p)
                     if dir_name:
                         os.makedirs(dir_name, exist_ok=True)
                     data = base64.b64decode(b64_content)
-                    with open(rel_p, "wb") as out_f:
+                    with open(target_p, "wb") as out_f:
                         out_f.write(data)
             except Exception as fe:
-                print(f"[BUNDLE RESTORE SINGLE FILE NOTICE] {rel_p}: {fe}")
+                print(f"[BUNDLE RESTORE SINGLE FILE NOTICE] {target_p}: {fe}")
     except Exception as e:
         print(f"[RESTORE PHYSICAL BUNDLE NOTICE] {e}")
 
@@ -571,8 +590,8 @@ def _restore_uploads_from_backup():
                         fn,
                         ue,
                         item.get("user_name", "Student Contributor"),
-                        item.get("uploaded_at") or _dt.now().isoformat(),
-                        item.get("file_path"),
+                        item.get("uploaded_at") or _dt.utcnow().isoformat(),
+                        _remap_upload_path(item.get("file_path")),
                         item.get("size_bytes", 0),
                         item.get("subject", "General Engineering"),
                         item.get("semester", "Semester 1"),
@@ -586,12 +605,12 @@ def _restore_uploads_from_backup():
 
 def auto_sync_disk_uploads_to_db():
     """Scan uploads directory to ensure any physical file present on disk is mapped in DB."""
-    if not os.path.exists("uploads"):
+    if not os.path.exists(UPLOADS_DIR):
         return
     try:
         with get_db() as c:
             cur = c.cursor()
-            for root, _, files in os.walk("uploads"):
+            for root, _, files in os.walk(UPLOADS_DIR):
                 for fname in files:
                     if fname.startswith(".") or fname.endswith(".tmp"):
                         continue
@@ -635,7 +654,7 @@ def auto_sync_disk_uploads_to_db():
                             fname,
                             user_email,
                             "Student Contributor",
-                            _dt.now().isoformat(),
+                            _dt.utcnow().isoformat(),
                             full_path,
                             os.path.getsize(full_path) if os.path.exists(full_path) else 0,
                             guessed_subject,
@@ -1329,7 +1348,7 @@ def get_or_create_conversation(user_id: int = 1, session_id: str = None, subject
                 }
             
             # Create new
-            now = _dt.now().isoformat()
+            now = _dt.utcnow().isoformat()
             cursor.execute(
                 "INSERT INTO conversation_context (user_id, session_id, subject, messages, topics_discussed, topic_attempts, understanding_level, created_at, last_activity) VALUES (?, ?, ?, '[]', '[]', '{}', 'beginner', ?, ?)",
                 (user_id or 1, session_id, subject, now, now)
@@ -1364,7 +1383,7 @@ def update_conversation_context_record(session_id: str, user_message: str, ai_me
             msgs.append({
                 "user": user_message,
                 "ai": ai_message[:500] if ai_message else "",
-                "timestamp": _dt.now().isoformat(),
+                "timestamp": _dt.utcnow().isoformat(),
                 "intent": intent,
                 "recommendation_strength": strength
             })
@@ -1376,7 +1395,7 @@ def update_conversation_context_record(session_id: str, user_message: str, ai_me
                 UPDATE conversation_context
                 SET messages = ?, topics_discussed = ?, topic_attempts = ?, last_activity = ?
                 WHERE session_id = ?
-            """, (_json.dumps(msgs[-20:]), _json.dumps(topics), _json.dumps(t_attempts), _dt.now().isoformat(), session_id))
+            """, (_json.dumps(msgs[-20:]), _json.dumps(topics), _json.dumps(t_attempts), _dt.utcnow().isoformat(), session_id))
             conn.commit()
     db_retry(_do)
 
@@ -1968,7 +1987,7 @@ def rate_playlist_record(playlist_id: int, user_id: int, rating: int, was_helpfu
             cursor.execute("""
                 INSERT INTO playlist_rating (user_id, playlist_id, rating, was_helpful, watched_percentage, timestamp)
                 VALUES (?, ?, ?, ?, ?, ?)
-            """, (user_id, playlist_id, rating, 1 if was_helpful else 0, watched_percentage, _dt.now().isoformat()))
+            """, (user_id, playlist_id, rating, 1 if was_helpful else 0, watched_percentage, _dt.utcnow().isoformat()))
 
             # Update totals in youtube_playlist
             cursor.execute("""
@@ -2157,7 +2176,7 @@ def update_conversation_context(thread_id: str, user_email: str, topic: str, que
                 "SELECT total_messages, topic_attempts, recent_queries, last_topic FROM conversation_contexts WHERE thread_id = ?",
                 (thread_id,)
             ).fetchone()
-            now = _dt.now().isoformat()
+            now = _dt.utcnow().isoformat()
             if existing:
                 total    = (existing[0] or 0) + 1
                 attempts = _json.loads(existing[1] or "{}")

@@ -22,6 +22,7 @@ import sqlite3
 from rag import retriever, vectorstore
 # Import new tools
 from tools import calculator, wikipedia_search, get_current_time, get_stock_price
+from paths import DB_PATH, UPLOADS_DIR
 
 load_dotenv()
 
@@ -237,8 +238,8 @@ def get_uploaded_files():
     import os
     allowed_exts = (".pdf", ".docx", ".doc")
     files = set()
-    if os.path.exists("uploads"):
-        for root, _, filenames in os.walk("uploads"):
+    if os.path.exists(UPLOADS_DIR):
+        for root, _, filenames in os.walk(UPLOADS_DIR):
             for f in filenames:
                 if any(f.lower().endswith(ext) for ext in allowed_exts):
                     files.add(f)
@@ -611,7 +612,7 @@ def chat_node(state: ChatState, config = None):
 # ---------------- SQLite ---------------- #
 
 def get_rag_db():
-    c = sqlite3.connect("chatbot.db", timeout=60.0, check_same_thread=False)
+    c = sqlite3.connect(DB_PATH, timeout=60.0, check_same_thread=False)
     c.execute("PRAGMA journal_mode=WAL;")
     c.execute("PRAGMA busy_timeout=60000;")
     return c

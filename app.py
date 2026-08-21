@@ -42,6 +42,7 @@ def detect_cheating_attempt(session_id: int, user_email: str, time_taken: int) -
 # Import LangGraph workflow and config
 from backend_rag import workflow, active_streams
 from rag import add_pdf_to_vectordb
+from paths import UPLOADS_DIR
 from langchain_core.messages import HumanMessage, AIMessage
 
 app = FastAPI(title="BU Prepz AI Workspace", description="Academic Intelligence & Exam Preparation Platform")
@@ -2072,12 +2073,12 @@ async def upload_pdf(
     import re
     if is_priv_int == 1:
         safe_user = re.sub(r'[^a-zA-Z0-9_.-]', '_', (user_email or "anonymous").strip().lower())
-        upload_dir = os.path.join("uploads", "workspace", safe_user)
+        upload_dir = os.path.join(UPLOADS_DIR, "workspace", safe_user)
     else:
-        upload_dir = os.path.join("uploads", "course_repo")
+        upload_dir = os.path.join(UPLOADS_DIR, "course_repo")
 
     os.makedirs(upload_dir, exist_ok=True)
-    os.makedirs("uploads", exist_ok=True)
+    os.makedirs(UPLOADS_DIR, exist_ok=True)
     file_path = os.path.join(upload_dir, filename_clean)
     
     try:
@@ -2095,7 +2096,7 @@ async def upload_pdf(
             buffer.write(content)
 
         # Also write / mirror to root uploads/ for legacy static serving compatibility if it doesn't overwrite a different file
-        root_path = os.path.join("uploads", filename_clean)
+        root_path = os.path.join(UPLOADS_DIR, filename_clean)
         if not os.path.exists(root_path) or is_priv_int == 0:
             try:
                 with open(root_path, "wb") as r_buf:
@@ -2319,32 +2320,32 @@ def get_sanitized_upload_file_path(raw_filename: str, user_email: Optional[str] 
     if user_email:
         import re
         safe_user = re.sub(r'[^a-zA-Z0-9_.-]', '_', user_email.strip().lower())
-        ws_path = os.path.join("uploads", "workspace", safe_user, clean_name)
+        ws_path = os.path.join(UPLOADS_DIR, "workspace", safe_user, clean_name)
         if os.path.exists(ws_path):
             return clean_name, ws_path
-        ws_alt = os.path.join("uploads", "workspace", safe_user, alt_name)
+        ws_alt = os.path.join(UPLOADS_DIR, "workspace", safe_user, alt_name)
         if os.path.exists(ws_alt):
             return alt_name, ws_alt
 
     # 3. Check course repo path
-    repo_path = os.path.join("uploads", "course_repo", clean_name)
+    repo_path = os.path.join(UPLOADS_DIR, "course_repo", clean_name)
     if os.path.exists(repo_path):
         return clean_name, repo_path
-    repo_alt = os.path.join("uploads", "course_repo", alt_name)
+    repo_alt = os.path.join(UPLOADS_DIR, "course_repo", alt_name)
     if os.path.exists(repo_alt):
         return alt_name, repo_alt
 
     # 4. Check root uploads/ path
-    root_path = os.path.join("uploads", clean_name)
+    root_path = os.path.join(UPLOADS_DIR, clean_name)
     if os.path.exists(root_path):
         return clean_name, root_path
-    root_alt = os.path.join("uploads", alt_name)
+    root_alt = os.path.join(UPLOADS_DIR, alt_name)
     if os.path.exists(root_alt):
         return alt_name, root_alt
 
     # 5. Recursive deep scan across uploads/ directory for exact or case-insensitive match
-    if os.path.exists("uploads"):
-        for root, _, files in os.walk("uploads"):
+    if os.path.exists(UPLOADS_DIR):
+        for root, _, files in os.walk(UPLOADS_DIR):
             for f in files:
                 if f.lower() == clean_name.lower() or f.lower() == alt_name.lower():
                     matched = os.path.join(root, f)
@@ -2444,7 +2445,7 @@ def list_files(user_email: Optional[str] = None):
         result_files = []
         known_set = set()
         for f in db_files:
-            file_p = f.get("file_path") or os.path.join("uploads", f["filename"])
+            file_p = f.get("file_path") or os.path.join(UPLOADS_DIR, f["filename"])
             actual_size = os.path.getsize(file_p) if (file_p and os.path.exists(file_p)) else f.get("size_bytes", 0)
             f_copy = dict(f)
             f_copy["size_bytes"] = actual_size
@@ -2456,7 +2457,7 @@ def list_files(user_email: Optional[str] = None):
         raw_filenames = get_uploaded_files()
         for fname in raw_filenames:
             if (fname.lower(), 0) not in known_set:
-                file_p = os.path.join("uploads", fname)
+                file_p = os.path.join(UPLOADS_DIR, fname)
                 size_b = os.path.getsize(file_p) if os.path.exists(file_p) else 0
                 result_files.append({
                     "id": None,
@@ -2752,18 +2753,18 @@ async def predict_paper(req: PredictPaperRequest):
         for v in variants:
             v_clean = os.path.basename(v)
             # Course repo path
-            cr_path = os.path.join("uploads", "course_repo", v_clean)
+            cr_path = os.path.join(UPLOADS_DIR, "course_repo", v_clean)
             if os.path.exists(cr_path):
                 return cr_path
             # Direct uploads root path
-            root_path = os.path.join("uploads", v_clean)
+            root_path = os.path.join(UPLOADS_DIR, v_clean)
             if os.path.exists(root_path):
                 return root_path
             # Workspace path
             if u_email:
                 import re as _re
                 safe_user = _re.sub(r'[^a-zA-Z0-9_.-]', '_', u_email.strip().lower())
-                ws_path = os.path.join("uploads", "workspace", safe_user, v_clean)
+                ws_path = os.path.join(UPLOADS_DIR, "workspace", safe_user, v_clean)
                 if os.path.exists(ws_path):
                     return ws_path
             # Sanitized helper
@@ -2775,9 +2776,9 @@ async def predict_paper(req: PredictPaperRequest):
                 pass
 
         # 3. Recursive case-insensitive walk in uploads
-        if os.path.exists("uploads"):
+        if os.path.exists(UPLOADS_DIR):
             v_lowers = [v.lower() for v in variants]
-            for root_dir, _, file_list in os.walk("uploads"):
+            for root_dir, _, file_list in os.walk(UPLOADS_DIR):
                 for disk_file in file_list:
                     if disk_file.lower() in v_lowers:
                         return os.path.join(root_dir, disk_file)
@@ -3096,9 +3097,9 @@ Structure your output EXACTLY as follows:
         raise HTTPException(status_code=500, detail=f"AI Paper Generation failed: {str(e)}")
 
 # Mount uploads folder
-os.makedirs("uploads", exist_ok=True)
+os.makedirs(UPLOADS_DIR, exist_ok=True)
 try:
-    app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
+    app.mount("/uploads", StaticFiles(directory=UPLOADS_DIR), name="uploads")
 except Exception:
     pass
 
