@@ -180,7 +180,28 @@ def extract_text_from_file(file_path: str) -> list[Document]:
         except Exception:
             pass
 
-        # If PDF has no direct text layer (e.g. scanned photocopy), return clean placeholder rather than raw binary stream
+        # 3. RapidOCR Fallback for scanned image PDFs (Question Papers / Handwritten Notes)
+        try:
+            import pymupdf
+            from rapidocr_onnxruntime import RapidOCR
+            ocr_engine = RapidOCR()
+            doc_pdf = pymupdf.open(file_path)
+            ocr_pages = []
+            for p_idx, page in enumerate(doc_pdf):
+                pix = page.get_pixmap(dpi=150)
+                img_bytes = pix.tobytes("png")
+                result, _ = ocr_engine(img_bytes)
+                if result:
+                    page_text = "\n".join([r[1] for r in result if r and len(r) > 1 and r[1].strip()])
+                    if page_text.strip():
+                        ocr_pages.append(Document(page_content=page_text.strip(), metadata={"source": file_path, "page": p_idx + 1}))
+            if ocr_pages:
+                print(f"[OCR SUCCESS] Extracted {sum(len(d.page_content) for d in ocr_pages)} chars from scanned PDF {file_path}")
+                return ocr_pages
+        except Exception as ocre:
+            print(f"[OCR NOTICE] Scanned PDF OCR fallback notice on {file_path}: {ocre}")
+
+        # If PDF has no direct text layer and OCR is not available, return descriptor
         fname_base = os.path.basename(file_path)
         clean_desc = f"Document: {fname_base} (Scanned Academic Question Paper / Notes Resource)"
         return [Document(page_content=clean_desc, metadata={"source": file_path})]
