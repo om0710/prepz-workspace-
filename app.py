@@ -567,32 +567,16 @@ async def chat_stream(request: ChatRequest):
     thread_id = request.thread_id or "default_thread"
     config = {"configurable": {"thread_id": thread_id}}
 
-    # ── Intent Understanding & Conversation Context ────────────────────────────
-    try:
-        conv = get_or_create_conversation(user_id=1, session_id=thread_id, subject="General")
-        history = conv.get("messages", [])
-        last_topic = conv.get("topics_discussed", [""])[-1] if conv.get("topics_discussed") else ""
-        detected_topic = extract_topic_from_query(request.query, last_topic=last_topic)
-        topic_attempts = conv.get("topic_attempts", {}).get(detected_topic, 0)
-
-        intent_result = analyze_user_intent(
-            current_message=request.query,
-            conversation_history=history,
-            topic=detected_topic,
-            topic_attempts=topic_attempts
-        )
-        print(f"[INTENT] topic='{detected_topic}' attempts={topic_attempts} intent={intent_result.get('intent')} strength={intent_result.get('recommendation_strength')}")
-    except Exception as ie:
-        print(f"[INTENT] Analysis failed (ignored): {ie}")
-        detected_topic = "general"
-        topic_attempts = 0
-        intent_result = {
-            "should_recommend_videos": False,
-            "recommendation_strength": "none",
-            "intent": "initial",
-            "explanation_style": "normal",
-            "reason": ""
-        }
+    detected_topic = "general"
+    topic_attempts = 0
+    intent_result = {
+        "should_recommend_videos": False,
+        "recommendation_strength": "none",
+        "intent": "initial",
+        "explanation_style": "normal",
+        "reason": ""
+    }
+    history = []
 
     # Keep HumanMessage pure without prepending leaking system notes
     state = {"messages": [HumanMessage(content=request.query)]}

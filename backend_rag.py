@@ -95,36 +95,15 @@ Classification:"""
 # ---------------- Advanced RAG / CRAG Helpers ---------------- #
 
 def rewrite_query(user_query: str, chat_history: list[BaseMessage]) -> str:
-    # Extract recent messages to provide context
-    history_text = ""
-    for msg in chat_history[-5:]: # last 5 messages
-        if isinstance(msg, HumanMessage):
-            history_text += f"User: {msg.content}\n"
-        elif isinstance(msg, AIMessage) and msg.content:
-            history_text += f"Assistant: {msg.content}\n"
-    
-    if not history_text:
+    # Ultra-fast zero-latency query passthrough (avoids 2.5s blocking LLM overhead)
+    if not chat_history or len(user_query.split()) >= 3:
         return user_query
 
-    prompt = f"""System: You are an expert query rewriter. Your task is to take a user's latest query and the conversation history, and rewrite it into a single search query optimized for document retrieval (Vector DB and BM25 search).
-Do NOT answer the question. Just output the rewritten search query.
-If the query is self-contained and needs no context, output it as is.
-Do not add any preamble, explanation, or quotes.
-
-Conversation History:
-{history_text}
-
-User Query: {user_query}
-
-Search Query:"""
-    try:
-        response = llm.invoke(prompt)
-        rewritten = response.content.strip()
-        if (rewritten.startswith('"') and rewritten.endswith('"')) or (rewritten.startswith("'") and rewritten.endswith("'")):
-            rewritten = rewritten[1:-1].strip()
-        return rewritten if rewritten else user_query
-    except Exception:
-        return user_query
+    # Fast in-memory pronoun resolution if query is tiny (e.g. "explain it", "what is that")
+    for msg in reversed(chat_history):
+        if isinstance(msg, HumanMessage) and msg.content and msg.content != user_query:
+            return f"{msg.content} {user_query}"
+    return user_query
 
 def check_groundedness_and_relevance(query: str, context: str, response_text: str) -> str:
     lower_res = response_text.lower()
