@@ -2461,6 +2461,65 @@ function initializeDocPilotApp() {
     window.filterPredictedPaper = filterPredictedPaper;
     window.filterTopicPill = filterTopicPill;
 
+    async function generatePredictedPaper() {
+        if (!currentUser) {
+            alert("Please sign in to generate AI predicted question papers.");
+            return;
+        }
+
+        const sem = predictorSemesterSelect ? predictorSemesterSelect.value : "Semester 1";
+        const sub = predictorSubjectSelect ? predictorSubjectSelect.value : "";
+        const examType = predictorExamTypeSelect ? predictorExamTypeSelect.value : "Mid-Sem";
+
+        if (!sub) {
+            alert("Please select a subject.");
+            return;
+        }
+
+        // Reset state
+        if (predictorResultCard) predictorResultCard.classList.add("hidden");
+        if (predictorWarningCard) predictorWarningCard.classList.add("hidden");
+        if (predictorLoadingCard) predictorLoadingCard.classList.remove("hidden");
+
+        try {
+            const res = await fetch("/api/predict-paper", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ semester: sem, subject: sub, exam_type: examType, user_email: currentUser ? currentUser.email : null })
+            });
+
+            const data = await res.json();
+            if (predictorLoadingCard) predictorLoadingCard.classList.add("hidden");
+
+            if (!res.ok || data.success === false) {
+                if (predictorWarningCard) {
+                    predictorWarningCard.classList.remove("hidden");
+                    const msgEl = document.getElementById("predictor-warning-message");
+                    if (msgEl) msgEl.textContent = data.message || `Not enough ${examType} PYQs uploaded yet for accurate prediction.`;
+                }
+                return;
+            }
+
+            // Render Result Card
+            if (predictorResultCard) predictorResultCard.classList.remove("hidden");
+
+            const badgePyq = document.getElementById("badge-pyq-count");
+            if (badgePyq) badgePyq.textContent = `📊 Based on ${data.pyq_count} ${data.exam_type || examType} PYQs (${data.pyq_filenames ? data.pyq_filenames.join(', ') : ''})`;
+
+            const badgeSub = document.getElementById("badge-predicted-subject");
+            if (badgeSub) badgeSub.textContent = `${data.subject} (${data.semester} • ${data.exam_type || examType})`;
+
+            if (predictedPaperBody) {
+                const formattedHtml = formatPaperMarkdown(data.paper_markdown);
+                window._rawPaperMarkdownHtml = formattedHtml;
+                predictedPaperBody.innerHTML = formattedHtml;
+            }
+        } catch (err) {
+            if (predictorLoadingCard) predictorLoadingCard.classList.add("hidden");
+            alert(`Error generating predicted paper: ${err.message || err}`);
+        }
+    }
+
     if (predictorSemesterSelect) {
         predictorSemesterSelect.addEventListener("change", updatePredictorSubjectOptions);
     }
