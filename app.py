@@ -891,6 +891,37 @@ async def rate_playlist_endpoint(playlist_id: int, request: RatePlaylistRequest)
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+def _reindex_all_uploads_sync():
+    """Every restart starts with an empty chroma_db/ (it's gitignored, no persistent volume).
+    Uploaded file bytes + their DB records get restored from the committed JSON bundle
+    (see database.py's _restore_uploads_from_backup), but that restore never re-embeds
+    them into the vector store -- so previously-uploaded documents show up in the file
+    lists yet RAG search finds nothing for them until someone re-uploads. Re-index
+    every known upload on boot; add_file_to_vectordb already skips anything whose
+    `source` path is already present in the collection, so this is safe to re-run."""
+    try:
+        uploads = get_file_uploads_metadata()
+        indexed = 0
+        for meta in uploads.values():
+            fp = meta.get("file_path")
+            if not fp or not os.path.exists(fp):
+                continue
+            try:
+                add_pdf_to_vectordb(
+                    fp,
+                    user_email=meta.get("user_email") or "anonymous@college.edu",
+                    user_name=meta.get("user_name") or "Anonymous",
+                    subject=meta.get("subject") or "General Engineering",
+                    semester=meta.get("semester") or "Semester 1",
+                    file_type=meta.get("file_type") or "Notes"
+                )
+                indexed += 1
+            except Exception as fe:
+                print(f"[STARTUP REINDEX] Failed to index {fp}: {fe}")
+        print(f"[STARTUP] Vector store re-index check complete ({indexed} upload(s) verified/indexed).")
+    except Exception as e:
+        print(f"[STARTUP REINDEX NOTICE] {e}")
+
 @app.on_event("startup")
 async def startup_event():
     try:
@@ -899,6 +930,10 @@ async def startup_event():
         print("[STARTUP] Real user system and Bennett verified channels initialized successfully.")
     except Exception as e:
         print(f"[STARTUP NOTICE] {e}")
+
+    # Run in the background so re-indexing a large document library doesn't delay
+    # the app becoming ready to serve requests.
+    asyncio.create_task(run_in_threadpool(_reindex_all_uploads_sync))
 
 # ── Part 5: Seed Channels Endpoint (/api/admin/seed-channels) ─────────────────
 @app.post("/api/admin/seed-channels")
