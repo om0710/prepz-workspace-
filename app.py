@@ -456,11 +456,13 @@ class QueueCallbackHandler(BaseCallbackHandler):
         self.queue = queue
         self.loop = loop
         self.in_tool_call = False
+        self.tokens_streamed = 0
 
     def on_llm_start(self, serialized, prompts, **kwargs) -> None:
         self.in_tool_call = False
 
     def on_tool_start(self, serialized, input_str, **kwargs) -> None:
+        self.in_tool_call = False
         tool_name = serialized.get("name", "tool") if serialized else "tool"
         display_name = "Reading uploaded documents..." if "rag" in tool_name else ("Searching Wikipedia..." if "wiki" in tool_name else f"Executing {tool_name}...")
         self.loop.call_soon_threadsafe(self.queue.put_nowait, f"__STATUS__:{display_name}")
@@ -475,11 +477,16 @@ class QueueCallbackHandler(BaseCallbackHandler):
             if tool_chunks or tool_calls:
                 self.in_tool_call = True
                 return
+            else:
+                self.in_tool_call = False
         if self.in_tool_call:
             return
+        self.tokens_streamed += 1
         self.loop.call_soon_threadsafe(self.queue.put_nowait, token)
 
     def clear_queue(self) -> None:
+        self.in_tool_call = False
+        self.tokens_streamed = 0
         while not self.queue.empty():
             try:
                 self.queue.get_nowait()
@@ -613,7 +620,16 @@ async def chat_stream(request: ChatRequest):
             try:
                 ai_text = ""
                 if res and "messages" in res and res["messages"]:
-                    ai_text = str(res["messages"][-1].content)
+                    last_msg = res["messages"][-1]
+                    if hasattr(last_msg, "content") and last_msg.content:
+                        ai_text = str(last_msg.content)
+
+                # Guaranteed token delivery fallback if callback stream produced 0 tokens:
+                if ai_text and handler and getattr(handler, "tokens_streamed", 0) == 0:
+                    print(f"[STREAM FALLBACK] Delivering {len(ai_text)} chars from final workflow response")
+                    chunks = re.findall(r'\S+\s*|\s+', ai_text)
+                    for ch in chunks:
+                        await queue.put(ch)
                 
                 update_conversation_context_record(
                     session_id=thread_id,
