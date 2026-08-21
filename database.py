@@ -2270,7 +2270,7 @@ def create_user(name: str, email: str, password: str = None, provider: str = "lo
     if not avatar_url:
         avatar_url = f"https://api.dicebear.com/7.x/bottts/svg?seed={email}"
     
-    today_date = datetime.now().strftime("%Y-%m-%d")
+    today_date = datetime.utcnow().strftime("%Y-%m-%d")
     verified_val = 1 if is_verified else 0
     def _do():
         with get_db() as conn:
@@ -2408,7 +2408,7 @@ def update_user_activity(email: str):
     if not user:
         return None
 
-    today_date = datetime.now().strftime("%Y-%m-%d")
+    today_date = datetime.utcnow().strftime("%Y-%m-%d")
     last_date = user.get("last_active_date")
     current_streak = user.get("current_streak", 0)
 
@@ -2451,7 +2451,7 @@ def add_contribution_points(email: str, points: int, name: Optional[str] = None)
             cursor = c.cursor()
             cursor.execute("SELECT id, name, contribution_score FROM users WHERE lower(email) = ?", (email,))
             row = cursor.fetchone()
-            today = datetime.now().strftime("%Y-%m-%d")
+            today = datetime.utcnow().strftime("%Y-%m-%d")
             if row:
                 cursor.execute("""
                     UPDATE users 
@@ -2613,12 +2613,12 @@ def record_upload(filename: str, user_email: str, user_name: str, file_path: str
                     UPDATE user_uploads 
                     SET filename = ?, user_email = ?, user_name = ?, uploaded_at = ?, file_path = ?, size_bytes = ?, subject = ?, semester = ?, file_type = ?, exam_type = ?, is_private = ?
                     WHERE id = ?
-                """, (clean_fn, user_email, user_name, datetime.now().isoformat(), file_path, size_bytes, subject, semester, file_type, exam_type, is_priv, doc_id))
+                """, (clean_fn, user_email, user_name, datetime.utcnow().isoformat(), file_path, size_bytes, subject, semester, file_type, exam_type, is_priv, doc_id))
             else:
                 cur.execute("""
                     INSERT INTO user_uploads (filename, user_email, user_name, uploaded_at, file_path, size_bytes, subject, semester, file_type, exam_type, is_private)
                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                """, (clean_fn, user_email, user_name, datetime.now().isoformat(), file_path, size_bytes, subject, semester, file_type, exam_type, is_priv))
+                """, (clean_fn, user_email, user_name, datetime.utcnow().isoformat(), file_path, size_bytes, subject, semester, file_type, exam_type, is_priv))
             c.commit()
         _save_uploads_metadata_backup()
     db_retry(_do)
@@ -2743,8 +2743,10 @@ def record_session_heartbeat(user_email: str, user_name: str = "", session_id: s
     clean_email = user_email.strip().lower()
     clean_name = (user_name or clean_email.split("@")[0].replace(".", " ")).strip().title()
     clean_session = (session_id or f"sess_{int(time.time())}_{clean_email}").strip()
-    now_iso = datetime.now().isoformat()
-    today_str = datetime.now().strftime("%Y-%m-%d")
+    # UTC everywhere: get_admin_dashboard_stats compares last_ping/last_active_date
+    # against SQLite's strftime('%s','now')/date('now'), which are always UTC.
+    now_iso = datetime.utcnow().isoformat()
+    today_str = datetime.utcnow().strftime("%Y-%m-%d")
 
     def _do():
         with get_db() as c:
@@ -2762,7 +2764,7 @@ def record_session_heartbeat(user_email: str, user_name: str = "", session_id: s
                 sess_id, last_p, dur = row
                 try:
                     last_dt = datetime.fromisoformat(last_p)
-                    diff_sec = int((datetime.now() - last_dt).total_seconds())
+                    diff_sec = int((datetime.utcnow() - last_dt).total_seconds())
                     increment = min(max(diff_sec, 5), 60)
                 except Exception:
                     increment = 30
@@ -2794,7 +2796,7 @@ def log_user_activity(user_email: str, user_name: str = "", action_type: str = "
         return
     clean_email = user_email.strip().lower()
     clean_name = (user_name or clean_email.split("@")[0].replace(".", " ")).strip().title()
-    now_iso = datetime.now().isoformat()
+    now_iso = datetime.utcnow().isoformat()
 
     def _do():
         with get_db() as c:
@@ -2816,7 +2818,6 @@ def get_admin_dashboard_stats(admin_email: str) -> dict:
     def _do():
         with get_db() as c:
             cur = c.cursor()
-            today_str = datetime.now().strftime("%Y-%m-%d")
             # 1. Total Registered/Active Users
             cur.execute("""
                 SELECT COUNT(DISTINCT lower(user_email)) FROM (
@@ -3304,7 +3305,7 @@ def get_reported_files():
 def create_document(user_id: int, user_email: str, title: str, content: str, is_shared: bool = False) -> dict:
     user_email = user_email.strip().lower()
     is_shared_val = 1 if is_shared else 0
-    now_str = datetime.now().isoformat()
+    now_str = datetime.utcnow().isoformat()
     def _do():
         with get_db() as c:
             cur = c.cursor()
@@ -3402,7 +3403,7 @@ def update_document_record(doc_id: int, user_email: str, title: str, content: st
     if doc["user_email"].lower() != user_email.lower():
         return "FORBIDDEN"
     is_shared_val = 1 if is_shared else 0
-    now_str = datetime.now().isoformat()
+    now_str = datetime.utcnow().isoformat()
     def _do():
         with get_db() as c:
             c.execute("""
@@ -3434,7 +3435,7 @@ def toggle_document_share_record(doc_id: int, user_email: str, is_shared: bool):
     if doc["user_email"].lower() != user_email.lower():
         return "FORBIDDEN"
     is_shared_val = 1 if is_shared else 0
-    now_str = datetime.now().isoformat()
+    now_str = datetime.utcnow().isoformat()
     def _do():
         with get_db() as c:
             c.execute("UPDATE documents SET is_shared = ?, updated_at = ? WHERE id = ?", (is_shared_val, now_str, doc_id))
@@ -3850,7 +3851,7 @@ def record_concept_weakness(
         return None
     
     dependent_topics = dependent_topics or []
-    now_str = datetime.now().isoformat()
+    now_str = datetime.utcnow().isoformat()
     
     def _do():
         with get_db() as c:
@@ -4149,7 +4150,7 @@ def generate_adaptive_practice(
                 }]
 
             # Create adaptive practice session
-            now_str = datetime.now().isoformat()
+            now_str = datetime.utcnow().isoformat()
             cur.execute("""
                 INSERT INTO adaptive_practice_session
                 (user_id, user_email, concept_name, started_at, total_questions, initial_difficulty, final_difficulty, difficulty_progression)
@@ -4343,7 +4344,7 @@ def submit_practice_answer(
                     SET mastery_percentage = ?, mastery_level = ?, practice_questions_attempted = ?,
                         practice_score = ?, last_practiced = ?, is_critical = ?
                     WHERE id = ?
-                """, (new_mastery, m_lvl, new_att, score_pct, datetime.now().isoformat(), crit_flag, w_id))
+                """, (new_mastery, m_lvl, new_att, score_pct, datetime.utcnow().isoformat(), crit_flag, w_id))
 
             c.commit()
 
@@ -4376,7 +4377,7 @@ def complete_practice_session(session_id: int, user_id: int = 1, user_email: str
                 return {"success": False, "message": "Session not found"}
 
             s_id, concept, corr, tot, score, init_d, fin_d, t_time, avg_t = row
-            now_str = datetime.now().isoformat()
+            now_str = datetime.utcnow().isoformat()
             
             cur.execute("UPDATE adaptive_practice_session SET completed_at = ? WHERE id = ?", (now_str, session_id))
             
