@@ -289,12 +289,13 @@ window.addEventListener("message", function(event) {
     }
 });
 
+// Multi-Tier Bulletproof Google Sign-In Handler
 window.handleGoogleSignIn = function(e) {
     if (e) {
         if (typeof e.preventDefault === "function") e.preventDefault();
         if (typeof e.stopPropagation === "function") e.stopPropagation();
     }
-    console.log("[AUTH] Google Sign-In initiated");
+    console.log("[AUTH] Google Sign-In triggered");
 
     const authErrBox = document.getElementById("auth-error-msg");
     if (authErrBox) {
@@ -302,13 +303,89 @@ window.handleGoogleSignIn = function(e) {
         authErrBox.classList.add("hidden");
     }
 
-    const authUrl = "https://om123bansal-prepz-app.hf.space/api/auth/google";
+    // TIER 1: Google Identity Services (GIS) Official Token Popup (Zero redirect issues)
+    if (typeof window.google !== "undefined" && window.google.accounts && window.google.accounts.oauth2) {
+        try {
+            console.log("[AUTH] Initiating Google Identity Services (GIS) popup flow...");
+            const tokenClient = window.google.accounts.oauth2.initTokenClient({
+                client_id: GOOGLE_CLIENT_ID,
+                scope: "email profile openid",
+                prompt: "select_account",
+                callback: async function(tokenResponse) {
+                    if (tokenResponse && tokenResponse.access_token) {
+                        console.log("[AUTH] GIS token received, verifying with backend...");
+                        try {
+                            const res = await fetch("/api/auth/google-token", {
+                                method: "POST",
+                                headers: { "Content-Type": "application/json" },
+                                body: JSON.stringify({ access_token: tokenResponse.access_token })
+                            });
+                            const data = await res.json();
+                            if (res.ok && data.user) {
+                                console.log("[AUTH] Google authentication successful:", data.user.email);
+                                window.loginUser(data.user);
+                                return;
+                            } else {
+                                console.error("[AUTH] Google token verification failed:", data);
+                                if (authErrBox) {
+                                    authErrBox.textContent = data.detail || "Google verification failed. Please try again.";
+                                    authErrBox.classList.remove("hidden");
+                                    authErrBox.style.display = "block";
+                                }
+                            }
+                        } catch(err) {
+                            console.error("[AUTH] GIS token server error:", err);
+                        }
+                    } else if (tokenResponse && tokenResponse.error) {
+                        console.warn("[AUTH] GIS response error:", tokenResponse.error);
+                    }
+                }
+            });
+            tokenClient.requestAccessToken({ prompt: "select_account" });
+            return;
+        } catch(gisErr) {
+            console.warn("[AUTH] GIS token client init error, falling back to Supabase/Backend:", gisErr);
+        }
+    }
+
+    // TIER 2: Supabase Google OAuth Provider
+    if (typeof supabaseClient !== "undefined" && supabaseClient && supabaseClient.auth) {
+        try {
+            console.log("[AUTH] Initiating Supabase Google OAuth...");
+            supabaseClient.auth.signInWithOAuth({
+                provider: "google",
+                options: {
+                    redirectTo: window.location.origin
+                }
+            }).then(function(result) {
+                if (result && result.error) {
+                    console.warn("[AUTH] Supabase OAuth error:", result.error);
+                    triggerBackendOAuthFallback();
+                }
+            }).catch(function(err) {
+                console.warn("[AUTH] Supabase OAuth exception:", err);
+                triggerBackendOAuthFallback();
+            });
+            return;
+        } catch(supaErr) {
+            console.warn("[AUTH] Supabase signInWithOAuth failed:", supaErr);
+        }
+    }
+
+    // TIER 3: Backend Direct OAuth Popup / Navigation Fallback
+    triggerBackendOAuthFallback();
+};
+
+function triggerBackendOAuthFallback() {
+    const authUrl = window.location.origin.includes("localhost") || window.location.origin.includes("127.0.0.1")
+        ? "/api/auth/google"
+        : "https://om123bansal-prepz-app.hf.space/api/auth/google";
+
     const width = 520;
     const height = 650;
     const left = Math.max(0, (window.screen.width - width) / 2);
     const top = Math.max(0, (window.screen.height - height) / 2);
 
-    // Try clean centered popup first
     let popup = null;
     try {
         popup = window.open(
@@ -320,7 +397,6 @@ window.handleGoogleSignIn = function(e) {
         console.warn("Popup error:", popErr);
     }
 
-    // If popup was blocked or failed to open, fallback to top-level navigation
     if (!popup || popup.closed || typeof popup.closed === "undefined") {
         var isInIframe = false;
         try { isInIframe = (window.self !== window.top); } catch(err2) { isInIframe = true; }
@@ -333,9 +409,9 @@ window.handleGoogleSignIn = function(e) {
                 return;
             }
         }
-        window.location.href = "/api/auth/google";
+        window.location.href = authUrl;
     }
-};
+}
 
 // Global click event delegation for Google Sign-In button
 document.addEventListener("click", function(e) {
@@ -344,20 +420,6 @@ document.addEventListener("click", function(e) {
         window.handleGoogleSignIn(e);
     }
 });
-
-
-window.handleGuestLogin = function(e) {
-    if (e) e.preventDefault();
-    console.log("[AUTH] Guest Instant Demo Login triggered");
-    const demoUser = {
-        id: "demo-student-001",
-        name: "Demo Student",
-        email: "student@prepz.edu",
-        provider: "demo",
-        avatar_url: "https://api.dicebear.com/7.x/bottts/svg?seed=DemoStudent"
-    };
-    window.loginUser(demoUser);
-};
 
 window.showLoginScreen = function() {
     console.log("[AUTH] showLoginScreen() called");
