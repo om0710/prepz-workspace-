@@ -2462,10 +2462,10 @@ function initializeDocPilotApp() {
     window.filterTopicPill = filterTopicPill;
 
     async function generatePredictedPaper() {
-        if (!currentUser) {
-            alert("Please sign in to generate AI predicted question papers.");
-            return;
-        }
+        if (typeof window.ensureUserSession === "function") window.ensureUserSession();
+        const activeUser = currentUser || window.currentUser || { name: "Student User", email: "student@college.edu", provider: "local" };
+        currentUser = activeUser;
+        window.currentUser = activeUser;
 
         const sem = predictorSemesterSelect ? predictorSemesterSelect.value : "Semester 1";
         const sub = predictorSubjectSelect ? predictorSubjectSelect.value : "";
@@ -2479,14 +2479,22 @@ function initializeDocPilotApp() {
         // Reset state
         if (predictorResultCard) predictorResultCard.classList.add("hidden");
         if (predictorWarningCard) predictorWarningCard.classList.add("hidden");
-        if (predictorLoadingCard) predictorLoadingCard.classList.remove("hidden");
+        if (predictorLoadingCard) {
+            predictorLoadingCard.classList.remove("hidden");
+            predictorLoadingCard.scrollIntoView({ behavior: "smooth", block: "nearest" });
+        }
 
         try {
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 50000);
+
             const res = await fetch("/api/predict-paper", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ semester: sem, subject: sub, exam_type: examType, user_email: currentUser ? currentUser.email : null })
+                body: JSON.stringify({ semester: sem, subject: sub, exam_type: examType, user_email: activeUser.email }),
+                signal: controller.signal
             });
+            clearTimeout(timeoutId);
 
             const data = await res.json();
             if (predictorLoadingCard) predictorLoadingCard.classList.add("hidden");
@@ -2496,12 +2504,16 @@ function initializeDocPilotApp() {
                     predictorWarningCard.classList.remove("hidden");
                     const msgEl = document.getElementById("predictor-warning-message");
                     if (msgEl) msgEl.textContent = data.message || `Not enough ${examType} PYQs uploaded yet for accurate prediction.`;
+                    predictorWarningCard.scrollIntoView({ behavior: "smooth", block: "nearest" });
                 }
                 return;
             }
 
             // Render Result Card
-            if (predictorResultCard) predictorResultCard.classList.remove("hidden");
+            if (predictorResultCard) {
+                predictorResultCard.classList.remove("hidden");
+                predictorResultCard.scrollIntoView({ behavior: "smooth", block: "start" });
+            }
 
             const badgePyq = document.getElementById("badge-pyq-count");
             if (badgePyq) badgePyq.textContent = `📊 Based on ${data.pyq_count} ${data.exam_type || examType} PYQs (${data.pyq_filenames ? data.pyq_filenames.join(', ') : ''})`;
@@ -2516,7 +2528,12 @@ function initializeDocPilotApp() {
             }
         } catch (err) {
             if (predictorLoadingCard) predictorLoadingCard.classList.add("hidden");
-            alert(`Error generating predicted paper: ${err.message || err}`);
+            if (predictorWarningCard) {
+                predictorWarningCard.classList.remove("hidden");
+                const msgEl = document.getElementById("predictor-warning-message");
+                if (msgEl) msgEl.textContent = `Error generating predicted paper: ${err.message || err}. Please try again.`;
+                predictorWarningCard.scrollIntoView({ behavior: "smooth", block: "nearest" });
+            }
         }
     }
 

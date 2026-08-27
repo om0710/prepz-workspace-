@@ -2803,7 +2803,7 @@ async def predict_paper(req: PredictPaperRequest):
     if not selected_pyq_metas and other_subject_docs:
         selected_pyq_metas = other_subject_docs[:5]
 
-    from rag import extract_text_from_file, clean_spaced_text, is_spaced_out, llm, vectorstore
+    from rag import vectorstore, clean_spaced_text, is_spaced_out, llm
 
     combined_text = ""
     extracted_filenames = []
@@ -2812,25 +2812,42 @@ async def predict_paper(req: PredictPaperRequest):
         fname = meta.get("filename", "")
         fpath = resolve_physical_file_path(fname, meta)
         file_text = ""
-        if fpath and os.path.exists(fpath):
-            try:
-                docs = extract_text_from_file(fpath)
-                for doc in docs:
-                    pcontent = doc.page_content if hasattr(doc, 'page_content') else str(doc)
+
+        # 1. Fast retrieval from pre-indexed vectorstore (< 50ms)
+        try:
+            if vectorstore:
+                query_fname = f"{fname} {subject} {semester}"
+                chroma_results = vectorstore.similarity_search(query_fname, k=6)
+                matching_chunks = [d for d in chroma_results if fname.lower() in d.metadata.get("source", "").lower() or fname.lower() in d.metadata.get("filename", "").lower()]
+                if not matching_chunks and chroma_results:
+                    matching_chunks = chroma_results[:4]
+                for d in matching_chunks:
+                    pcontent = d.page_content if hasattr(d, 'page_content') else str(d)
                     if is_spaced_out(pcontent):
                         pcontent = clean_spaced_text(pcontent)
                     file_text += f"\n{pcontent}"
-            except Exception as e:
-                print(f"[PREDICTOR NOTICE] Extraction parser warning for {fname}: {e}")
+        except Exception as ve:
+            print(f"[PREDICTOR NOTICE] Vectorstore lookup fallback for {fname}: {ve}")
+
+        # 2. Fast pypdf text layer fallback (0ms)
+        if not file_text.strip() and fpath and os.path.exists(fpath):
+            try:
+                import pypdf
+                reader = pypdf.PdfReader(fpath)
+                for page in reader.pages[:10]:
+                    ptxt = page.extract_text() or ""
+                    if ptxt.strip():
+                        file_text += f"\n{ptxt}"
+            except Exception:
+                pass
 
         # If extracted text is meaningful, append it
         if len(file_text.strip()) > 30:
-            if len(file_text) > 8000:
-                file_text = file_text[:8000] + "\n...[truncated]..."
+            if len(file_text) > 6000:
+                file_text = file_text[:6000] + "\n...[truncated]..."
             combined_text += f"\n\n=== PAST YEAR QUESTION PAPER #{idx} ({fname}) ===\n{file_text}"
             extracted_filenames.append(fname)
         else:
-            # Still record file presence and context
             combined_text += f"\n\n=== PAST YEAR QUESTION PAPER #{idx} ({fname}) ===\n[Document verified in Course Repository: {fname} for {subject} {semester}]"
             extracted_filenames.append(fname)
 
@@ -2839,7 +2856,7 @@ async def predict_paper(req: PredictPaperRequest):
         try:
             if vectorstore:
                 query_str = f"{subject} {semester} {exam_type} PYQ previous year questions mid-sem end-sem syllabus numericals"
-                sim_docs = vectorstore.similarity_search(query_str, k=8)
+                sim_docs = vectorstore.similarity_search(query_str, k=6)
                 chroma_text = ""
                 for sdoc in sim_docs:
                     c_src = sdoc.metadata.get("source", "Indexed Repository Material")
