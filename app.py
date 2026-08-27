@@ -567,14 +567,20 @@ async def chat_stream(request: ChatRequest):
     thread_id = request.thread_id or "default_thread"
     config = {"configurable": {"thread_id": thread_id}}
 
-    detected_topic = "general"
+    from database import extract_topic_from_query, get_recommended_videos
+    detected_topic = extract_topic_from_query(request.query)
+    q_lower = request.query.lower()
+    is_vid_query = any(re.search(r'(?<![a-zA-Z0-9])' + re.escape(w) + r'(?![a-zA-Z0-9])', q_lower) for w in ["video", "videos", "playlist", "playlists", "channel", "channels", "yt", "lecture", "lectures", "tutorial", "tutorials"])
+    is_followup_vid = any(p in q_lower for p in ["also give for", "give for", "and for", "same for", "what about"])
+    should_recommend_videos = is_vid_query or is_followup_vid
+
     topic_attempts = 0
     intent_result = {
-        "should_recommend_videos": False,
-        "recommendation_strength": "none",
-        "intent": "initial",
+        "should_recommend_videos": should_recommend_videos,
+        "recommendation_strength": "medium" if should_recommend_videos else "none",
+        "intent": "video_recommendation" if should_recommend_videos else "initial",
         "explanation_style": "normal",
-        "reason": ""
+        "reason": "Student requested faculty video resources" if should_recommend_videos else ""
     }
     history = []
 
@@ -662,9 +668,9 @@ async def chat_stream(request: ChatRequest):
             except Exception as cwe:
                 print(f"[CONCEPT WEAKNESS DETECT ERROR] {cwe}")
 
-            # Emit video recommendation if needed
-            print(f"[STREAM] Checking video rec: should={intent_result.get('should_recommend_videos')} strength={intent_result.get('recommendation_strength')} topic='{detected_topic}'")
-            if intent_result.get("should_recommend_videos"):
+            # Emit video recommendation if requested or if response contains playlist/card mentions
+            has_video_mention = bool(ai_text and any(phrase in ai_text.lower() for phrase in ["verified faculty playlists", "interactive cards below", "youtube.com/playlist", "youtube.com/watch"]))
+            if should_recommend_videos or has_video_mention or intent_result.get("should_recommend_videos"):
                 videos = get_recommended_videos(
                     subject="",
                     topic=detected_topic,
@@ -672,25 +678,20 @@ async def chat_stream(request: ChatRequest):
                     mode="exam",
                     limit=4
                 )
-                strength = intent_result.get("recommendation_strength", "medium")
-                if strength == "urgent":
-                    rec_msg = "🚨 I see you're really struggling with this.\n\nLet me show you the BEST videos recommended by Bennett students:"
-                elif strength == "medium":
-                    rec_msg = "📺 Recommended videos for this topic:"
-                else:
-                    rec_msg = "Optional: Here are helpful video resources:"
-
-                rec_payload = json.dumps({
-                    "topic": detected_topic.title(),
-                    "strength": strength,
-                    "attempt_number": topic_attempts + 1,
-                    "intent_reason": intent_result.get("reason", ""),
-                    "recommendation_message": rec_msg,
-                    "next_action": get_next_action_message(strength, topic_attempts + 1),
-                    "videos": videos
-                })
-                print(f"[STREAM EMIT VIDEO_REC] {rec_payload[:120]}...")
-                await queue.put(f"__VIDEO_REC__:{rec_payload}")
+                if videos:
+                    strength = intent_result.get("recommendation_strength", "medium")
+                    rec_msg = "📺 Top-Rated Verified Faculty Playlists for Bennett Students:"
+                    rec_payload = json.dumps({
+                        "topic": detected_topic.title(),
+                        "strength": strength,
+                        "attempt_number": topic_attempts + 1,
+                        "intent_reason": intent_result.get("reason", "Curated Bennett faculty video lectures for this topic"),
+                        "recommendation_message": rec_msg,
+                        "next_action": get_next_action_message(strength, topic_attempts + 1),
+                        "videos": videos
+                    })
+                    print(f"[STREAM EMIT VIDEO_REC] {rec_payload[:120]}...")
+                    await queue.put(f"__VIDEO_REC__:{rec_payload}")
         except Exception as e:
             print(f"[RUN_WORKFLOW ERROR] {e}")
             await queue.put(f"__ERROR__:{str(e)}")

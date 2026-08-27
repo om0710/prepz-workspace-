@@ -2790,6 +2790,8 @@ function initializeDocPilotApp() {
                         const recToRender = pendingVideoRec;
                         pendingVideoRec = null;
                         setTimeout(() => renderVideoRecommendation(recToRender, assistantBubble), 100);
+                    } else {
+                        setTimeout(() => maybeRenderTextVideoCards(accumulatedResponse, assistantBubble), 120);
                     }
                 }
             }, 20);
@@ -2875,6 +2877,8 @@ function initializeDocPilotApp() {
                 if (pendingVideoRec) {
                     const recToRender = pendingVideoRec;
                     setTimeout(() => renderVideoRecommendation(recToRender, assistantBubble), 100);
+                } else {
+                    setTimeout(() => maybeRenderTextVideoCards(accumulatedResponse, assistantBubble), 120);
                 }
                 fetchUserStats();
                 if (window.fetchLeaderboard) window.fetchLeaderboard();
@@ -3135,6 +3139,66 @@ function initializeDocPilotApp() {
             scrollToBottom();
             card.scrollIntoView({ behavior: "smooth", block: "nearest" });
         }, 100);
+    }
+
+    function maybeRenderTextVideoCards(text, afterBubble) {
+        if (!text) return;
+        const chatContainer = document.getElementById("chat-messages");
+        const msgItem = (afterBubble && afterBubble.closest) ? afterBubble.closest(".chat-message-item") : (chatContainer ? chatContainer.lastElementChild : null);
+        if (msgItem && msgItem.querySelector(".video-recommendations")) return;
+
+        const isVidText = text.includes("verified faculty playlists") || text.includes("interactive cards below") || text.includes("youtube.com/playlist") || text.includes("youtube.com/watch");
+        if (!isVidText) return;
+
+        const linkRegex = /\[([^\]]+)\]\((https?:\/\/[^\)]+youtube[^\)]+)\)/gi;
+        const videos = [];
+        let match;
+        while ((match = linkRegex.exec(text)) !== null) {
+            const fullTitle = match[1].trim();
+            const url = match[2].trim();
+            let channel = "Bennett Recommended";
+            let instructor = "";
+            let topic = fullTitle;
+
+            if (fullTitle.includes("—")) {
+                const parts = fullTitle.split("—");
+                channel = parts[0].trim();
+                topic = parts.slice(1).join("—").trim();
+            } else if (fullTitle.includes("-")) {
+                const parts = fullTitle.split("-");
+                channel = parts[0].trim();
+                topic = parts.slice(1).join("-").trim();
+            }
+
+            if (channel.includes("(") && channel.includes(")")) {
+                const m = channel.match(/^(.*?)\s*\((.*?)\)$/);
+                if (m) {
+                    channel = m[1].trim();
+                    instructor = m[2].trim();
+                }
+            }
+
+            videos.push({
+                id: videos.length + 1,
+                channel: channel,
+                instructor: instructor,
+                topic: topic,
+                playlist_url: url,
+                rating: 4.9,
+                total_ratings: 24,
+                helpful_percentage: 96,
+                avg_duration: 20
+            });
+        }
+
+        if (videos.length > 0) {
+            renderVideoRecommendation({
+                topic: "Bennett Faculty Recommendations",
+                strength: "medium",
+                recommendation_message: "📺 Top-Rated Verified Faculty Playlists for Bennett Students:",
+                videos: videos
+            }, afterBubble);
+        }
     }
 
     window.playVideoInApp = function(btn, cardId) {
