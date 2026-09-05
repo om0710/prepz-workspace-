@@ -82,5 +82,33 @@
     "exam_type": "End-Sem",
     "is_private": 0,
     "file_path": "uploads/course_repo/CBSC204_Statistics+and+Probability.pdf"
+  },
+  {
+    "id": 67,
+    "filename": "AIML_Lab_Week2.docx",
+    "user_email": "ombansal221_gmail_com",
+    "user_name": "User",
+    "uploaded_at": "2026-08-21T20:37:41.958732",
+    "size_bytes": 539358,
+    "subject": "General Engineering",
+    "semester": "Semester 1",
+    "file_type": "Notes",
+    "exam_type": "Other",
+    "is_private": 1,
+    "file_path": "./uploads/workspace/ombansal221_gmail_com/AIML_Lab_Week2.docx"
+  },
+  {
+    "id": 68,
+    "filename": "test_upload_doc.pdf",
+    "user_email": "ombansal221@gmail.com",
+    "user_name": "Om Bansal",
+    "uploaded_at": "2026-09-05T11:47:25.890789",
+    "size_bytes": 312,
+    "subject": "Operating Systems",
+    "semester": "Semester 3",
+    "file_type": "Notes",
+    "exam_type": "Mid-Sem",
+    "is_private": 0,
+    "file_path": "./uploads/course_repo/test_upload_doc.pdf"
   }
 ]

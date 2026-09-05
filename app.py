@@ -8,8 +8,8 @@ import threading
 import secrets
 from datetime import datetime
 from urllib.parse import unquote, quote
-from typing import Optional
-from fastapi import FastAPI, UploadFile, File, HTTPException, Request
+from typing import Optional, List, Dict, Any, Union
+from fastapi import FastAPI, UploadFile, File, HTTPException, Request, Form, BackgroundTasks
 from fastapi.responses import StreamingResponse, FileResponse, Response, RedirectResponse
 import base64
 import httpx
@@ -2007,6 +2007,7 @@ MAX_FILE_SIZE_BYTES = 20 * 1024 * 1024  # 20MB limit
 
 @app.post("/upload")
 async def upload_pdf(
+    background_tasks: BackgroundTasks,
     file: UploadFile = File(...),
     user_email: str = Form("anonymous@college.edu"),
     user_name: str = Form("Anonymous Student"),
@@ -2119,8 +2120,9 @@ async def upload_pdf(
             is_private=is_priv_int
         )
         
-        # Add to vector DB with clean text parsing and user/subject/semester/file_type metadata
-        add_pdf_to_vectordb(
+        # Schedule indexing in background so HTTP response returns immediately in < 100ms
+        background_tasks.add_task(
+            add_pdf_to_vectordb,
             file_path,
             user_email=user_email,
             user_name=user_name,
