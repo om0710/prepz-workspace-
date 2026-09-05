@@ -2264,7 +2264,7 @@ function initializeDocPilotApp() {
         cleanMd = cleanMd.replace(/([^\n])\n(\|[^\n]+\|\n\|[\s\-:]+\|\n)/g, "$1\n\n$2");
         cleanMd = cleanMd.replace(/(\|[^\n]+\|)\n([^\n\|])/g, "$1\n\n$2");
 
-        // 4. Parse Markdown with marked.js
+        // 4. Parse Markdown with marked.js if available
         let html = "";
         try {
             if (typeof marked !== "undefined") {
@@ -2281,55 +2281,106 @@ function initializeDocPilotApp() {
             console.warn("Marked parse warning:", e);
         }
 
-        // Fallback manual table converter if raw pipe table remained unparsed
-        if (!html || (!html.includes("<table") && cleanMd.includes("|---"))) {
+        // 5. Full Native Fallback Parser if marked is unavailable or produced empty output
+        if (!html || html.trim().length === 0) {
             const lines = cleanMd.split("\n");
+            let out = [];
             let inTable = false;
-            let tableHtml = "";
-            let processedLines = [];
+            let inList = false;
 
             for (let i = 0; i < lines.length; i++) {
-                const line = lines[i].trim();
-                if (line.startsWith("|") && line.endsWith("|")) {
-                    if (!inTable) {
-                        inTable = true;
-                        tableHtml = '<div class="table-responsive"><table class="exam-insights-table"><thead><tr>';
-                        const headers = line.split("|").filter((_, idx, arr) => idx > 0 && idx < arr.length - 1);
-                        headers.forEach(h => { tableHtml += `<th>${h.trim()}</th>`; });
-                        tableHtml += '</tr></thead><tbody>';
-                        i++; // Skip delimiter row |:---|:---|
+                let line = lines[i];
+                let trimmed = line.trim();
+
+                // Empty line
+                if (!trimmed) {
+                    if (inTable) { out.push("</tbody></table></div>"); inTable = false; }
+                    if (inList) { out.push("</ul>"); inList = false; }
+                    continue;
+                }
+
+                // Table row
+                if (trimmed.startsWith("|") && trimmed.endsWith("|")) {
+                    if (trimmed.includes("---")) {
                         continue;
+                    }
+                    if (!inTable) {
+                        if (inList) { out.push("</ul>"); inList = false; }
+                        inTable = true;
+                        out.push('<div class="table-responsive"><table class="exam-insights-table"><thead><tr>');
+                        const headers = trimmed.split("|").filter((_, idx, arr) => idx > 0 && idx < arr.length - 1);
+                        headers.forEach(h => { out.push(`<th>${h.trim()}</th>`); });
+                        out.push('</tr></thead><tbody>');
                     } else {
-                        const cells = line.split("|").filter((_, idx, arr) => idx > 0 && idx < arr.length - 1);
-                        tableHtml += '<tr>';
+                        const cells = trimmed.split("|").filter((_, idx, arr) => idx > 0 && idx < arr.length - 1);
+                        out.push('<tr>');
                         cells.forEach((c, cIdx) => {
                             let cContent = c.trim();
                             if (cIdx === 1) cContent = `<strong>${cContent}</strong>`;
                             else if (cIdx === 2) cContent = `<span class="exam-prob-chip" style="margin:0;">⚡ ${cContent}</span>`;
-                            tableHtml += `<td>${cContent}</td>`;
+                            out.push(`<td>${cContent}</td>`);
                         });
-                        tableHtml += '</tr>';
+                        out.push('</tr>');
                     }
-                } else {
-                    if (inTable) {
-                        inTable = false;
-                        tableHtml += '</tbody></table></div>';
-                        processedLines.push(tableHtml);
-                    }
-                    processedLines.push(line);
+                    continue;
+                } else if (inTable) {
+                    out.push("</tbody></table></div>");
+                    inTable = false;
                 }
+
+                // Headings
+                if (trimmed.startsWith("### ")) {
+                    if (inList) { out.push("</ul>"); inList = false; }
+                    out.push(`<h3>${trimmed.slice(4)}</h3>`);
+                    continue;
+                }
+                if (trimmed.startsWith("## ")) {
+                    if (inList) { out.push("</ul>"); inList = false; }
+                    out.push(`<h2>${trimmed.slice(3)}</h2>`);
+                    continue;
+                }
+                if (trimmed.startsWith("# ")) {
+                    if (inList) { out.push("</ul>"); inList = false; }
+                    out.push(`<h1>${trimmed.slice(2)}</h1>`);
+                    continue;
+                }
+
+                // Horizontal rule
+                if (trimmed === "---" || trimmed === "***" || trimmed === "___") {
+                    if (inList) { out.push("</ul>"); inList = false; }
+                    out.push("<hr>");
+                    continue;
+                }
+
+                // Bullet or Numbered List
+                const listMatch = trimmed.match(/^[-*•]\s+(.*)$/) || trimmed.match(/^\d+\.\s+(.*)$/);
+                if (listMatch) {
+                    if (!inList) {
+                        inList = true;
+                        out.push('<ul class="exam-list">');
+                    }
+                    out.push(`<li>${listMatch[1]}</li>`);
+                    continue;
+                } else if (inList) {
+                    out.push("</ul>");
+                    inList = false;
+                }
+
+                // Standard paragraph
+                out.push(`<p>${trimmed}</p>`);
             }
-            if (inTable) {
-                tableHtml += '</tbody></table></div>';
-                processedLines.push(tableHtml);
-            }
-            cleanMd = processedLines.join("\n\n");
-            if (typeof marked !== "undefined" && typeof marked.parse === "function") {
-                html = marked.parse(cleanMd);
-            }
+            if (inTable) out.push("</tbody></table></div>");
+            if (inList) out.push("</ul>");
+
+            html = out.join("\n");
         }
 
-        // 5. Format Frequency, Probability & Marks Badges into Clean UI Chips
+        // Inline formatting
+        html = html.replace(/\*\*([^*]+?)\*\*/g, "<strong>$1</strong>");
+        html = html.replace(/\*([^*]+?)\*/g, "<em>$1</em>");
+        html = html.replace(/`([^`\n]+?)`/g, "<code>$1</code>");
+
+        // 6. Format Frequency, Probability & Marks Badges into Clean UI Chips
         html = html.replace(/\[\s*Frequency:\s*([^\]]+)\]/gi, '<div class="exam-badge-row"><span class="exam-freq-chip">🎯 Frequency: $1</span></div>');
         html = html.replace(/\[\s*Probability:\s*([^\]]+)\]/gi, '<span class="exam-prob-chip">⚡ Probability: $1</span>');
         html = html.replace(/`\[(\d+)\s*Marks?\]`/gi, '<span class="exam-marks-badge">[$1 Marks]</span>');
@@ -2337,6 +2388,7 @@ function initializeDocPilotApp() {
 
         // Style questions Q1, Q2, etc.
         html = html.replace(/<strong>\[?(Q\d+)\]?<\/strong>/gi, '<span class="exam-q-num">$1</span>');
+        html = html.replace(/\[(Q\d+)\]/gi, '<span class="exam-q-num">$1</span>');
 
         return html;
     }
