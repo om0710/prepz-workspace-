@@ -3119,7 +3119,7 @@ if __name__ == "__main__":
     port = int(os.environ.get("PORT", 7860))
     host = os.environ.get("HOST", "0.0.0.0")
     print(f"Starting server on http://{host}:{port}...")
-    uvicorn.run("app:app", host=host, port=port)
+    uvicorn.run(app, host=host, port=port)
 
 
 
