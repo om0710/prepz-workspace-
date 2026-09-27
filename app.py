@@ -3108,9 +3108,11 @@ except Exception:
 # ZeroGPU / Gradio SDK Compatibility Wrapper
 try:
     import gradio as gr
-    with gr.Blocks(title="BU Prepz AI Workspace") as demo:
+    _demo_block = gr.Blocks(title="BU Prepz AI Workspace")
+    with _demo_block:
         gr.HTML('<iframe src="/" style="width:100%; height:100vh; border:none; margin:0; padding:0;"></iframe>')
-    app = gr.mount_gradio_app(app, demo, path="/gradio")
+    app = gr.mount_gradio_app(app, _demo_block, path="/gradio")
+    del _demo_block
 except Exception as e:
     print(f"[GRADIO MOUNT NOTICE] {e}")
 
