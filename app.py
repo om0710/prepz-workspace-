@@ -3105,10 +3105,19 @@ try:
 except Exception:
     pass
 
+# ZeroGPU / Gradio SDK Compatibility Wrapper
+try:
+    import gradio as gr
+    with gr.Blocks(title="BU Prepz AI Workspace") as demo:
+        gr.HTML('<iframe src="/" style="width:100%; height:100vh; border:none; margin:0; padding:0;"></iframe>')
+    app = gr.mount_gradio_app(app, demo, path="/gradio")
+except Exception as e:
+    print(f"[GRADIO MOUNT NOTICE] {e}")
+
 if __name__ == "__main__":
     import uvicorn
     port = int(os.environ.get("PORT", 7860))
-    host = os.environ.get("HOST", "127.0.0.1")
+    host = os.environ.get("HOST", "0.0.0.0")
     print(f"Starting server on http://{host}:{port}...")
     uvicorn.run("app:app", host=host, port=port)
 
