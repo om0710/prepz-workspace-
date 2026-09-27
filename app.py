@@ -3115,11 +3115,19 @@ except Exception as e:
     print(f"[GRADIO MOUNT NOTICE] {e}")
 
 if __name__ == "__main__":
-    import uvicorn
     port = int(os.environ.get("PORT", 7860))
     host = os.environ.get("HOST", "0.0.0.0")
-    print(f"Starting server on http://{host}:{port}...")
-    uvicorn.run(app, host=host, port=port)
+    print(f"Starting server on http://{host}:{port} with ZeroGPU...")
+    try:
+        if "demo" in locals() and hasattr(demo, "launch"):
+            demo.launch(server_name=host, server_port=port, app_kwargs={"docs_url": "/docs"})
+        else:
+            import uvicorn
+            uvicorn.run(app, host=host, port=port)
+    except Exception as e:
+        print(f"[LAUNCH FALLBACK] {e}")
+        import uvicorn
+        uvicorn.run(app, host=host, port=port)
 
 
 
