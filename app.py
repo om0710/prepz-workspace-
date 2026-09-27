@@ -91,6 +91,11 @@ async def health_check():
     """Health check endpoint."""
     return {"status": "ok", "app": "BU Prepz AI Workspace", "timestamp": datetime.utcnow().isoformat()}
 
+@app.get("/config")
+async def config_check():
+    """Gradio Spaces health check endpoint."""
+    return {"title": "BU Prepz AI Workspace", "version": "5.20.0", "status": "running"}
+
 # ── Firebase Auth Proxy ────────────────────────────────────────────────────────
 # HF Spaces CSP only allows frame-src 'self'. Firebase auth iframe normally
 # loads from prepz-workspace.firebaseapp.com (blocked). By proxying /__/auth/*
