@@ -358,6 +358,11 @@ def read_favicon_ico():
 def read_favicon_png():
     return FileResponse("static/favicon.png")
 
+@app.get("/privacy")
+@app.get("/privacy.html")
+def read_privacy():
+    return FileResponse("static/privacy.html", headers=NO_CACHE_HEADERS)
+
 @app.get("/favicon.svg")
 def read_favicon_svg():
     return FileResponse("static/favicon.svg")
