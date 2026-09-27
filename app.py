@@ -18,6 +18,22 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field, validator
 
+# ZeroGPU Registration for Hugging Face Spaces
+try:
+    import spaces
+    @spaces.GPU(duration=60)
+    def zero_gpu_task_runner():
+        """Register ZeroGPU daemon detector."""
+        return True
+
+    try:
+        zero_gpu_task_runner()
+        print("[ZEROGPU] ZeroGPU runtime registered successfully.")
+    except Exception as _zg_e:
+        print(f"[ZEROGPU NOTICE] {_zg_e}")
+except Exception as _sp_e:
+    print(f"[ZEROGPU INIT] Skipped: {_sp_e}")
+
 # Setup Security Audit Logger
 security_logger = logging.getLogger("security")
 
