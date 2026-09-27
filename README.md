@@ -1,4 +1,12 @@
-
+---
+title: BU Prepz AI Workspace
+emoji: 🎓
+colorFrom: indigo
+colorTo: purple
+sdk: docker
+app_port: 7860
+pinned: false
+---
 
 #  BU Prepz AI Workspace
 ### *Next-Gen Engineering Study Assistant & Document Intelligence Platform*

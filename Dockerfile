@@ -1,22 +1,25 @@
 FROM python:3.10-slim
 
-WORKDIR /app
-
 # Install system dependencies
-RUN apt-get update && apt-get install -y \
-    build-essential \
-    sqlite3 \
-    && rm -rf /var/lib/apt/lists/*
+RUN apt-get update && apt-get install -y     build-essential     sqlite3     && rm -rf /var/lib/apt/lists/*
 
-# Copy and install python dependencies
-COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+# Set up non-root user for Hugging Face Spaces
+RUN useradd -m -u 1000 user
+USER user
+ENV HOME=/home/user     PATH=/home/user/.local/bin:$PATH     PYTHONUNBUFFERED=1
 
-# Copy all project files
-COPY . .
+WORKDIR $HOME/app
 
-# Expose port
+# Copy requirements and install
+COPY --chown=user:user requirements.txt $HOME/app/requirements.txt
+RUN pip install --no-cache-dir --user -r requirements.txt
+
+# Copy application files
+COPY --chown=user:user . $HOME/app
+
+# Ensure runtime directories exist with proper write permissions
+RUN mkdir -p $HOME/app/uploads $HOME/app/chroma_db
+
 EXPOSE 7860
 
-# Run uvicorn server with dynamic PORT environment variable fallback
-CMD ["sh", "-c", "uvicorn app_hf:app --host 0.0.0.0 --port ${PORT:-7860}"]
+CMD ["uvicorn", "app_hf:app", "--host", "0.0.0.0", "--port", "7860"]
