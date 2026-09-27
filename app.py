@@ -934,6 +934,14 @@ def _reindex_all_uploads_sync():
     except Exception as e:
         print(f"[STARTUP REINDEX NOTICE] {e}")
 
+async def _delayed_startup_reindex():
+    try:
+        # Give Uvicorn 15 seconds to bind port and pass all HF health checks
+        await asyncio.sleep(15)
+        await run_in_threadpool(_reindex_all_uploads_sync)
+    except Exception as e:
+        print(f"[BACKGROUND REINDEX ERROR] {e}")
+
 @app.on_event("startup")
 async def startup_event():
     try:
@@ -943,9 +951,8 @@ async def startup_event():
     except Exception as e:
         print(f"[STARTUP NOTICE] {e}")
 
-    # Run in the background so re-indexing a large document library doesn't delay
-    # the app becoming ready to serve requests.
-    asyncio.create_task(run_in_threadpool(_reindex_all_uploads_sync))
+    # Run in the background after health checks pass
+    asyncio.create_task(_delayed_startup_reindex())
 
 # ── Part 5: Seed Channels Endpoint (/api/admin/seed-channels) ─────────────────
 @app.post("/api/admin/seed-channels")
